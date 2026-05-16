@@ -5,7 +5,7 @@ use super::toml_io::{write_drivers_toml_atomic, write_tags_toml_atomic};
 use super::ui_paths::normalize_optional_string;
 use crate::app_state::{AppState, DriverUiSessionState};
 use crate::commands::dto::{ErrorResponse, ImportDriverUiResultRequest, ImportDriverUiResultResponse};
-use crate::commands::driver_ui_protocol::{
+use kt_driver_ui_protocol::{
     DriverUiDriverPayload, DriverUiImportPayload,
 };
 use crate::config::{DriverConfig, ScanGroupConfig, TagConfig};

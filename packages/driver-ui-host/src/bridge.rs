@@ -130,29 +130,6 @@ fn parse_cli_args() -> CliArgs {
         }
     }
 
-    // CLI 引数が取得できない場合のフォールバック (spawn 元からの env 受け渡し)。
-    if cli.session_id.is_none() {
-        cli.session_id = std::env::var("KT_IOT_HUB_DRIVER_UI_SESSION_ID").ok();
-    }
-    if cli.driver_type.is_none() {
-        cli.driver_type = std::env::var("KT_IOT_HUB_DRIVER_UI_DRIVER_TYPE").ok();
-    }
-    if cli.driver_id.is_none() {
-        cli.driver_id = std::env::var("KT_IOT_HUB_DRIVER_UI_DRIVER_ID").ok();
-    }
-    if cli.input_json_path.is_none() {
-        cli.input_json_path = std::env::var("KT_IOT_HUB_DRIVER_UI_INPUT_JSON").ok();
-    }
-    if cli.output_json_path.is_none() {
-        cli.output_json_path = std::env::var("KT_IOT_HUB_DRIVER_UI_OUTPUT_JSON").ok();
-    }
-    if !cli.driver_ui_mode {
-        cli.driver_ui_mode = matches!(
-            std::env::var("KT_IOT_HUB_DRIVER_UI_MODE").ok().as_deref(),
-            Some("1") | Some("true") | Some("TRUE") | Some("yes") | Some("YES")
-        );
-    }
-
     cli
 }
 

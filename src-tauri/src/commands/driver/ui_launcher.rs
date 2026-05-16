@@ -9,7 +9,7 @@ use crate::commands::dto::{
     CheckDriverUiResultRequest, CheckDriverUiResultResponse, ErrorResponse, LaunchDriverUiRequest,
     LaunchDriverUiResponse,
 };
-use crate::commands::driver_ui_protocol::{
+use kt_driver_ui_protocol::{
     DriverUiLaunchContext, DriverUiLaunchData, DriverUiLaunchDriver, DriverUiLaunchScanGroup,
     DriverUiLaunchSession, DriverUiLaunchTag,
 };
@@ -155,24 +155,8 @@ pub async fn launch_driver_ui(
         .arg("--output-json")
         .arg(&output_json_path);
 
-    // 一部環境/ランチャーで CLI 引数が期待通り渡らないケースに備え、
-    // 同じ情報を環境変数でも渡してフォールバック可能にする。
-    command
-        .env("KT_IOT_HUB_DRIVER_UI_MODE", "1")
-        .env("KT_IOT_HUB_DRIVER_UI_SESSION_ID", &session_id)
-        .env("KT_IOT_HUB_DRIVER_UI_DRIVER_TYPE", &driver_type)
-        .env(
-            "KT_IOT_HUB_DRIVER_UI_INPUT_JSON",
-            input_json_path.to_string_lossy().to_string(),
-        )
-        .env(
-            "KT_IOT_HUB_DRIVER_UI_OUTPUT_JSON",
-            output_json_path.to_string_lossy().to_string(),
-        );
-
     if let Some(driver_id) = driver_id.as_ref() {
         command.arg("--driver-id").arg(driver_id);
-        command.env("KT_IOT_HUB_DRIVER_UI_DRIVER_ID", driver_id);
     }
 
     let state_for_spawn = state.clone();

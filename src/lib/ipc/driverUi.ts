@@ -82,14 +82,10 @@ export async function importDriverUiResult(
   req: ImportDriverUiResultRequest,
 ): Promise<ImportDriverUiResultResponse> {
   const raw = await invoke<{
-    driverId?: string;
-    sessionId?: string;
-    importedTagCount?: number;
-    importedScanGroupCount?: number;
-    driver_id?: string;
-    session_id?: string;
-    imported_tag_count?: number;
-    imported_scan_group_count?: number;
+    driverId: string;
+    sessionId: string;
+    importedTagCount: number;
+    importedScanGroupCount: number;
   }>('import_driver_ui_result', {
     req: {
       sessionId: req.session_id,
@@ -99,11 +95,10 @@ export async function importDriverUiResult(
   });
 
   return {
-    driver_id: raw.driver_id ?? raw.driverId ?? '',
-    session_id: raw.session_id ?? raw.sessionId ?? '',
-    imported_tag_count: raw.imported_tag_count ?? raw.importedTagCount ?? 0,
-    imported_scan_group_count:
-      raw.imported_scan_group_count ?? raw.importedScanGroupCount ?? 0,
+    driver_id: raw.driverId,
+    session_id: raw.sessionId,
+    imported_tag_count: raw.importedTagCount,
+    imported_scan_group_count: raw.importedScanGroupCount,
   };
 }
 

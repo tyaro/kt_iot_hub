@@ -18,7 +18,6 @@ pub struct DriverUiImportPayload {
 pub struct DriverUiTagPayload {
     pub id: String,
     pub name: String,
-    #[serde(alias = "dataType")]
     pub data_type: String,
     #[serde(default)]
     pub enabled: Option<bool>,
@@ -26,7 +25,6 @@ pub struct DriverUiTagPayload {
     pub unit: Option<String>,
     #[serde(default)]
     pub comment: Option<String>,
-    #[serde(alias = "driverSpec")]
     pub driver_spec: serde_json::Value,
 }
 

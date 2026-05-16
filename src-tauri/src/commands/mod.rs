@@ -4,6 +4,5 @@
 
 pub mod dto;
 pub mod driver;
-pub mod driver_ui_protocol;
 pub mod runtime;
 pub mod tag;

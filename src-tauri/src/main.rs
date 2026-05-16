@@ -25,13 +25,7 @@ use tracing::info;
 static SHUTDOWN_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
 fn is_driver_ui_process() -> bool {
-    if std::env::args().any(|arg| arg == "--driver-ui-mode") {
-        return true;
-    }
-    matches!(
-        std::env::var("KT_IOT_HUB_DRIVER_UI_MODE").ok().as_deref(),
-        Some("1") | Some("true") | Some("TRUE") | Some("yes") | Some("YES")
-    )
+    std::env::args().any(|arg| arg == "--driver-ui-mode")
 }
 
 fn main() {
