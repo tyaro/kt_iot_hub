@@ -1,0 +1,16 @@
+[package]
+name = "kt_driver_ui_host"
+version = "0.1.0"
+edition = "2021"
+
+# 本体アプリと外部ドライバUIアプリの双方で共通利用する Tauri コマンド層。
+# 重複していた DTO・bridge・PostgreSQL レジストレーション API をここに集約する。
+
+[dependencies]
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri = { version = "2.1", features = [] }
+tokio = { version = "1.35", features = ["macros", "rt"] }
+tokio-postgres = "0.7"
+kt_driver_ui_protocol = { path = "../protocol-rs" }

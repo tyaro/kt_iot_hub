@@ -33,10 +33,9 @@ if (-not (Test-Path $targetDir)) {
 $targetPath = Join-Path $targetDir $TargetFileName
 Copy-Item -Path $resolvedSource -Destination $targetPath -Force
 
-Write-Host "Driver UI を配置しました:" -ForegroundColor Green
+Write-Host "Driver UI installed:" -ForegroundColor Green
 Write-Host "  DriverType : $DriverType"
 Write-Host "  Source     : $resolvedSource"
 Write-Host "  Target     : $targetPath"
 Write-Host ""
-Write-Host "既定探索パス: <app-root>/driver-ui/$DriverType/registration-ui(.exe)" -ForegroundColor Cyan
-Write-Host "必要なら drivers.toml の registration_ui_path で明示指定も可能です。" -ForegroundColor Cyan
+Write-Host "Search path: <app-root>/driver-ui/$DriverType/registration-ui(.exe)" -ForegroundColor Cyan

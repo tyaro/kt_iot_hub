@@ -1,0 +1,96 @@
+//! 本体・ドライバUI で共通利用する DTO 群。
+//! すべて `camelCase` 直列化で UI 側と整合する。
+
+use serde::{Deserialize, Serialize};
+
+/// PostgreSQL 接続パラメータ DTO
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostgresConnectionParams {
+    pub host: String,
+    pub port: u16,
+    pub database: String,
+    pub username: String,
+    pub password: String,
+    pub ssl_mode: Option<String>,
+}
+
+/// PostgreSQL 接続テスト結果 DTO
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostgresConnectionTestResult {
+    pub ok: bool,
+    pub message: String,
+}
+
+/// PostgreSQL テーブル一覧 DTO
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostgresTableDto {
+    pub schema: String,
+    pub name: String,
+}
+
+/// PostgreSQL カラム一覧 DTO
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostgresColumnDto {
+    pub name: String,
+    pub data_type: String,
+    pub is_nullable: bool,
+}
+
+/// PostgreSQL カラム取得リクエスト DTO
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostgresColumnsRequest {
+    pub conn: PostgresConnectionParams,
+    pub schema: Option<String>,
+    pub table: String,
+}
+
+/// ドライバUI起動コンテキスト DTO (UI へ返却)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DriverUiLaunchContextDto {
+    pub launched_as_driver_ui: bool,
+    pub session_id: Option<String>,
+    pub driver_type: Option<String>,
+    pub driver_id: Option<String>,
+    pub input_json_path: Option<String>,
+    pub output_json_path: Option<String>,
+    pub request_id: Option<String>,
+}
+
+/// ドライバUI 出力 JSON 保存リクエスト DTO
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveDriverUiOutputRequest {
+    pub output_json_path: Option<String>,
+    pub payload: serde_json::Value,
+}
+
+/// 共通エラーレスポンス DTO
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ErrorResponse {
+    pub error: String,
+    pub code: String,
+}
+
+impl ErrorResponse {
+    pub fn new(code: impl Into<String>, error: impl Into<String>) -> Self {
+        Self {
+            error: error.into(),
+            code: code.into(),
+        }
+    }
+}
+
+impl From<anyhow::Error> for ErrorResponse {
+    fn from(err: anyhow::Error) -> Self {
+        Self {
+            error: err.to_string(),
+            code: "INTERNAL_ERROR".to_string(),
+        }
+    }
+}

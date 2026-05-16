@@ -243,6 +243,13 @@ PostgreSQL では、テーブルの最新値をタグ値として扱うため、
 - 既定探索パス: `<app-root>/driver-ui/<driver_type>/registration-ui(.exe)`
 - 互換探索: `<app-root>/driver-ui/<driver_type>/driver-ui(.exe)` など
 
+### PostgreSQL ドライバUI（monorepo 分離後）
+
+- 実装本体: `apps/driver-ui-postgres/`
+- 開発用ビルド/配置: `npm run driver-ui:dev`
+- 生成バイナリ: `target/debug/driver_ui_postgres.exe`（workspace ルート）
+- 配置先: `driver-ui/postgres/registration-ui.exe`
+
 ### 配置スクリプト
 
 PowerShell スクリプト `scripts/install-driver-ui.ps1` を使用する。
@@ -357,11 +364,12 @@ MQTT 配信時のトピックは以下の階層構造に従う。
 ### 返却JSON仕様のコード化（実装）
 
 - Rust 側では以下の型で返却JSONを受け付ける。
-  - `src-tauri/src/commands/driver_ui_protocol.rs`
+  - `packages/protocol-rs/src/lib.rs`
     - `DriverUiImportPayload`
     - `DriverUiDriverPayload`
     - `DriverUiScanGroupPayload`
     - `DriverUiTagPayload`
+- 本体側の `src-tauri/src/commands/driver_ui_protocol.rs` は互換用 re-export とし、実体定義は持たない。
 - 返却JSONでは `driver` ブロックを必須とし、`id` / `driverType` / `settings` を常に出力する。
 
 ## 異常系・ロールバック方針

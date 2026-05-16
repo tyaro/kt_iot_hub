@@ -1,6 +1,5 @@
 <script lang="ts">
   import { saveDriver, type DriverDto, type SaveDriverRequest } from '$lib/ipc/index';
-  import PostgresRegistrationPanel from './PostgresRegistrationPanel.svelte';
   import { reloadDrivers } from '$lib/stores/index';
 
   interface Props {
@@ -165,19 +164,7 @@
         {#if message}<p class="ok">{message}</p>{/if}
         {#if errorMsg}<p class="error">{errorMsg}</p>{/if}
 
-        {#if form.driver_type === 'postgres'}
-          <PostgresRegistrationPanel
-            driverId={form.id}
-            conn={{
-              host: form.host,
-              port: form.port,
-              database: form.database,
-              username: form.username,
-              password: form.password,
-              ssl_mode: null,
-            }}
-          />
-        {/if}
+
       </div>
     {/if}
   </div>

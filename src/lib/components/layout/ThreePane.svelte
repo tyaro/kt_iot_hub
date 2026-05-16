@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { open } from '@tauri-apps/plugin-dialog';
   import TagTree from '../tag/TagTree.svelte';
   import TagDetailPanel from '../tag/TagDetailPanel.svelte';
   import TagEditorPanel from '../tag/TagEditorPanel.svelte';
@@ -14,6 +15,7 @@
     reloadDrivers,
   } from '$lib/stores/index';
   import {
+    checkDriverUiAvailable,
     checkDriverUiResult,
     deleteDriver,
     deleteTag,
@@ -71,6 +73,77 @@
   let runtimeStatus = $state<RuntimeStatusDto>({ ...defaultRuntimeStatus });
   let runtimeBusy = $state(false);
   let dashboardMessage = $state('');
+  let settingsMessage = $state('');
+
+  const DRIVER_UI_BASE_DIR_KEY = 'kt_iot_hub.driverUiBaseDir';
+  let driverUiBaseDirInput = $state('');
+  let driverUiBaseDirSaved = $state<string | null>(null);
+
+  function normalizeDriverUiBaseDir(value: string): string | null {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  function loadDriverUiBaseDir(): string | null {
+    if (typeof globalThis.localStorage === 'undefined') {
+      return null;
+    }
+    const raw = globalThis.localStorage.getItem(DRIVER_UI_BASE_DIR_KEY);
+    return raw && raw.trim().length > 0 ? raw.trim() : null;
+  }
+
+  function saveDriverUiBaseDir() {
+    const normalized = normalizeDriverUiBaseDir(driverUiBaseDirInput);
+    try {
+      if (typeof globalThis.localStorage !== 'undefined') {
+        if (normalized) {
+          globalThis.localStorage.setItem(DRIVER_UI_BASE_DIR_KEY, normalized);
+        } else {
+          globalThis.localStorage.removeItem(DRIVER_UI_BASE_DIR_KEY);
+        }
+      }
+      driverUiBaseDirSaved = normalized;
+      settingsMessage = normalized
+        ? `ドライバUI設置ベースパスを保存しました: ${normalized}`
+        : 'ドライバUI設置ベースパス設定をクリアしました。';
+    } catch (error) {
+      settingsMessage = extractErrorMessage(error, '設定保存に失敗しました');
+      notify(settingsMessage);
+    }
+  }
+
+  function clearDriverUiBaseDir() {
+    driverUiBaseDirInput = '';
+    saveDriverUiBaseDir();
+  }
+
+  async function pickDriverUiBaseDir() {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        defaultPath: driverUiBaseDirSaved ?? undefined,
+      });
+
+      if (!selected) {
+        return;
+      }
+
+      if (typeof selected === 'string') {
+        driverUiBaseDirInput = selected;
+        settingsMessage = `フォルダを選択しました: ${selected}`;
+      }
+    } catch (error) {
+      settingsMessage = extractErrorMessage(error, 'フォルダ選択に失敗しました');
+      notify(settingsMessage);
+    }
+  }
+
+  {
+    const loaded = loadDriverUiBaseDir();
+    driverUiBaseDirSaved = loaded;
+    driverUiBaseDirInput = loaded ?? '';
+  }
 
   function onTagSelect(tag: TagDto | null) {
     selectedTag = tag;
@@ -242,7 +315,10 @@
     }
 
     try {
-      const result = await launchDriverUi({ driver_id: driverId });
+      const result = await launchDriverUi({
+        driver_id: driverId,
+        driver_ui_base_dir: driverUiBaseDirSaved,
+      });
       tagActionMessage = `${actionLabel}用ドライバUIを起動しました (driver_id=${result.driver_id}, session_id=${result.session_id})`;
       void monitorAndImportDriverUiResult(result);
     } catch (error) {
@@ -263,7 +339,11 @@
 
   function canUseDriverUi(driverId: string): boolean {
     const driver = $driversStore.items.find((item) => item.id === driverId);
-    return driver?.registration_ui_available ?? false;
+    if (!driver) return false;
+    return (
+      driver.registration_ui_available ||
+      (driverUiAvailableByType[driver.driver_type] ?? false)
+    );
   }
 
   function requestEditTag(tag: TagDto) {
@@ -375,7 +455,10 @@
   async function onDriverTypePicked(driverType: string) {
     driverTypePickerOpen = false;
     try {
-      const result = await launchDriverUi({ driver_type: driverType });
+      const result = await launchDriverUi({
+        driver_type: driverType,
+        driver_ui_base_dir: driverUiBaseDirSaved,
+      });
       tagActionMessage = `${driverType} 用のドライバUIを起動しました。接続先・Scanグループ・タグを外部画面で登録してください。`;
       void monitorAndImportDriverUiResult(result);
     } catch (error) {
@@ -401,6 +484,25 @@
   // ─── ドライバ選択 ─────────────────────────────────────
   let selectedDriver = $state<DriverDto | null>(null);
 
+  // ドライバタイプごとの UI 利用可否（EXE配置チェック）
+  let driverUiAvailableByType = $state<Record<string, boolean>>({});
+
+  const knownDriverTypes = ['postgres'];
+
+  async function reloadDriverUiAvailability(baseDir: string | null) {
+    const results = await Promise.all(
+      knownDriverTypes.map(async (t) => [t, await checkDriverUiAvailable(t, baseDir)] as const),
+    );
+    const map: Record<string, boolean> = {};
+    for (const [t, ok] of results) map[t] = ok;
+    driverUiAvailableByType = map;
+  }
+
+  $effect(() => {
+    const baseDir = driverUiBaseDirSaved;
+    void reloadDriverUiAvailability(baseDir);
+  });
+
   const driverTypeOptions = $derived.by(() => {
     const byType = new Map<string, DriverDto[]>();
     $driversStore.items.forEach((driver) => {
@@ -410,10 +512,11 @@
       byType.get(driver.driver_type)!.push(driver);
     });
 
-    const knownTypes = ['postgres'];
-    return knownTypes.map((driverType) => {
+    return knownDriverTypes.map((driverType) => {
       const samples = byType.get(driverType) ?? [];
-      const available = samples.some((item) => item.registration_ui_available);
+      const available =
+        samples.some((item) => item.registration_ui_available) ||
+        (driverUiAvailableByType[driverType] ?? false);
       return {
         driverType,
         label: driverType === 'postgres' ? 'PostgreSQL 接続先' : driverType,
@@ -560,7 +663,30 @@
     {:else if currentPage === 'settings'}
       <div class="content">
         <h2>設定</h2>
-        <p class="placeholder">アプリケーション設定は今後実装予定です。</p>
+        <div class="settings-card">
+          <h3>ドライバUI実行ファイル配置</h3>
+          <p class="settings-help">
+            例: <code>D:\develop\kt_iot_hub</code> または <code>D:\develop\kt_iot_hub\driver-ui</code>
+          </p>
+          <label>
+            ドライバUI設置ベースパス
+            <input
+              bind:value={driverUiBaseDirInput}
+              placeholder="未指定時は自動探索（driver-ui/&lt;type&gt;/registration-ui.exe）"
+            />
+          </label>
+          <div class="settings-actions">
+            <button class="btn-outline" onclick={pickDriverUiBaseDir}>フォルダ選択...</button>
+            <button class="btn-primary" onclick={saveDriverUiBaseDir}>保存</button>
+            <button class="btn-outline" onclick={clearDriverUiBaseDir}>クリア</button>
+          </div>
+          {#if driverUiBaseDirSaved}
+            <p class="settings-current">現在値: <code>{driverUiBaseDirSaved}</code></p>
+          {/if}
+          {#if settingsMessage}
+            <p class="action-message">{settingsMessage}</p>
+          {/if}
+        </div>
       </div>
     {/if}
   </div>
@@ -807,6 +933,60 @@
   .placeholder {
     color: #95a5a6;
     font-size: 0.9rem;
+  }
+
+  .settings-card {
+    background: #fff;
+    border: 1px solid #dbe2ea;
+    border-radius: 8px;
+    padding: 16px;
+    max-width: 760px;
+  }
+
+  .settings-card h3 {
+    margin: 0 0 10px;
+    font-size: 0.95rem;
+    color: #1f2937;
+  }
+
+  .settings-help {
+    margin: 0 0 10px;
+    font-size: 0.82rem;
+    color: #64748b;
+  }
+
+  .settings-card label {
+    display: grid;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: #334155;
+    margin-bottom: 10px;
+  }
+
+  .settings-card input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.84rem;
+    box-sizing: border-box;
+  }
+
+  .settings-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+
+  .settings-current {
+    margin: 0 0 8px;
+    font-size: 0.8rem;
+    color: #334155;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 10px;
   }
 
   .action-message {

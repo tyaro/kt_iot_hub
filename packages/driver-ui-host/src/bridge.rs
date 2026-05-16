@@ -1,37 +1,19 @@
-use super::driver_ui_protocol::DriverUiImportPayload;
-use super::dto::{DriverUiLaunchContextDto, ErrorResponse, SaveDriverUiOutputRequest};
-use serde::Deserialize;
+//! ドライバUI プロセスの起動コンテキスト共通ハンドラ。
+//!
+//! - `get_driver_ui_launch_context`: CLI 引数 / 環境変数 / 入力 JSON から起動情報を組み立てる。
+//! - `save_driver_ui_output`: ドライバUI が編集した結果 JSON を所定のパスへ保存する。
+
+use crate::dto::{DriverUiLaunchContextDto, ErrorResponse, SaveDriverUiOutputRequest};
+use kt_driver_ui_protocol::{DriverUiImportPayload, DriverUiLaunchContext};
 
 #[derive(Debug, Default)]
 struct CliArgs {
+    driver_ui_mode: bool,
     session_id: Option<String>,
     driver_type: Option<String>,
     driver_id: Option<String>,
     input_json_path: Option<String>,
     output_json_path: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct InputSession {
-    #[allow(dead_code)]
-    session_id: Option<String>,
-    output_json_path: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct InputDriver {
-    driver_type: Option<String>,
-    driver_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct InputLaunchContext {
-    request_id: Option<String>,
-    session: Option<InputSession>,
-    driver: Option<InputDriver>,
 }
 
 #[tauri::command]
@@ -48,24 +30,26 @@ pub async fn get_driver_ui_launch_context() -> Result<DriverUiLaunchContextDto, 
             code: "IO_ERROR".to_string(),
         })?;
 
-        let parsed: InputLaunchContext = serde_json::from_str(&text).map_err(|e| ErrorResponse {
-            error: format!("Failed to parse input json: {}", e),
-            code: "INVALID_JSON".to_string(),
-        })?;
+        let parsed: DriverUiLaunchContext =
+            serde_json::from_str(&text).map_err(|e| ErrorResponse {
+                error: format!("Failed to parse input json: {}", e),
+                code: "INVALID_JSON".to_string(),
+            })?;
 
-        request_id = parsed.request_id;
+        request_id = Some(parsed.request_id);
         if output_json_path.is_none() {
-            output_json_path = parsed.session.and_then(|s| s.output_json_path);
+            output_json_path = Some(parsed.session.output_json_path);
         }
         if driver_type.is_none() {
-            driver_type = parsed.driver.as_ref().and_then(|d| d.driver_type.clone());
+            driver_type = Some(parsed.driver.driver_type);
         }
         if driver_id.is_none() {
-            driver_id = parsed.driver.and_then(|d| d.driver_id);
+            driver_id = parsed.driver.driver_id;
         }
     }
 
-    let launched_as_driver_ui = args.session_id.is_some()
+    let launched_as_driver_ui = args.driver_ui_mode
+        || args.session_id.is_some()
         || output_json_path.is_some()
         || args.input_json_path.is_some();
 
@@ -81,12 +65,17 @@ pub async fn get_driver_ui_launch_context() -> Result<DriverUiLaunchContextDto, 
 }
 
 #[tauri::command]
-pub async fn save_driver_ui_output(req: SaveDriverUiOutputRequest) -> Result<String, ErrorResponse> {
+pub async fn save_driver_ui_output(
+    req: SaveDriverUiOutputRequest,
+) -> Result<String, ErrorResponse> {
     let output_path = resolve_output_path(req.output_json_path)?;
 
-    serde_json::from_value::<DriverUiImportPayload>(req.payload.clone()).map_err(|e| ErrorResponse {
-        error: format!("Invalid driver-ui response payload: {}", e),
-        code: "VALIDATION_ERROR".to_string(),
+    // 受信ペイロードがドライバUI 共通フォーマットに合致するかをチェックする。
+    serde_json::from_value::<DriverUiImportPayload>(req.payload.clone()).map_err(|e| {
+        ErrorResponse {
+            error: format!("Invalid driver-ui response payload: {}", e),
+            code: "VALIDATION_ERROR".to_string(),
+        }
     })?;
 
     let text = serde_json::to_string_pretty(&req.payload).map_err(|e| ErrorResponse {
@@ -119,7 +108,8 @@ fn resolve_output_path(explicit_path: Option<String>) -> Result<String, ErrorRes
 
     let args = parse_cli_args();
     normalize_optional_string(args.output_json_path).ok_or(ErrorResponse {
-        error: "outputJsonPath is required (CLI --output-json or request.outputJsonPath)".to_string(),
+        error: "outputJsonPath is required (CLI --output-json or request.outputJsonPath)"
+            .to_string(),
         code: "INVALID_INPUT".to_string(),
     })
 }
@@ -130,6 +120,7 @@ fn parse_cli_args() -> CliArgs {
 
     while let Some(arg) = iter.next() {
         match arg.as_str() {
+            "--driver-ui-mode" => cli.driver_ui_mode = true,
             "--session-id" => cli.session_id = iter.next(),
             "--driver-type" => cli.driver_type = iter.next(),
             "--driver-id" => cli.driver_id = iter.next(),
@@ -137,6 +128,29 @@ fn parse_cli_args() -> CliArgs {
             "--output-json" => cli.output_json_path = iter.next(),
             _ => {}
         }
+    }
+
+    // CLI 引数が取得できない場合のフォールバック (spawn 元からの env 受け渡し)。
+    if cli.session_id.is_none() {
+        cli.session_id = std::env::var("KT_IOT_HUB_DRIVER_UI_SESSION_ID").ok();
+    }
+    if cli.driver_type.is_none() {
+        cli.driver_type = std::env::var("KT_IOT_HUB_DRIVER_UI_DRIVER_TYPE").ok();
+    }
+    if cli.driver_id.is_none() {
+        cli.driver_id = std::env::var("KT_IOT_HUB_DRIVER_UI_DRIVER_ID").ok();
+    }
+    if cli.input_json_path.is_none() {
+        cli.input_json_path = std::env::var("KT_IOT_HUB_DRIVER_UI_INPUT_JSON").ok();
+    }
+    if cli.output_json_path.is_none() {
+        cli.output_json_path = std::env::var("KT_IOT_HUB_DRIVER_UI_OUTPUT_JSON").ok();
+    }
+    if !cli.driver_ui_mode {
+        cli.driver_ui_mode = matches!(
+            std::env::var("KT_IOT_HUB_DRIVER_UI_MODE").ok().as_deref(),
+            Some("1") | Some("true") | Some("TRUE") | Some("yes") | Some("YES")
+        );
     }
 
     cli

@@ -1,0 +1,30 @@
+{
+  "productName": "driver_ui_postgres",
+  "version": "0.1.0",
+  "identifier": "com.example.driver_ui_postgres",
+  "build": {
+    "frontendDist": "./dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "PostgreSQL 登録UI",
+        "width": 980,
+        "height": 760,
+        "minWidth": 860,
+        "minHeight": 620,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": [
+      "../../src-tauri/icons/icon.ico"
+    ]
+  }
+}

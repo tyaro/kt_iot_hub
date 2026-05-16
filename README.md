@@ -15,12 +15,23 @@
 - バックエンド: Rust（Tauri v2）
 - 設定: `config/*.toml`
 
+## Monorepo 構成（段階移行中）
+
+- `src-tauri/` : 本体アプリ
+- `packages/protocol-rs/` : 本体/ドライバUI間の共有プロトコル定義（Rust）
+- `apps/driver-ui-postgres/` : PostgreSQL 用ドライバUI（別アプリ）
+
+> 現在は段階移行のため、`apps/driver-ui-postgres` は最小実装です。
+> まずは「本体と別物の実行ファイルとして起動できること」を優先し、
+> 本格UIは次フェーズで実装します。
+
 ## ドライバUI実行ファイルの配置
 
 ドライバUIは本体アプリ配下の `driver-ui/<driver_type>/` に配置します。
 
 - 既定ファイル名: `registration-ui.exe`（Windows）
 - 配置スクリプト:
+  - `npm run driver-ui:dev`（`apps/driver-ui-postgres` をビルドして配置）
   - `npm run driver-ui:install -- -DriverType postgres -SourcePath C:/tools/postgres-tag-ui/postgres-tag-ui.exe`
 
 本体は `driver_type` を使って、上記既定配置を探索して起動します。

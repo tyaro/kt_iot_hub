@@ -1,0 +1,18 @@
+[package]
+name = "driver_ui_postgres"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri = { version = "2.1", features = [] }
+tokio = { version = "1.35", features = ["full"] }
+tokio-postgres = "0.7"
+kt_driver_ui_protocol = { path = "../../packages/protocol-rs" }
+kt_driver_ui_host = { path = "../../packages/driver-ui-host" }
+
+[build-dependencies]
+tauri-build = { version = "2.6", features = [] }

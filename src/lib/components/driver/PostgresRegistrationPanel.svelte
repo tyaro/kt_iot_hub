@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
+  import { getCurrentWindow } from '@tauri-apps/api/window';
   import {
-    getDriverUiLaunchContext,
+    listDrivers,
     postgresListColumns,
     postgresListTables,
     saveDriverUiOutput,
@@ -13,11 +14,27 @@
   } from '$lib/ipc/index';
 
   interface Props {
-    conn: PostgresConnectionParams;
-    driverId: string;
+    context: DriverUiLaunchContextDto;
   }
 
-  let { conn, driverId }: Props = $props();
+  let { context }: Props = $props();
+
+  // ---- 接続フォーム ----
+  // context.driverId はフォームの初期値として一度だけ使用するため意図的にキャプチャ
+  let driverIdInput = $state(untrack(() => context.driverId ?? ''));
+  let host = $state('127.0.0.1');
+  let portInput = $state('5432');
+  let database = $state('');
+  let username = $state('');
+  let password = $state('');
+
+  let conn = $derived<PostgresConnectionParams>({
+    host,
+    port: parseInt(portInput, 10) || 5432,
+    database,
+    username,
+    password,
+  });
 
   let testing = $state(false);
   let testMessage = $state('');
@@ -36,19 +53,26 @@
   let columns = $state<PostgresColumnDto[]>([]);
   let timestampColumn = $state('');
   let selectedFields = $state<string[]>([]);
-  let launchContext = $state<DriverUiLaunchContextDto | null>(null);
-  let outputJsonPath = $state('');
   let exporting = $state(false);
   let exportMessage = $state('');
   let exportError = $state('');
 
   onMount(async () => {
-    try {
-      const context = await getDriverUiLaunchContext();
-      launchContext = context;
-      outputJsonPath = context.outputJsonPath ?? '';
-    } catch {
-      launchContext = null;
+    // 既存ドライバ編集の場合は接続情報を pre-fill する
+    if (context.driverId) {
+      try {
+        const drivers = await listDrivers();
+        const existing = drivers.find((d) => d.id === context.driverId);
+        if (existing) {
+          driverIdInput = existing.id;
+          host = existing.host;
+          portInput = String(existing.port);
+          database = existing.database;
+          username = existing.username;
+        }
+      } catch {
+        // pre-fill 失敗は無視して空フォームで続行
+      }
     }
   });
 
@@ -143,38 +167,17 @@
 
   function buildResponsePayload(): Record<string, unknown> {
     const table = selectedTable();
-    if (!table) {
-      throw new Error('テーブルを選択してください');
-    }
-    if (!driverId.trim()) {
-      throw new Error('接続先IDを入力してください');
-    }
-    if (!scanGroupId.trim()) {
-      throw new Error('周期グループIDを入力してください');
-    }
-    if (!timestampColumn.trim()) {
-      throw new Error('時系列フィールドを選択してください');
-    }
-    if (selectedFields.length === 0) {
-      throw new Error('タグ化するフィールドを1つ以上選択してください');
-    }
+    if (!table) throw new Error('テーブルを選択してください');
+    if (!driverIdInput.trim()) throw new Error('接続先IDを入力してください');
+    if (!scanGroupId.trim()) throw new Error('周期グループIDを入力してください');
+    if (!timestampColumn.trim()) throw new Error('時系列フィールドを選択してください');
+    if (selectedFields.length === 0) throw new Error('タグ化するフィールドを1つ以上選択してください');
 
-    const requestId = launchContext?.requestId || `req-${Date.now()}`;
-    const generatedAt = new Date().toISOString();
     const normalizedScanGroupId = scanGroupId.trim();
-
-    const scanGroup = {
-      id: normalizedScanGroupId,
-      scanRateMs: scanRateMs,
-      schema: table.schema,
-      table: table.name,
-      timestampColumn,
-    };
-
     const tags = selectedFields.map((fieldName) => {
       const column = columns.find((item) => item.name === fieldName);
       const dataType = mapPgTypeToTagType(column?.data_type ?? 'text');
-      const id = normalizeId(`tag-${driverId}-${normalizedScanGroupId}-${fieldName}`);
+      const id = normalizeId(`tag-${driverIdInput.trim()}-${normalizedScanGroupId}-${fieldName}`);
       return {
         id,
         name: fieldName,
@@ -193,11 +196,11 @@
 
     return {
       schemaVersion: 1,
-      requestId,
-      generatedAt,
+      requestId: context.requestId ?? `req-${Date.now()}`,
+      generatedAt: new Date().toISOString(),
       direction: 'driver-to-host',
       driver: {
-        id: driverId.trim(),
+        id: driverIdInput.trim(),
         driverType: 'postgres',
         enabled: true,
         settings: {
@@ -208,34 +211,73 @@
           password: conn.password,
         },
       },
-      scanGroups: [scanGroup],
+      scanGroups: [{ id: normalizedScanGroupId, scanRateMs, schema: table.schema, table: table.name, timestampColumn }],
       tags,
     };
   }
 
-  async function exportOutputJson() {
+  async function confirmAndClose() {
     exporting = true;
     exportMessage = '';
     exportError = '';
     try {
       const payload = buildResponsePayload();
-      const savedPath = await saveDriverUiOutput({
-        outputJsonPath: outputJsonPath.trim() || null,
+      await saveDriverUiOutput({
+        outputJsonPath: context.outputJsonPath ?? null,
         payload,
       });
-      outputJsonPath = savedPath;
-      exportMessage = `確定JSONを保存しました: ${savedPath}`;
+      exportMessage = '確定しました。ウィンドウを閉じます...';
+      await getCurrentWindow().close();
     } catch (error) {
       exportError = error instanceof Error ? error.message : '確定JSONの保存に失敗しました';
     } finally {
       exporting = false;
     }
   }
+
+  let canConfirm = $derived(
+    !exporting &&
+      driverIdInput.trim().length > 0 &&
+      selectedTableKey.length > 0 &&
+      scanGroupId.trim().length > 0 &&
+      timestampColumn.trim().length > 0 &&
+      selectedFields.length > 0,
+  );
 </script>
 
 <section class="panel">
   <h4>PostgreSQL 登録UI</h4>
-  <p class="desc">接続確認 → 周期グループ設定 → テーブル選択 → フィールド選択 の順で設定します。</p>
+  <p class="desc">接続情報 → テスト接続 → テーブル選択 → フィールド選択 → 確定 の順で設定します。</p>
+
+  <!-- 接続情報フォーム -->
+  <div class="grid2">
+    <label>
+      接続先ID
+      <input bind:value={driverIdInput} placeholder="pg_main" />
+    </label>
+    <label>
+      ホスト
+      <input bind:value={host} placeholder="127.0.0.1" />
+    </label>
+  </div>
+  <div class="grid3">
+    <label>
+      ポート
+      <input type="number" min="1" max="65535" bind:value={portInput} />
+    </label>
+    <label>
+      データベース
+      <input bind:value={database} placeholder="mydb" />
+    </label>
+    <label>
+      ユーザー名
+      <input bind:value={username} placeholder="postgres" />
+    </label>
+  </div>
+  <label>
+    パスワード
+    <input type="password" bind:value={password} placeholder="(任意)" />
+  </label>
 
   <div class="row">
     <button class="btn" onclick={testConnection} disabled={testing}>
@@ -309,32 +351,15 @@
   </div>
 
   <div class="summary">
+    <p>接続先ID: <strong>{driverIdInput || '-'}</strong></p>
     <p>選択テーブル: <strong>{selectedTableKey || '-'}</strong></p>
     <p>時系列フィールド: <strong>{timestampColumn || '-'}</strong></p>
     <p>タグ化フィールド数: <strong>{selectedFields.length}</strong></p>
   </div>
 
-  <div class="export-box">
-    <label>
-      output-json 保存先
-      <input bind:value={outputJsonPath} placeholder="C:/temp/driver-ui-output.json" />
-    </label>
-    {#if launchContext?.launchedAsDriverUi}
-      <p class="hint">driver-ui起動コンテキストを検出済みです。既定の `--output-json` を使用できます。</p>
-    {/if}
-    <button
-      class="btn"
-      onclick={exportOutputJson}
-      disabled={
-        exporting ||
-        !driverId.trim() ||
-        !selectedTableKey ||
-        !scanGroupId.trim() ||
-        !timestampColumn.trim() ||
-        selectedFields.length === 0
-      }
-    >
-      {exporting ? '確定JSON保存中...' : '確定して output-json へ保存'}
+  <div class="confirm-box">
+    <button class="btn confirm" onclick={confirmAndClose} disabled={!canConfirm}>
+      {exporting ? '確定中...' : '確定してウィンドウを閉じる'}
     </button>
     {#if exportMessage}<p class="ok">{exportMessage}</p>{/if}
     {#if exportError}<p class="error">{exportError}</p>{/if}
@@ -343,14 +368,14 @@
 
 <style>
   .panel {
-    margin-top: 14px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 12px;
+    padding: 16px;
+    overflow-y: auto;
+    height: 100%;
+    box-sizing: border-box;
     background: #f8fafc;
   }
   h4 { margin: 0 0 6px; color: #1e293b; }
-  .desc { margin: 0 0 10px; font-size: 0.8rem; color: #475569; }
+  .desc { margin: 0 0 12px; font-size: 0.8rem; color: #475569; }
   .row { display: flex; gap: 8px; margin-bottom: 8px; }
   .btn {
     border: none;
@@ -362,8 +387,10 @@
     cursor: pointer;
   }
   .btn.secondary { background: #475569; }
+  .btn.confirm { width: 100%; padding: 8px; font-size: 0.85rem; }
   .btn:disabled { opacity: 0.7; cursor: not-allowed; }
   .grid2 { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; margin-bottom: 8px; }
+  .grid3 { display: grid; gap: 8px; grid-template-columns: 1fr 1fr 1fr; margin-bottom: 8px; }
   label { display: grid; gap: 4px; font-size: 0.82rem; color: #334155; margin-bottom: 8px; }
   input, select {
     padding: 6px 8px;
@@ -377,6 +404,7 @@
     border-radius: 6px;
     background: #fff;
     padding: 8px;
+    margin-bottom: 8px;
   }
   .field-header {
     display: flex;
@@ -394,15 +422,10 @@
     max-height: 180px;
     overflow-y: auto;
   }
-  .field-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-  }
+  .field-item { display: flex; align-items: center; gap: 8px; margin: 0; }
   .field-item small { color: #64748b; }
   .summary {
-    margin-top: 8px;
+    margin-bottom: 10px;
     background: #eef2ff;
     border: 1px solid #c7d2fe;
     border-radius: 6px;
@@ -411,19 +434,13 @@
     color: #334155;
   }
   .summary p { margin: 2px 0; }
-  .export-box {
-    margin-top: 10px;
-    border: 1px dashed #cbd5e1;
+  .confirm-box {
+    border: 1px dashed #2563eb;
     border-radius: 6px;
     background: #fff;
-    padding: 8px;
+    padding: 10px;
     display: grid;
     gap: 6px;
-  }
-  .hint {
-    margin: 0;
-    color: #475569;
-    font-size: 0.76rem;
   }
   .ok { color: #166534; font-size: 0.8rem; margin: 4px 0; }
   .error { color: #b91c1c; font-size: 0.8rem; margin: 4px 0; }

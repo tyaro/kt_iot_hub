@@ -24,6 +24,16 @@ use tracing::info;
 
 static SHUTDOWN_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
+fn is_driver_ui_process() -> bool {
+    if std::env::args().any(|arg| arg == "--driver-ui-mode") {
+        return true;
+    }
+    matches!(
+        std::env::var("KT_IOT_HUB_DRIVER_UI_MODE").ok().as_deref(),
+        Some("1") | Some("true") | Some("TRUE") | Some("yes") | Some("YES")
+    )
+}
+
 fn main() {
     // ロギング初期化
     tracing_subscriber::fmt()
@@ -34,23 +44,25 @@ fn main() {
     info!("kt_iot_hub starting...");
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             commands::tag::create_tag,
             commands::tag::list_tags,
             commands::tag::list_scan_groups,
             commands::tag::delete_tag,
-            commands::driver::list_drivers,
-            commands::driver::save_driver,
-            commands::driver::delete_driver,
-            commands::driver::launch_driver_ui,
-            commands::driver::check_driver_ui_result,
-            commands::driver::import_driver_ui_result,
-            commands::driver_ui_bridge::get_driver_ui_launch_context,
-            commands::driver_ui_bridge::save_driver_ui_output,
-            commands::postgres_registration::postgres_test_connection,
-            commands::postgres_registration::postgres_list_tables,
-            commands::postgres_registration::postgres_list_columns,
+            commands::driver::crud::list_drivers,
+            commands::driver::crud::save_driver,
+            commands::driver::crud::delete_driver,
+            commands::driver::ui_launcher::launch_driver_ui,
+            commands::driver::ui_launcher::check_driver_ui_available,
+            commands::driver::ui_launcher::check_driver_ui_result,
+            commands::driver::import::import_driver_ui_result,
+            kt_driver_ui_host::bridge::get_driver_ui_launch_context,
+            kt_driver_ui_host::bridge::save_driver_ui_output,
+            kt_driver_ui_host::postgres::postgres_test_connection,
+            kt_driver_ui_host::postgres::postgres_list_tables,
+            kt_driver_ui_host::postgres::postgres_list_columns,
             commands::runtime::get_runtime_status,
             commands::runtime::start_runtime_services,
             commands::runtime::stop_runtime_services,
@@ -121,12 +133,16 @@ fn main() {
 
             app.manage(app_state.clone());
 
-            let grpc_state = app_state.clone();
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) = commands::runtime::start_grpc_server(&grpc_state).await {
-                    tracing::error!("Failed to initialize gRPC server: {}", e.error);
-                }
-            });
+            if !is_driver_ui_process() {
+                let grpc_state = app_state.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = commands::runtime::start_grpc_server(&grpc_state).await {
+                        tracing::error!("Failed to initialize gRPC server: {}", e.error);
+                    }
+                });
+            } else {
+                info!("Driver UI mode detected: skip gRPC startup");
+            }
 
             Ok(())
         })

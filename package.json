@@ -13,7 +13,8 @@
     "tauri": "tauri",
     "tauri-dev": "tauri dev",
     "tauri-build": "tauri build",
-    "driver-ui:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/install-driver-ui.ps1"
+    "driver-ui:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/install-driver-ui.ps1",
+    "driver-ui:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-dev-driver-ui.ps1"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",
@@ -35,5 +36,7 @@
   "overrides": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0-next.6"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@tauri-apps/plugin-dialog": "^2.1.0"
+  }
 }

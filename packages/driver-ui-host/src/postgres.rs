@@ -1,4 +1,7 @@
-use super::dto::{
+//! PostgreSQL レジストレーション用の共通 Tauri コマンド。
+//! 本体・ドライバUI どちらからも同一実装を使う。
+
+use crate::dto::{
     ErrorResponse, PostgresColumnDto, PostgresColumnsRequest, PostgresConnectionParams,
     PostgresConnectionTestResult, PostgresTableDto,
 };
