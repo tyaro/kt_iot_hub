@@ -26,25 +26,90 @@ export interface CreateTagRequest {
   driver_spec: Record<string, unknown>;
 }
 
+type ApiTagDto = {
+  id: string;
+  name: string;
+  dataType: string;
+  driverId: string;
+  scanGroupId: string;
+  driverSpec: Record<string, unknown>;
+};
+
+type ApiScanGroupDto = {
+  id: string;
+  driverId: string;
+  table?: string;
+  timestampColumn?: string;
+  scanRateMs?: number;
+};
+
+type ApiCreateTagRequest = {
+  id: string;
+  name: string;
+  dataType: string;
+  driverId: string;
+  scanGroupId: string;
+  driverSpec: Record<string, unknown>;
+};
+
+function mapTagFromApi(api: ApiTagDto): TagDto {
+  return {
+    id: api.id,
+    name: api.name,
+    data_type: api.dataType,
+    driver_id: api.driverId,
+    scan_group_id: api.scanGroupId,
+    driver_spec: api.driverSpec,
+  };
+}
+
+function mapScanGroupFromApi(api: ApiScanGroupDto): ScanGroupDto {
+  return {
+    id: api.id,
+    driver_id: api.driverId,
+    table: api.table,
+    timestamp_column: api.timestampColumn,
+    scan_rate_ms: api.scanRateMs,
+  };
+}
+
+function mapCreateTagToApi(req: CreateTagRequest): ApiCreateTagRequest {
+  return {
+    id: req.id,
+    name: req.name,
+    dataType: req.data_type,
+    driverId: req.driver_id,
+    scanGroupId: req.scan_group_id,
+    driverSpec: req.driver_spec,
+  };
+}
+
 /**
  * タグを作成する
  */
 export async function createTag(req: CreateTagRequest): Promise<TagDto> {
-  return invoke('create_tag', { req });
+  const api = await invoke<ApiTagDto>('create_tag', {
+    req: mapCreateTagToApi(req),
+  });
+  return mapTagFromApi(api);
 }
 
 /**
  * すべてのタグを取得する
  */
 export async function listTags(): Promise<TagDto[]> {
-  return invoke('list_tags');
+  const api = await invoke<ApiTagDto[]>('list_tags');
+  return api.map(mapTagFromApi);
 }
 
 /**
  * スキャングループ一覧を取得する
  */
 export async function listScanGroups(driverId?: string): Promise<ScanGroupDto[]> {
-  return invoke('list_scan_groups', { driverId: driverId ?? null });
+  const api = await invoke<ApiScanGroupDto[]>('list_scan_groups', {
+    driverId: driverId ?? null,
+  });
+  return api.map(mapScanGroupFromApi);
 }
 
 /**
