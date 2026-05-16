@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "requestId": "req-20260517-0001",
+  "generatedAt": "2026-05-17T12:03:00Z",
+  "direction": "driver-to-host",
+  "driverKind": "postgres",
+  "driverId": "postgres-main",
+  "driver": {
+    "id": "postgres-main",
+    "driverType": "postgres",
+    "enabled": true,
+    "settings": {
+      "host": "localhost",
+      "port": 5432,
+      "database": "iot_hub",
+      "username": "iot_user",
+      "password": "******",
+      "registration_ui_path": "C:/tools/postgres-tag-ui/postgres-tag-ui.exe"
+    }
+  },
+  "scanGroups": [
+    {
+      "id": "line1_sensors_1000ms",
+      "scanRateMs": 1000,
+      "table": "line1_sensors",
+      "timestampColumn": "measured_at"
+    }
+  ],
+  "tags": [
+    {
+      "id": "tag-line1-temp",
+      "name": "temperature",
+      "dataType": "f32",
+      "enabled": true,
+      "unit": "degC",
+      "comment": "ライン1温度",
+      "driverSpec": {
+        "kind": "postgres",
+        "scanGroup": "line1_sensors_1000ms",
+        "table": "line1_sensors",
+        "timestampColumn": "measured_at",
+        "valueColumn": "temperature"
+      }
+    }
+  ]
+}

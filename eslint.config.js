@@ -16,13 +16,26 @@ export default [
       parserOptions: {
         ecmaVersion: 2020,
         sourceType: 'module'
+      },
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+        globalThis: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly'
       }
     },
     plugins: {
       '@typescript-eslint': ts
     },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn'
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_'
+      }]
     }
   },
   {
@@ -31,12 +44,27 @@ export default [
       parser: svelteParser,
       parserOptions: {
         parser: tsParser
+      },
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+        globalThis: 'readonly',
+        MouseEvent: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly'
       }
     },
     plugins: {
-      svelte
+      svelte,
+      '@typescript-eslint': ts
     },
     rules: {
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_'
+      }],
       'svelte/no-at-html-tags': 'warn'
     }
   }

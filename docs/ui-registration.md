@@ -21,26 +21,175 @@
 - 右ペイン: 選択中エンティティの詳細・編集
 - ドライバ固有のタグ登録 UI は別ウィンドウ/別プロセスで起動する
 - 本体 UI はタグ定義の一覧・共通項目編集・インポート/エクスポートを担当する
+- **初期状態では Driver / Publisher のサービス処理は起動しない**。ただしタグ登録用 gRPC は IPC 用途として常時起動してよい。
 
 ## ページ分割
 
 - `/dashboard` — 稼働状況サマリ
-- `/drivers` — ドライバ管理
-- `/tags` — タグ管理
+- `/tags` — タグ管理（ツリー表示: ドライバ > スキャングループ > タグ）
 - `/publishers` — MQTT/OPC 配信設定
 - `/logs` — ログビューア
 - `/settings` — 全体設定
+
+※ **ドライバ管理画面の役割はタグ管理画面へ統合する**。接続先の新規追加・確認・ドライバUI起動は `/tags` で扱い、独立した `/drivers` 一覧画面は持たない。
+
+### タグ管理画面 UI 構成（ツリー階層表示）
+
+タグ管理ページの中央ペインは、ツリー表示またはフラット一覧の 2 モードを切り替え可能とする。
+
+**ツリーモード（推奨）**:
+
+```text
++ Driver: postgres-main
+  + ScanGroup: line1_sensors_1000ms (table: line1_sensors)
+    - Tag: tag-line1-temp (temperature, f32)
+    - Tag: tag-line1-pressure (pressure, f64)
+  + ScanGroup: line1_system_5000ms (table: line1_system)
+    - Tag: tag-line1-status (status, string)
++ Driver: slmp-device-a
+  + ScanGroup: modbus_500ms
+    - Tag: tag-device-a-input (input_register, f32)
+```
+
+- ドライバ行をクリック → 当該ドライバ配下のスキャングループを展開/折畳
+- ドライバ行には `driver_id` と `driver_type` を併記する
+- ドライバ行を選択 → 右ペインに接続先詳細を表示する
+- スキャングループ行をクリック → 当該グループ配下のタグを展開/折畳
+- スキャングループ行を選択 → 右ペインに ScanGroup 情報を表示する
+- タグ行をクリック → 右ペインで詳細表示・編集
+
+### タグ管理画面に統合する接続先管理
+
+- ツリービュー未選択状態でも、中央ペイン上部の **「＋ 新規ドライバ」** を押せる。
+- 「＋ 新規ドライバ」押下時は **ドライバ種別選択ダイアログ** を表示し、選択した種別のドライバ専用 UI を **別プロセス / 別ウィンドウ** で起動する。
+- ドライバ専用 UI では以下を一連のフローで行う。
+  1. 接続先情報の入力
+  2. ScanGroup の追加
+  3. タグの追加 / 編集
+  4. 「確定」で接続先定義 + ScanGroup 一覧 + タグ一覧を本体へ返却
+- 本体は返却結果を検証後に一括反映し、ツリービューへ以下の順で表示する。
+  - ルート直下に接続先ノード（アイコン + 接続先名）
+  - 配下に ScanGroup ノード
+  - 配下にタグノード
+- 既存接続先を選択した状態でタグ追加や編集を行う場合も、同じドライバ専用 UI を起動する。
+- 接続先編集はタグ管理画面右ペインで接続情報を確認し、必要に応じてドライバ専用 UI を再起動する。
+
+## ダッシュボードの起動停止操作
+
+- ダッシュボードには **「サーバ起動」** / **「サーバ停止」** ボタンを配置する。
+- 「サーバ起動」で以下をまとめて開始する。
+  - DriverManager 配下の有効ドライバ
+  - PublisherManager 配下の有効パブリッシャ
+- 「サーバ停止」で上記をまとめて停止する。
+- タグ登録用 gRPC サーバは **別プロセスUIとの IPC 用途** のため常時起動とし、ダッシュボードの起動停止対象には含めない。
+- Driver / Publisher の起動失敗はダッシュボード上のエラーメッセージで表示する。
+- 将来的には Windows サービス等によるサービス駆動へ移行するが、当面は本体 UI から手動制御とする。
+
+**フラットモード**:
+
+```text
+| Driver | ScanGroup | Table | Tag | DataType | Enabled |
+| postgres-main | line1_sensors_1000ms | line1_sensors | temperature | f32 | ✓ |
+| postgres-main | line1_sensors_1000ms | line1_sensors | pressure | f64 | ✓ |
+| postgres-main | line1_system_5000ms | line1_system | status | string | ✓ |
+| slmp-device-a | modbus_500ms | - | input_register | f32 | ✓ |
+```
+
+- テーブル表示で全タグを一覧表示
+- タグ行をクリック → 右ペインで詳細表示・編集
+
+### タグ管理画面の操作仕様
+
+**ツリーの右クリックメニュー**:
+
+- ドライバノード右クリック:
+  - 「タグ追加」: 当該ドライバ UI を起動し、タグ追加モードで開く
+  - 「全タグ編集」: 当該ドライバ UI を起動し、登録済みタグ一覧を編集
+- タグノード右クリック:
+  - 「編集」: 当該タグの接続先ドライバ UI を起動し、該当タグを選択した状態で開く
+  - 「削除」: 確認ダイアログ後、本体側で削除（ドライバ UI 起動なし）
+  - 「複製」: 同接続先内で複製（タグ ID は新規採番）
+
+**右ペインのボタン**:
+
+- 「編集」: 選択中タグの接続先ドライバ UI を起動
+- 「削除」: 確認ダイアログ後、本体側で削除
+- 「閉じる」: 詳細表示をクリア
+
+**中央ペイン上部のツールバー**:
+
+- 「＋ 新規ドライバ」: ドライバ種別選択ダイアログ → ドライバ UI 起動 → 新規接続先を作成
+- 「＋ 新規タグ」: ドライバ（接続先）選択ダイアログを表示 → ドライバ UI 起動
+- 「再読み込み」: タグ一覧を再取得
 
 ## タグ登録フロー
 
 タグ登録は通常運転時の値取得とは別フローとする。
 
-1. 本体 UI で対象ドライバを選択し、「タグ登録」を起動。
-2. 本体が対応するドライバ登録プロセスを別ウィンドウで起動。
-3. ドライバ登録プロセスが接続先探索・候補生成を実施。
-4. 登録プロセスがタグ定義候補（共通タグ項目 + `driver_spec`）を JSON で本体へ返却。
-5. 本体がタグ ID 重複、タグ名重複、データ型、必須項目、ドライバ種別整合性を検証。
-6. 本体が `config/tags.toml` に保存し、必要に応じてドライバへタグ定義を再配布する。
+### 階層関係（重要）
+
+```text
+DriverKind（postgres / slmp / joywatcher）
+  └ Driver / Connection（接続先：例 postgres-server1, postgres-server2）
+      └ ScanGroup（テーブル/読出単位）
+          └ Tag（カラム/レジスタ等）
+```
+
+- 「ドライバ UI」は **接続先（Connection）単位** で起動する。
+- 例：PostgreSQL の `postgres-server1` と `postgres-server2` は、それぞれ独立したドライバ UI セッションで管理される。
+- ドライバ UI は、その接続先に紐づく **全タグの一覧管理** を担当する（個別タグ単位ではない）。
+
+### 新規タグ追加フロー
+
+1. 本体 UI で「＋ 新規タグ」ボタンをクリック。
+2. **ドライバ（接続先）選択ダイアログ** を表示。
+3. ユーザーが接続先を選択 → `launch_driver_ui(driver_id)` で対応するドライバ UI を **別プロセス・別ウィンドウ** で起動する。
+4. ドライバ UI で接続設定を行い、接続先探索・候補生成を実施する。
+5. ドライバ UI が登録済みタグも含めて一覧表示し、ユーザーがタグを追加・編集する。
+6. ドライバ UI が「確定」時、**接続先の全タグを JSON で本体へ返却**する。
+7. 本体がタグ ID 重複、タグ名重複、データ型、必須項目、ドライバ種別整合性を検証する。
+8. 本体が `config/tags.toml` に **接続先単位で置き換え保存**する。
+
+### 新規接続先追加フロー
+
+1. 本体 UI のタグ管理画面で **「＋ 新規ドライバ」** をクリック。
+2. ドライバ種別選択ダイアログを表示。
+3. ユーザーが種別を選択 → 対応するドライバ UI を **別プロセス・別ウィンドウ** で起動する。
+4. ドライバ UI で接続先情報を入力し、必要な ScanGroup とタグを追加する。
+5. ドライバ UI が「確定」時、**接続先定義 + 全 ScanGroup + 全タグを JSON で本体へ返却**する。
+6. 本体が `driver_id`、`driver_type`、接続設定、ScanGroup、タグ整合性を検証する。
+7. 本体が `config/drivers.toml` と `config/tags.toml` を **同一トランザクション相当で更新**し、ツリービューを再構成する。
+
+### 実装メモ（2026-05 時点）
+
+- 本体 UI は「＋ 新規タグ」押下時に **ドライバ選択ダイアログ** を表示する。
+- ドライバ選択後、`launch_driver_ui(driver_id)` で外部 UI を別プロセス起動し、
+ 返却された `output_json_path` を 1 秒間隔でポーリング監視する。
+- 起動時に本体は **初期コンテキスト JSON** を生成し、ドライバUIへ `--input-json <path>` で渡す。
+- JSON 生成検出後に `import_driver_ui_result` を実行し、成功時はタグ一覧を再読込する。
+- 監視タイムアウト時は再実行導線を表示し、ページ遷移時は監視を中断する。
+
+### 既存タグ編集フロー
+
+1. 本体 UI のツリーでタグを選択（または右クリックメニュー）。
+2. 右ペインの「編集」ボタン、またはツリーの右クリック → 「編集」。
+3. 本体が対応する接続先のドライバ UI を別プロセス・別ウィンドウで起動（`driver_id` を渡す）。
+4. ドライバ UI が当該接続先の接続設定・全タグを一覧表示する。
+5. ユーザーがタグを編集する。
+6. 以降は新規追加フローの 6〜8 と同様。
+
+### 同時起動ポリシー
+
+- 同一接続先のドライバ UI は **1 ウィンドウのみ**（多重起動禁止）。
+- 異なる接続先（例：`postgres-server1` と `postgres-server2`）は、別ウィンドウで並列起動可能。
+- 既に起動中の場合は、該当ウィンドウを前面化する。
+
+### 重複取込防止について
+
+- ドライバ UI は **接続先の全タグを一括返却** する仕様のため、本体は受信したタグセットで既存定義を置き換える。
+- 新規接続先作成時も同様に、受信した接続先定義・ScanGroup・タグのセットを一括反映する。
+- そのため `requestId` による重複取込防止は **必須ではない**（任意のメタ情報として保持）。
+- 同時編集を防ぐため、ドライバ UI 起動中は本体側で当該接続先の編集ロックをかけることが望ましい。
 
 ## PostgreSQL 登録フロー
 
@@ -80,6 +229,30 @@ PostgreSQL では、テーブルの最新値をタグ値として扱うため、
 - ドライバ固有設定（`driver_spec`）の生成
 - タグ候補の一括生成
 
+## drivers.toml 追加設定（ドライバUI起動用）
+
+本体の `launch_driver_ui(driver_id)` コマンドは、対象ドライバ定義から
+ドライバUI実行ファイルパスを読み取って別プロセス起動する。
+
+- 参照キー（優先順）
+  1. `registration_ui_path`
+  2. `driver_ui_path`
+
+### 設定例
+
+```toml
+[[driver]]
+id = "postgres-main"
+driver_type = "postgres"
+enabled = true
+host = "localhost"
+port = 5432
+database = "iot_hub"
+username = "iot_user"
+password = "iot_password"
+registration_ui_path = "C:/tools/postgres-tag-ui/postgres-tag-ui.exe"
+```
+
 ## 受け渡し方式
 
 - 初期実装: 一時 JSON ファイル
@@ -100,7 +273,60 @@ DriverKind（postgres / slmp / joywatcher）
 - `Tag.driver_id` は `Connection.id` を参照し、`Tag.scan_group_id` は `ScanGroup.id` を参照する。
 - 読出し周期はタグ単位ではなく `ScanGroup` 単位で管理する。
 
+### MQTT Topic 構造
+
+MQTT 配信時のトピックは以下の階層構造に従う。
+
+```text
+<driver_id>/<scan_group_id>/<tag_name>
+```
+
+**例**:
+
+- `postgres-main/line1_sensors_1000ms/temperature`
+- `postgres-main/line1_system_5000ms/status`
+- `slmp-device-a/modbus_500ms/pressure`
+
+### タグ名の重複ルール
+
+タグ名とスキャングループ名の重複は**許可**される。ただし、以下の条件を満たす場合のみとする：
+
+- **同一スキャングループ内ではタグ名重複禁止**: `(driver_id, scan_group_id, tag_name)` の組み合わせは一意
+- **異なるドライバまたは異なるスキャングループなら重複許可**: 同じ `tag_name = "temperature"` でも、ドライバやスキャングループが異なれば別タグとしてカウント
+
+**スキャングループ名の重複**:
+
+- 異なるドライバなら、同じ `scan_group_id`（例: `sensors_1000ms`）を複数ドライバで使用可能
+- 同じドライバ内では `scan_group_id` は一意
+
+**検証ルール**（本体側保存前チェック）:
+
+1. `tag_id` は全体で一意（システム内永続ID）
+2. `(tag.driver_id, tag.scan_group_id, tag.name)` は一意（既存定義との重複確認）
+3. 同じ `(driver_id, scan_group_id)` 内に同名タグが存在しないこと
+4. 同じ `driver_id` 内に同名 `scan_group_id` が存在しないこと
+
 ## 本体-登録プロセス連携プロトコル（初期版）
+
+### 相互受け渡し（本体 ⇄ ドライバ）
+
+本体とドライバは、タグ登録セッション中に相互にタグ情報を受け渡す。
+
+- **本体 → ドライバUI（初期コンテキスト）**
+  - 既存の接続先設定
+  - 既存の ScanGroup 一覧
+  - 既存のタグ一覧（編集時の初期値）
+- **ドライバUI → 本体（確定結果）**
+  - 接続先定義（新規または更新）
+  - ScanGroup 一覧
+  - タグ一覧
+
+正式テンプレート（サンプル）:
+
+- `docs/templates/driver-ui-request-template.json`（本体 → ドライバ）
+- `docs/templates/driver-ui-response-template.json`（ドライバ → 本体）
+- `docs/templates/driver-ui-request-fields.md`（`--input-json` フィールド仕様: 必須/任意）
+- `docs/templates/driver-ui-response-fields.md`（`--output-json` フィールド仕様: 必須/任意）
 
 一時 JSON ファイル連携では、以下のメタ情報を必須とする。
 
@@ -108,14 +334,27 @@ DriverKind（postgres / slmp / joywatcher）
 - `requestId`: 登録セッション識別子（重複取込防止）
 - `generatedAt`: 生成時刻（監査・再実行判断）
 - `driverKind` / `driverId`: ドライバ整合性確認
+- `driver`: 新規接続先時の接続定義（`id`, `driverType`, `enabled`, `settings` を含む）
 
 本体側受信時の最低バリデーション:
 
 1. `schemaVersion` が対応範囲内であること
-2. `driverKind` と `driverSpec.kind` が一致すること
-3. `scanGroups[].id` と `tags[].driverSpec.scanGroup` が整合すること
-4. タグ ID/名称重複がないこと（既存定義との衝突含む）
-5. 参照不能な接続先・スキャングループがないこと
+2. 新規接続先時は `driver.id` と `driverType` が存在すること
+3. `driverKind` / `driverType` と `driverSpec.kind` が一致すること
+4. `scanGroups[].id` と `tags[].driverSpec.scanGroup` が整合すること
+5. タグ ID/名称重複がないこと（既存定義との衝突含む）
+6. 参照不能な接続先・スキャングループがないこと
+
+### 返却JSON仕様のコード化（実装）
+
+- Rust 側では以下の型で返却JSONを受け付ける。
+  - `src-tauri/src/commands/driver_ui_protocol.rs`
+    - `DriverUiImportPayload`
+    - `DriverUiDriverPayload`
+    - `DriverUiScanGroupPayload`
+    - `DriverUiTagPayload`
+- `driverKind` は `driverType` のエイリアスとして受理する。
+- 既存接続先編集時は `driver` ブロック省略を許容し、新規接続先時は `driver` ブロック（`id`, `driverType`, `settings`）を必須とする。
 
 ## 異常系・ロールバック方針
 
@@ -138,6 +377,19 @@ DriverKind（postgres / slmp / joywatcher）
   "schemaVersion": 1,
   "driverKind": "postgres",
   "driverId": "postgres-main",
+  "driver": {
+    "id": "postgres-main",
+    "driverType": "postgres",
+    "enabled": true,
+    "settings": {
+      "host": "localhost",
+      "port": 5432,
+      "database": "iot_hub",
+      "username": "iot_user",
+      "password": "******",
+      "registration_ui_path": "C:/tools/postgres-tag-ui/postgres-tag-ui.exe"
+    }
+  },
   "tags": [
     {
       "id": "tag-0001",
@@ -286,10 +538,11 @@ enabled = true
 ## 保存前チェックリスト（本体側）
 
 1. `scan_group.id` の重複がない
-2. `tag.id` の重複がない
+2. `tag.id` の重複がない（全体）
 3. `tag.scan_group` が存在する
 4. `tag.driver` と `scan_group.driver` が一致する
 5. `driver_spec.value_column` が空でない
+6. 同一 `(driver_id, scan_group_id)` 内に同名タグ（`tag.name`）が存在しないこと（既存定義を含む）
 
 ## SLMP 登録 UI（将来）
 

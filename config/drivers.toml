@@ -1,14 +1,1 @@
-# Drivers Configuration
-# Drivers.toml - ドライバ設定
-# sql/bootstrap_postgres.sql の初期値と合わせています
-
-[[driver]]
-id = "postgres-main"
-driver_type = "postgres"
-enabled = true
-host = "localhost"
-port = 5432
-database = "iot_hub"
-username = "iot_user"
-password = "iot_password"
-ssl_mode = "disable"
+driver = []

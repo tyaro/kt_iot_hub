@@ -4,8 +4,11 @@ use crate::core::{DataType, Tag, TagId};
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use tokio::sync::oneshot;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn};
+
+pub const DEFAULT_GRPC_ADDR: &str = "127.0.0.1:55051";
 
 pub mod proto {
     tonic::include_proto!("kt_iot_hub.registration");
@@ -182,14 +185,17 @@ impl TagRegistrationService for TagRegistrationGrpcService {
     }
 }
 
-pub async fn serve(state: AppState, addr: &str) -> anyhow::Result<()> {
+pub async fn serve(state: AppState, addr: &str, shutdown_rx: oneshot::Receiver<()>) -> anyhow::Result<()> {
     let addr: SocketAddr = addr.parse()?;
     let service = TagRegistrationGrpcService { state };
 
     info!("Starting TagRegistration gRPC server on {}", addr);
     tonic::transport::Server::builder()
         .add_service(TagRegistrationServiceServer::new(service))
-        .serve(addr)
+        .serve_with_shutdown(addr, async move {
+            let _ = shutdown_rx.await;
+            info!("TagRegistration gRPC shutdown signal received");
+        })
         .await?;
 
     warn!("TagRegistration gRPC server stopped");

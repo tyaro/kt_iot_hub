@@ -118,6 +118,10 @@ impl DriverManager {
     pub fn contains(&self, id: &str) -> bool {
         self.drivers.contains_key(id)
     }
+
+    pub fn remove(&mut self, id: &str) -> Option<Box<dyn Driver>> {
+        self.drivers.remove(id)
+    }
 }
 
 impl Default for DriverManager {

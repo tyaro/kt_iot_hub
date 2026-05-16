@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "requestId": "req-20260517-0001",
+  "generatedAt": "2026-05-17T12:00:00Z",
+  "direction": "host-to-driver",
+  "session": {
+    "sessionId": "session-8b93f7bb-2ca8-4d93-b6b9-5f67d0d2f56f",
+    "mode": "create-or-edit",
+    "outputJsonPath": "C:/Temp/kt_iot_hub_driver_ui_result.json"
+  },
+  "driver": {
+    "driverType": "postgres",
+    "driverId": "postgres-main"
+  },
+  "context": {
+    "scanGroups": [
+      {
+        "id": "line1_sensors_1000ms",
+        "driver": "postgres-main",
+        "scanRateMs": 1000,
+        "table": "line1_sensors",
+        "timestampColumn": "measured_at"
+      }
+    ],
+    "tags": [
+      {
+        "id": "tag-line1-temp",
+        "name": "temperature",
+        "dataType": "f32",
+        "driverId": "postgres-main",
+        "scanGroupId": "line1_sensors_1000ms",
+        "enabled": true,
+        "driverSpec": {
+          "kind": "postgres",
+          "scanGroup": "line1_sensors_1000ms",
+          "valueColumn": "temperature"
+        },
+        "metadata": {
+          "unit": "degC",
+          "comment": "ライン1温度"
+        }
+      }
+    ]
+  }
+}
