@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "tauri": "tauri",
     "tauri-dev": "tauri dev",
-    "tauri-build": "tauri build"
+    "tauri-build": "tauri build",
+    "driver-ui:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/install-driver-ui.ps1"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",

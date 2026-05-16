@@ -15,6 +15,16 @@
 - バックエンド: Rust（Tauri v2）
 - 設定: `config/*.toml`
 
+## ドライバUI実行ファイルの配置
+
+ドライバUIは本体アプリ配下の `driver-ui/<driver_type>/` に配置します。
+
+- 既定ファイル名: `registration-ui.exe`（Windows）
+- 配置スクリプト:
+  - `npm run driver-ui:install -- -DriverType postgres -SourcePath C:/tools/postgres-tag-ui/postgres-tag-ui.exe`
+
+本体は `registration_ui_path` / `driver_ui_path` が未指定でも、上記既定配置を探索して起動します。
+
 ## 補足
 
 - `参考/` 配下はライセンス上の理由で Git 管理対象外です（`.gitignore` 設定済み）。

@@ -7,3 +7,8 @@ dist/
 target/
 .DS_Store
 /*.log
+
+# Driver UI binaries (layout only tracked)
+driver-ui/**/*.exe
+driver-ui/**/*.dll
+driver-ui/**/*.pdb

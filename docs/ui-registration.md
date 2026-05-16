@@ -238,7 +238,18 @@ PostgreSQL では、テーブルの最新値をタグ値として扱うため、
   1. `registration_ui_path`
   2. `driver_ui_path`
 
-### 設定例
+未指定時は、本体アプリ配下の既定パスを探索する。
+
+- 既定探索パス: `<app-root>/driver-ui/<driver_type>/registration-ui(.exe)`
+- 互換探索: `<app-root>/driver-ui/<driver_type>/driver-ui(.exe)` など
+
+### 配置スクリプト
+
+PowerShell スクリプト `scripts/install-driver-ui.ps1` を使用する。
+
+- 例: `npm run driver-ui:install -- -DriverType postgres -SourcePath C:/tools/postgres-tag-ui/postgres-tag-ui.exe`
+
+### 設定例（明示指定する場合）
 
 ```toml
 [[driver]]
@@ -250,7 +261,7 @@ port = 5432
 database = "iot_hub"
 username = "iot_user"
 password = "iot_password"
-registration_ui_path = "C:/tools/postgres-tag-ui/postgres-tag-ui.exe"
+registration_ui_path = "driver-ui/postgres/registration-ui.exe"
 ```
 
 ## 受け渡し方式

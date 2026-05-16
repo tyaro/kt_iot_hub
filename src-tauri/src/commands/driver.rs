@@ -14,7 +14,7 @@ use crate::drivers::postgres::PostgresDriver;
 use chrono::Utc;
 use serde::Serialize;
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -265,8 +265,9 @@ pub async fn launch_driver_ui(
 
         let executable_path = resolve_driver_ui_path(&driver_config).ok_or(ErrorResponse {
             error: format!(
-                "Driver UI path is not configured for driver {} (set registration_ui_path in drivers.toml)",
-                driver_id
+                "Driver UI executable not found for driver {} (set registration_ui_path/driver_ui_path or place it under driver-ui/{}/registration-ui(.exe))",
+                driver_id,
+                driver_config.driver_type
             ),
             code: "NOT_CONFIGURED".to_string(),
         })?;
@@ -280,7 +281,8 @@ pub async fn launch_driver_ui(
 
         let executable_path = resolve_driver_ui_path_for_type(&driver_configs, &driver_type).ok_or(ErrorResponse {
             error: format!(
-                "Driver UI path is not configured for driver type {} (add registration_ui_path/driver_ui_path to a driver template entry in drivers.toml)",
+                "Driver UI executable not found for driver type {} (set registration_ui_path/driver_ui_path or place it under driver-ui/{}/registration-ui(.exe))",
+                driver_type,
                 driver_type
             ),
             code: "NOT_CONFIGURED".to_string(),
@@ -558,7 +560,7 @@ pub async fn import_driver_ui_result(
 }
 
 fn resolve_driver_ui_path(config: &DriverConfig) -> Option<String> {
-    config
+    let explicit_path = config
         .settings
         .get("registration_ui_path")
         .and_then(|v| v.as_str())
@@ -569,7 +571,97 @@ fn resolve_driver_ui_path(config: &DriverConfig) -> Option<String> {
                 .get("driver_ui_path")
                 .and_then(|v| v.as_str())
                 .map(ToString::to_string)
-        })
+        });
+
+    if let Some(path) = explicit_path {
+        if let Some(resolved) = resolve_candidate_path(&path) {
+            return Some(resolved);
+        }
+    }
+
+    find_default_driver_ui_path(&config.driver_type)
+}
+
+fn resolve_candidate_path(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let raw = PathBuf::from(trimmed);
+    if raw.is_absolute() && raw.exists() {
+        return Some(path_to_string(raw));
+    }
+    if raw.exists() {
+        return Some(path_to_string(raw));
+    }
+
+    for root in app_root_candidates() {
+        let candidate = root.join(trimmed);
+        if candidate.exists() {
+            return Some(path_to_string(candidate));
+        }
+    }
+
+    None
+}
+
+fn find_default_driver_ui_path(driver_type: &str) -> Option<String> {
+    if driver_type.trim().is_empty() {
+        return None;
+    }
+
+    let file_names = [
+        format!("{}-registration-ui.exe", driver_type),
+        "registration-ui.exe".to_string(),
+        "driver-ui.exe".to_string(),
+        format!("{}-registration-ui", driver_type),
+        "registration-ui".to_string(),
+        "driver-ui".to_string(),
+    ];
+
+    for root in app_root_candidates() {
+        for file_name in &file_names {
+            let candidate = root.join("driver-ui").join(driver_type).join(file_name);
+            if candidate.exists() {
+                return Some(path_to_string(candidate));
+            }
+        }
+    }
+
+    None
+}
+
+fn app_root_candidates() -> Vec<PathBuf> {
+    let mut roots = Vec::<PathBuf>::new();
+
+    if let Ok(current_dir) = std::env::current_dir() {
+        roots.push(current_dir);
+    }
+
+    if let Ok(current_exe) = std::env::current_exe() {
+        if let Some(exe_dir) = current_exe.parent() {
+            roots.push(exe_dir.to_path_buf());
+            if let Some(parent) = exe_dir.parent() {
+                roots.push(parent.to_path_buf());
+            }
+        }
+    }
+
+    let mut unique = Vec::<PathBuf>::new();
+    for path in roots {
+        if !unique.contains(&path) {
+            unique.push(path);
+        }
+    }
+    unique
+}
+
+fn path_to_string(path: PathBuf) -> String {
+    match path.canonicalize() {
+        Ok(canonical) => canonical.to_string_lossy().to_string(),
+        Err(_) => path.to_string_lossy().to_string(),
+    }
 }
 
 #[derive(Serialize)]
