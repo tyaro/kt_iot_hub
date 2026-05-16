@@ -40,14 +40,13 @@
         <th>名前</th>
         <th>型</th>
         <th>ドライバ</th>
-        <th>ソース</th>
-        <th>周期(ms)</th>
+        <th>スキャングループ</th>
       </tr>
     </thead>
     <tbody>
       {#if tags.length === 0}
         <tr>
-          <td colspan="6" class="empty">タグがありません</td>
+          <td colspan="5" class="empty">タグがありません</td>
         </tr>
       {:else}
         {#each tags as tag (tag.id)}
@@ -56,8 +55,7 @@
             <td>{tag.name}</td>
             <td>{tag.data_type}</td>
             <td>{tag.driver_id}</td>
-            <td>{tag.source_ref}</td>
-            <td>{tag.scan_rate_ms}</td>
+            <td>{tag.scan_group_id}</td>
           </tr>
         {/each}
       {/if}

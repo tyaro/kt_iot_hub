@@ -7,10 +7,9 @@
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowJs": true,
-    "baseUrl": ".",
     "paths": {
-      "$lib/*": ["src/lib/*"],
-      "$lib": ["src/lib"]
+      "$lib/*": ["./src/lib/*"],
+      "$lib": ["./src/lib"]
     },
     "resolveJsonModule": true,
     "isolatedModules": true,
