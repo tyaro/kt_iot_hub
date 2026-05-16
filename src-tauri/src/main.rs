@@ -6,6 +6,7 @@ mod commands;
 mod config;
 mod core;
 mod drivers;
+mod grpc;
 mod publishers;
 
 use app_state::AppState;
@@ -102,7 +103,7 @@ fn main() {
                 }
             }
 
-            app.manage(AppState::new(
+            let app_state = AppState::new(
                 registry,
                 tag_bus,
                 driver_manager,
@@ -110,7 +111,17 @@ fn main() {
                 config.drivers,
                 config.publishers,
                 config.scan_groups,
-            ));
+            );
+
+            let grpc_state = app_state.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = grpc::tag_registration::serve(grpc_state, "127.0.0.1:50051").await
+                {
+                    tracing::error!("gRPC server stopped with error: {}", e);
+                }
+            });
+
+            app.manage(app_state);
 
             Ok(())
         })

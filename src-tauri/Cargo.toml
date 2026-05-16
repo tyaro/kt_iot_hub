@@ -34,6 +34,10 @@ rumqttc = "0.25"
 anyhow = "1.0"
 thiserror = "1.0"
 
+# gRPC
+tonic = { version = "0.12", features = ["transport"] }
+prost = "0.13"
+
 # UUID
 uuid = { version = "1.6", features = ["v4", "serde"] }
 
@@ -45,6 +49,8 @@ tokio-test = "0.4"
 
 [build-dependencies]
 tauri-build = { version = "2.6", features = [] }
+tonic-build = "0.12"
+protoc-bin-vendored = "3"
 
 [profile.release]
 opt-level = 3

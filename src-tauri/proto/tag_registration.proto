@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package kt_iot_hub.registration;
+
+service TagRegistrationService {
+  rpc UpsertTagRegistration(UpsertTagRegistrationRequest) returns (UpsertTagRegistrationResponse);
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  string status = 1;
+}
+
+message ScanGroupDefinition {
+  string id = 1;
+  uint32 scan_rate_ms = 2;
+  string schema = 3;
+  string table = 4;
+  string timestamp_column = 5;
+  string node = 6;
+}
+
+message TagDefinition {
+  string id = 1;
+  string name = 2;
+  string data_type = 3;
+  string scan_group_id = 4;
+  string driver_spec_json = 5;
+  string metadata_json = 6;
+  bool enabled = 7;
+}
+
+message UpsertTagRegistrationRequest {
+  uint32 schema_version = 1;
+  string request_id = 2;
+  string generated_at = 3;
+  string driver_kind = 4;
+  string driver_id = 5;
+  repeated ScanGroupDefinition scan_groups = 6;
+  repeated TagDefinition tags = 7;
+}
+
+message UpsertTagRegistrationResponse {
+  bool success = 1;
+  string message = 2;
+  uint32 accepted_scan_groups = 3;
+  uint32 accepted_tags = 4;
+}
