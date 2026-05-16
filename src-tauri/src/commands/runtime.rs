@@ -32,7 +32,6 @@ pub async fn stop_runtime_services(
 ) -> Result<RuntimeStatusDto, ErrorResponse> {
     stop_publishers(&state).await?;
     stop_drivers(&state).await?;
-    stop_grpc_server(&state).await;
     Ok(read_runtime_status(&state).await)
 }
 
