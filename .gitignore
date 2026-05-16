@@ -1,0 +1,9 @@
+# Ignore documentation with potential license issues
+参考/
+
+# Common ignores
+node_modules/
+dist/
+target/
+.DS_Store
+/*.log

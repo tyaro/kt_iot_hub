@@ -1,0 +1,14 @@
+# Publishers Configuration
+# Publishers.toml - パブリッシャ設定
+
+[[publisher]]
+id = "mqtt-main"
+publisher_type = "mqtt"
+enabled = true
+broker = "localhost"
+port = 1883
+username = ""
+password = ""
+client_id = "kt_iot_hub"
+qos = 1
+retain = false
