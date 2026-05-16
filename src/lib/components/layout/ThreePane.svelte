@@ -1,11 +1,21 @@
 <script lang="ts">
   import { open } from '@tauri-apps/plugin-dialog';
-  import TagTree from '../tag/TagTree.svelte';
-  import TagDetailPanel from '../tag/TagDetailPanel.svelte';
-  import TagEditorPanel from '../tag/TagEditorPanel.svelte';
-  import DriverDetailPanel from '../driver/DriverDetailPanel.svelte';
-  import DriverPickerDialog from '../driver/DriverPickerDialog.svelte';
-  import DriverTypePickerDialog from '../driver/DriverTypePickerDialog.svelte';
+  import NavigationPane from './three-pane/NavigationPane.svelte';
+  import DashboardContent from './three-pane/DashboardContent.svelte';
+  import TagsContent from './three-pane/TagsContent.svelte';
+  import SettingsContent from './three-pane/SettingsContent.svelte';
+  import TagRightPane from './three-pane/TagRightPane.svelte';
+  import PlaceholderContent from './three-pane/PlaceholderContent.svelte';
+  import DriverUiDialogs from './three-pane/DriverUiDialogs.svelte';
+  import {
+    confirmAction,
+    extractErrorMessage,
+    loadDriverUiBaseDirFromStorage,
+    normalizeDriverUiBaseDir,
+    notify,
+    saveDriverUiBaseDirToStorage,
+    wait,
+  } from './three-pane/helpers';
   import {
     scanGroupsStore,
     tagsStore,
@@ -75,33 +85,13 @@
   let dashboardMessage = $state('');
   let settingsMessage = $state('');
 
-  const DRIVER_UI_BASE_DIR_KEY = 'kt_iot_hub.driverUiBaseDir';
   let driverUiBaseDirInput = $state('');
   let driverUiBaseDirSaved = $state<string | null>(null);
-
-  function normalizeDriverUiBaseDir(value: string): string | null {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-
-  function loadDriverUiBaseDir(): string | null {
-    if (typeof globalThis.localStorage === 'undefined') {
-      return null;
-    }
-    const raw = globalThis.localStorage.getItem(DRIVER_UI_BASE_DIR_KEY);
-    return raw && raw.trim().length > 0 ? raw.trim() : null;
-  }
 
   function saveDriverUiBaseDir() {
     const normalized = normalizeDriverUiBaseDir(driverUiBaseDirInput);
     try {
-      if (typeof globalThis.localStorage !== 'undefined') {
-        if (normalized) {
-          globalThis.localStorage.setItem(DRIVER_UI_BASE_DIR_KEY, normalized);
-        } else {
-          globalThis.localStorage.removeItem(DRIVER_UI_BASE_DIR_KEY);
-        }
-      }
+      saveDriverUiBaseDirToStorage(normalized);
       driverUiBaseDirSaved = normalized;
       settingsMessage = normalized
         ? `ドライバUI設置ベースパスを保存しました: ${normalized}`
@@ -140,7 +130,7 @@
   }
 
   {
-    const loaded = loadDriverUiBaseDir();
+    const loaded = loadDriverUiBaseDirFromStorage();
     driverUiBaseDirSaved = loaded;
     driverUiBaseDirInput = loaded ?? '';
   }
@@ -173,32 +163,6 @@
     tagActionMessage = '';
   }
 
-  function notify(message: string) {
-    if (typeof globalThis.alert === 'function') {
-      globalThis.alert(message);
-    }
-  }
-
-  function extractErrorMessage(error: unknown, fallback: string): string {
-    if (error instanceof Error && error.message) {
-      return error.message;
-    }
-    if (typeof error === 'string' && error.length > 0) {
-      return error;
-    }
-    if (error && typeof error === 'object') {
-      const record = error as Record<string, unknown>;
-      const nested = record.error;
-      if (typeof nested === 'string' && nested.length > 0) {
-        return nested;
-      }
-      const message = record.message;
-      if (typeof message === 'string' && message.length > 0) {
-        return message;
-      }
-    }
-    return fallback;
-  }
 
   async function refreshRuntimeStatus() {
     try {
@@ -236,15 +200,6 @@
     }
   }
 
-  async function wait(ms: number): Promise<void> {
-    await new Promise((resolve) => {
-      if (typeof globalThis.setTimeout === 'function') {
-        globalThis.setTimeout(resolve, ms);
-        return;
-      }
-      resolve(undefined);
-    });
-  }
 
   function cancelDriverUiPolling() {
     pollingToken += 1;
@@ -301,12 +256,6 @@
     }
   }
 
-  function confirmAction(message: string): boolean {
-    if (typeof globalThis.confirm === 'function') {
-      return globalThis.confirm(message);
-    }
-    return true;
-  }
 
   async function requestOpenDriverUi(driverId: string, actionLabel: '新規' | '編集') {
     if (driverUiPolling) {
@@ -549,226 +498,109 @@
 
 <div class="three-pane">
   <!-- 左ペイン: ナビゲーション -->
-  <div class="left-pane">
-    <div class="header">
-      <h1>IoT Hub</h1>
-      <p class="version">v0.1.0</p>
-    </div>
-    <nav class="nav-menu">
-      {#each pages as page (page.id)}
-        <button
-          class="nav-button"
-          class:active={currentPage === page.id}
-          onclick={() => selectPage(page.id)}
-        >
-          <span class="nav-icon">{page.icon}</span>
-          <span class="nav-label">{page.label}</span>
-        </button>
-      {/each}
-    </nav>
-  </div>
+  <NavigationPane pages={pages} currentPage={currentPage} onSelect={selectPage} />
 
   <!-- 中央ペイン: コンテンツ一覧 -->
   <div class="center-pane">
     {#if currentPage === 'dashboard'}
-      <div class="content">
-        <h2>ダッシュボード</h2>
-        <div class="dashboard-grid">
-          <div class="card">
-            <span class="card-icon">🏷️</span>
-            <h3>タグ</h3>
-            <p class="value">{$tagsStore.items.length}</p>
-            <p class="sub">登録済み</p>
-          </div>
-          <div class="card">
-            <span class="card-icon">⚙️</span>
-            <h3>ドライバ</h3>
-            <p class="value">{$driversStore.items.length}</p>
-            <p class="sub">登録済み</p>
-          </div>
-          <div class="card">
-            <span class="card-icon">⚡</span>
-            <h3>有効ドライバ</h3>
-            <p class="value">{$driversStore.items.filter((d: DriverDto) => d.enabled).length}</p>
-            <p class="sub">稼働中</p>
-          </div>
-          <div class="card runtime-card">
-            <span class="card-icon">🧩</span>
-            <h3>サービス状態</h3>
-            <p class="runtime-badge" class:running={runtimeStatus.drivers_running || runtimeStatus.publishers_running}>
-              {runtimeStatus.drivers_running || runtimeStatus.publishers_running ? '起動中' : '停止中'}
-            </p>
-            <ul class="runtime-list">
-              <li>Drivers: {runtimeStatus.drivers_running ? 'ON' : 'OFF'}</li>
-              <li>Publishers: {runtimeStatus.publishers_running ? 'ON' : 'OFF'}</li>
-              <li>gRPC (IPC): {runtimeStatus.grpc_running ? 'ON' : 'OFF'}</li>
-            </ul>
-          </div>
-        </div>
-        {#if dashboardMessage}
-          <p class="action-message">{dashboardMessage}</p>
-        {/if}
-        {#if runtimeStatus.last_error}
-          <p class="error-message">{runtimeStatus.last_error}</p>
-        {/if}
-        <div class="quicklinks">
-          <button class="btn-outline" onclick={() => selectPage('tags')}>タグを管理</button>
-          <button class="btn-primary" onclick={startServers} disabled={runtimeBusy || (runtimeStatus.drivers_running || runtimeStatus.publishers_running)}>
-            {runtimeBusy ? '実行中...' : 'サーバ起動'}
-          </button>
-          <button class="btn-outline danger" onclick={stopServers} disabled={runtimeBusy || (!runtimeStatus.drivers_running && !runtimeStatus.publishers_running)}>
-            サーバ停止
-          </button>
-        </div>
-      </div>
+      <DashboardContent
+        tagCount={$tagsStore.items.length}
+        driverCount={$driversStore.items.length}
+        enabledDriverCount={$driversStore.items.filter((d: DriverDto) => d.enabled).length}
+        {runtimeStatus}
+        {runtimeBusy}
+        {dashboardMessage}
+        onNavigateTags={() => selectPage('tags')}
+        onStartServers={startServers}
+        onStopServers={stopServers}
+      />
 
     {:else if currentPage === 'tags'}
-      <div class="content">
-        <div class="content-header">
-          <h2>タグ管理</h2>
-          <div class="header-actions">
-            <button class="btn-outline" onclick={newDriver} disabled={driverUiPolling}>＋ 新規ドライバ</button>
-            <button class="btn-primary" onclick={newTag} disabled={driverUiPolling}>＋ 新規タグ</button>
-          </div>
-        </div>
-        {#if tagActionMessage}
-          <p class="action-message">{tagActionMessage}</p>
-        {/if}
-        <TagTree
-          onSelect={onTagSelect}
-          onSelectDriver={onDriverSelect}
-          onSelectScanGroup={onScanGroupSelect}
-          selectedTagId={selectedTag?.id ?? null}
-          selectedDriverId={selectedDriver?.id ?? null}
-          selectedScanGroupId={selectedScanGroup?.id ?? null}
-          onRequestNewTag={requestNewTagForDriver}
-          onRequestDeleteDriver={requestDeleteDriver}
-          onRequestEditTag={requestEditTag}
-          onRequestDeleteTag={requestDeleteTag}
-        />
-      </div>
+      <TagsContent
+        {driverUiPolling}
+        {tagActionMessage}
+        selectedTagId={selectedTag?.id ?? null}
+        selectedDriverId={selectedDriver?.id ?? null}
+        selectedScanGroupId={selectedScanGroup?.id ?? null}
+        onNewDriver={newDriver}
+        onNewTag={newTag}
+        onSelectTag={onTagSelect}
+        onSelectDriver={onDriverSelect}
+        onSelectScanGroup={onScanGroupSelect}
+        onRequestNewTag={requestNewTagForDriver}
+        onRequestDeleteDriver={requestDeleteDriver}
+        onRequestEditTag={requestEditTag}
+        onRequestDeleteTag={requestDeleteTag}
+      />
 
     {:else if currentPage === 'publishers'}
-      <div class="content">
-        <h2>パブリッシャ管理</h2>
-        <p class="placeholder">パブリッシャ管理画面は今後実装予定です。</p>
-      </div>
+      <PlaceholderContent
+        title="パブリッシャ管理"
+        message="パブリッシャ管理画面は今後実装予定です。"
+      />
 
     {:else if currentPage === 'logs'}
-      <div class="content">
-        <h2>ログ</h2>
-        <p class="placeholder">ログビューワは今後実装予定です。</p>
-      </div>
+      <PlaceholderContent
+        title="ログ"
+        message="ログビューワは今後実装予定です。"
+      />
 
     {:else if currentPage === 'settings'}
-      <div class="content">
-        <h2>設定</h2>
-        <div class="settings-card">
-          <h3>ドライバUI実行ファイル配置</h3>
-          <p class="settings-help">
-            例: <code>D:\develop\kt_iot_hub</code> または <code>D:\develop\kt_iot_hub\driver-ui</code>
-          </p>
-          <label>
-            ドライバUI設置ベースパス
-            <input
-              bind:value={driverUiBaseDirInput}
-              placeholder="未指定時は自動探索（driver-ui/&lt;type&gt;/registration-ui.exe）"
-            />
-          </label>
-          <div class="settings-actions">
-            <button class="btn-outline" onclick={pickDriverUiBaseDir}>フォルダ選択...</button>
-            <button class="btn-primary" onclick={saveDriverUiBaseDir}>保存</button>
-            <button class="btn-outline" onclick={clearDriverUiBaseDir}>クリア</button>
-          </div>
-          {#if driverUiBaseDirSaved}
-            <p class="settings-current">現在値: <code>{driverUiBaseDirSaved}</code></p>
-          {/if}
-          {#if settingsMessage}
-            <p class="action-message">{settingsMessage}</p>
-          {/if}
-        </div>
-      </div>
+      <SettingsContent
+        {driverUiBaseDirInput}
+        {driverUiBaseDirSaved}
+        {settingsMessage}
+        onDriverUiBaseDirInput={(value) => {
+          driverUiBaseDirInput = value;
+        }}
+        onPickDriverUiBaseDir={pickDriverUiBaseDir}
+        onSaveDriverUiBaseDir={saveDriverUiBaseDir}
+        onClearDriverUiBaseDir={clearDriverUiBaseDir}
+      />
     {/if}
   </div>
 
   <!-- 右ペイン: 詳細/編集 -->
-  <div class="right-pane">
-    {#if currentPage === 'tags'}
-      {#if tagMode === 'new' || tagMode === 'edit'}
-        <TagEditorPanel
-          mode={tagMode}
-          tag={selectedTag}
-          driverId={editorDriverId}
-          onDone={onTagEditorDone}
-          onCancel={() => {
-            closeTagEditor();
-            tagActionMessage = '';
-          }}
-        />
-      {:else if selectedTag}
-        <TagDetailPanel
-          tag={selectedTag}
-          onRequestEdit={requestEditTag}
-          onRequestDelete={requestDeleteTag}
-          onRequestClose={() => {
-            selectedTag = null;
-            editorDriverId = null;
-            tagActionMessage = '';
-          }}
-        />
-      {:else if selectedDriver}
-        <DriverDetailPanel
-          driver={selectedDriver}
-          mode="detail"
-          onRequestDelete={requestDeleteDriver}
-          onDone={async () => {
-            await reloadDrivers();
-            await reloadScanGroups();
-            selectedDriver = null;
-          }}
-        />
-      {:else if selectedScanGroup}
-        <div class="info-panel">
-          <div class="panel-header compact">
-            <h3>{selectedScanGroup.id}</h3>
-            <span class="mode-label">ScanGroup</span>
-          </div>
-          <dl class="detail-list compact">
-            <dt>ドライバ</dt><dd class="mono">{selectedScanGroup.driver_id}</dd>
-            <dt>周期</dt><dd>{selectedScanGroup.scan_rate_ms ?? '-'} ms</dd>
-            <dt>テーブル</dt><dd class="mono">{selectedScanGroup.table ?? '-'}</dd>
-            <dt>時系列列</dt><dd class="mono">{selectedScanGroup.timestamp_column ?? '-'}</dd>
-          </dl>
-          <p class="helper-text">Scanグループの追加・変更は接続先ドライバ専用UI側で行います。</p>
-        </div>
-      {:else}
-        <div class="empty-right">
-          <p>ツリーから接続先 / Scanグループ / タグを選択してください</p>
-        </div>
-      {/if}
-    {:else}
-      <div class="empty-right">
-        <p>左の一覧から<br />項目を選択してください</p>
-      </div>
-    {/if}
-  </div>
+  <TagRightPane
+    {currentPage}
+    {tagMode}
+    {selectedTag}
+    {selectedDriver}
+    {selectedScanGroup}
+    {editorDriverId}
+    onTagEditorDone={onTagEditorDone}
+    onTagEditorCancel={() => {
+      closeTagEditor();
+      tagActionMessage = '';
+    }}
+    onTagDetailEdit={requestEditTag}
+    onTagDetailDelete={requestDeleteTag}
+    onTagDetailClose={() => {
+      selectedTag = null;
+      editorDriverId = null;
+      tagActionMessage = '';
+    }}
+    onDriverDelete={requestDeleteDriver}
+    onDriverDone={async () => {
+      await reloadDrivers();
+      await reloadScanGroups();
+      selectedDriver = null;
+    }}
+  />
 </div>
 
-<DriverPickerDialog
-  open={driverPickerOpen}
+<DriverUiDialogs
+  {driverPickerOpen}
   drivers={$driversStore.items}
-  loading={$driversStore.loading}
-  error={$driversStore.error}
-  onReload={reloadDrivers}
-  onClose={closeDriverPicker}
-  onSelect={onDriverPicked}
-/>
-
-<DriverTypePickerDialog
-  open={driverTypePickerOpen}
-  options={driverTypeOptions}
-  onClose={closeDriverTypePicker}
-  onSelect={onDriverTypePicked}
+  driversLoading={$driversStore.loading}
+  driversError={$driversStore.error}
+  {driverTypePickerOpen}
+  {driverTypeOptions}
+  onReloadDrivers={reloadDrivers}
+  onCloseDriverPicker={closeDriverPicker}
+  onSelectDriver={onDriverPicked}
+  onCloseDriverTypePicker={closeDriverTypePicker}
+  onSelectDriverType={onDriverTypePicked}
 />
 
 <style>
@@ -779,70 +611,6 @@
     background-color: #ffffff;
   }
 
-  /* ─ 左ペイン ─────────────────────────── */
-  .left-pane {
-    width: 200px;
-    min-width: 200px;
-    background-color: #1e2d3d;
-    color: #ecf0f1;
-    border-right: 1px solid #253545;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .header {
-    padding: 18px 16px 14px;
-    border-bottom: 1px solid #253545;
-    text-align: center;
-  }
-
-  .header h1 {
-    margin: 0;
-    font-size: 1.2rem;
-    letter-spacing: 0.05em;
-  }
-
-  .version {
-    margin: 4px 0 0;
-    font-size: 0.7rem;
-    color: #7f8c8d;
-  }
-
-  .nav-menu {
-    flex: 1;
-  }
-
-  .nav-button {
-    width: 100%;
-    padding: 11px 16px;
-    border: none;
-    background: none;
-    color: #b0bec5;
-    cursor: pointer;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.875rem;
-    transition: background-color 0.15s;
-  }
-
-  .nav-button:hover {
-    background-color: #263545;
-  }
-
-  .nav-button.active {
-    background-color: #2e86c1;
-    color: #fff;
-  }
-
-  .nav-icon {
-    font-size: 1.1rem;
-    width: 1.4em;
-    text-align: center;
-  }
-
   /* ─ 中央ペイン ───────────────────────── */
   .center-pane {
     flex: 1;
@@ -850,305 +618,4 @@
     background-color: #f4f6f9;
   }
 
-  .content {
-    padding: 24px 28px;
-  }
-
-  .content-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-
-  .header-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .content h2 {
-    margin: 0 0 20px;
-    font-size: 1.1rem;
-    color: #2c3e50;
-    border-bottom: 2px solid #2e86c1;
-    padding-bottom: 8px;
-  }
-
-  .content-header h2 {
-    margin-bottom: 0;
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-
-  /* ─ ダッシュボード ───────────────────── */
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-
-  .card {
-    background: #fff;
-    border: 1px solid #dbe2ea;
-    border-radius: 8px;
-    padding: 20px 16px;
-    text-align: center;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  }
-
-  .card-icon {
-    font-size: 1.8rem;
-  }
-
-  .card h3 {
-    margin: 8px 0 4px;
-    font-size: 0.8rem;
-    color: #7f8c8d;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .value {
-    margin: 0;
-    font-size: 2rem;
-    font-weight: 700;
-    color: #2e86c1;
-  }
-
-  .sub {
-    margin: 2px 0 0;
-    font-size: 0.75rem;
-    color: #95a5a6;
-  }
-
-  .quicklinks {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .placeholder {
-    color: #95a5a6;
-    font-size: 0.9rem;
-  }
-
-  .settings-card {
-    background: #fff;
-    border: 1px solid #dbe2ea;
-    border-radius: 8px;
-    padding: 16px;
-    max-width: 760px;
-  }
-
-  .settings-card h3 {
-    margin: 0 0 10px;
-    font-size: 0.95rem;
-    color: #1f2937;
-  }
-
-  .settings-help {
-    margin: 0 0 10px;
-    font-size: 0.82rem;
-    color: #64748b;
-  }
-
-  .settings-card label {
-    display: grid;
-    gap: 6px;
-    font-size: 0.82rem;
-    color: #334155;
-    margin-bottom: 10px;
-  }
-
-  .settings-card input {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 0.84rem;
-    box-sizing: border-box;
-  }
-
-  .settings-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-  }
-
-  .settings-current {
-    margin: 0 0 8px;
-    font-size: 0.8rem;
-    color: #334155;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 8px 10px;
-  }
-
-  .action-message {
-    margin: 0 0 12px;
-    font-size: 0.82rem;
-    color: #2563eb;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 6px;
-    padding: 8px 10px;
-  }
-
-  .error-message {
-    margin: 0 0 12px;
-    font-size: 0.82rem;
-    color: #b91c1c;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 6px;
-    padding: 8px 10px;
-  }
-
-  .runtime-card {
-    text-align: left;
-  }
-
-  .runtime-badge {
-    display: inline-block;
-    margin: 0 0 8px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #92400e;
-    background: #fef3c7;
-    border-radius: 999px;
-    padding: 3px 10px;
-  }
-
-  .runtime-badge.running {
-    color: #166534;
-    background: #dcfce7;
-  }
-
-  .runtime-list {
-    margin: 0;
-    padding-left: 18px;
-    color: #475569;
-    font-size: 0.8rem;
-  }
-
-  /* ─ ボタン ───────────────────────────── */
-  .btn-primary {
-    background-color: #2e86c1;
-    color: #fff;
-    border: none;
-    padding: 7px 14px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    white-space: nowrap;
-  }
-
-  .btn-primary:hover {
-    background-color: #2471a3;
-  }
-
-  .btn-outline {
-    background: #fff;
-    color: #2e86c1;
-    border: 1px solid #2e86c1;
-    padding: 7px 14px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
-  }
-
-  .btn-outline:hover {
-    background: #ebf5fb;
-  }
-
-  .btn-outline.danger {
-    color: #b91c1c;
-    border-color: #fca5a5;
-  }
-
-  .btn-outline.danger:hover {
-    background: #fef2f2;
-  }
-
-  /* ─ 右ペイン ─────────────────────────── */
-  .right-pane {
-    width: 280px;
-    min-width: 240px;
-    border-left: 1px solid #dbe2ea;
-    background-color: #fff;
-    overflow-y: auto;
-  }
-
-  .empty-right {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: #b0bec5;
-    font-size: 0.85rem;
-    text-align: center;
-    padding: 20px;
-  }
-
-  .info-panel {
-    padding: 16px;
-  }
-
-  .panel-header.compact {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-    border-bottom: 1px solid #e3e8ef;
-    padding-bottom: 10px;
-  }
-
-  .panel-header.compact h3 {
-    margin: 0;
-    font-size: 1rem;
-    color: #2c3e50;
-    word-break: break-all;
-  }
-
-  .mode-label {
-    color: #64748b;
-    font-size: 0.78rem;
-    background: #f1f5f9;
-    border-radius: 999px;
-    padding: 0.2rem 0.6rem;
-  }
-
-  .detail-list.compact {
-    display: grid;
-    grid-template-columns: 6em 1fr;
-    gap: 6px 10px;
-    margin: 0;
-    font-size: 0.85rem;
-  }
-
-  .detail-list.compact dt {
-    color: #7f8c8d;
-    font-weight: 600;
-  }
-
-  .detail-list.compact dd {
-    margin: 0;
-    word-break: break-all;
-  }
-
-  .helper-text {
-    margin-top: 12px;
-    font-size: 0.8rem;
-    color: #64748b;
-    line-height: 1.5;
-  }
-
-  .mono {
-    font-family: monospace;
-  }
 </style>
