@@ -16,174 +16,192 @@ import { createSelectionController } from './selectionController';
 import { createTagUiController } from './tagUiController';
 
 export type CreateThreePaneControllersDeps = {
-  ensureDriverUiNotBusy: () => boolean;
-  setTagActionMessage: (message: string) => void;
-  reloadTagManagementData: () => Promise<void>;
-  setSelectedDriver: (driver: DriverDto | null) => void;
-  clearSelectedScanGroup: () => void;
-  clearSelectedTag: () => void;
-  checkDriverUiResultApi: (req: { output_json_path: string }) => Promise<{ ready: boolean }>;
-  importDriverUiResultApi: (req: {
-    session_id: string;
-    driver_id?: string | null;
-    output_json_path: string;
-  }) => Promise<ImportDriverUiResultResponse>;
-  notify: (message: string) => void;
-  setDriverUiPolling: (polling: boolean) => void;
-  isRuntimeBusy: () => boolean;
-  setRuntimeBusy: (busy: boolean) => void;
-  setRuntimeStatus: (status: RuntimeStatusDto) => void;
-  setDashboardMessage: (message: string) => void;
-  extractErrorMessage: (error: unknown, fallback: string) => string;
-  getDriverUiPolling: () => boolean;
-  getDriverUiBaseDirSaved: () => string | null;
-  launchDriverUiForDriverApi: (req: {
-    driver_id: string;
-    driver_ui_base_dir?: string | null;
-  }) => Promise<LaunchDriverUiResponse>;
-  launchDriverUiForTypeApi: (req: {
-    driver_type: string;
-    driver_ui_base_dir?: string | null;
-  }) => Promise<LaunchDriverUiResponse>;
-  getDrivers: () => DriverDto[];
-  getDriverUiAvailableByType: () => Record<string, boolean>;
-  getSelectionState: () => SelectionState;
-  setSelectionState: (state: SelectionState) => void;
-  getScanGroups: () => ScanGroupDto[];
-  reloadTags: () => Promise<void>;
-  getDriversCount: () => number;
-  isDriversLoading: () => boolean;
-  reloadDrivers: () => Promise<void>;
-  setDriverPickerOpen: (open: boolean) => void;
-  setDriverTypePickerOpen: (open: boolean) => void;
-  setSelectedTag: (tag: TagDto) => void;
-  getDeletingTag: () => boolean;
-  setDeletingTag: (value: boolean) => void;
-  confirmAction: (message: string) => boolean;
-  deleteTagApi: (tagId: string) => Promise<void>;
-  deleteDriverApi: (driverId: string) => Promise<void>;
-  reloadScanGroups: () => Promise<void>;
-  getSelectedTag: () => TagDto | null;
-  getSelectedDriver: () => DriverDto | null;
-  getSelectedScanGroup: () => ScanGroupDto | null;
-  clearSelectedDriver: () => void;
-  getDriverUiBaseDirInput: () => string;
-  setDriverUiBaseDirInput: (value: string) => void;
-  setDriverUiBaseDirSaved: (value: string | null) => void;
-  setSettingsMessage: (message: string) => void;
-  normalizeDriverUiBaseDir: (value: string) => string | null;
-  saveDriverUiBaseDirToStorage: (value: string | null) => void;
-  pickFolder: (defaultPath: string | null) => Promise<string | null>;
+  common: {
+    notify: (message: string) => void;
+    extractErrorMessage: (error: unknown, fallback: string) => string;
+    confirmAction: (message: string) => boolean;
+  };
+  data: {
+    getDrivers: () => DriverDto[];
+    getScanGroups: () => ScanGroupDto[];
+    reloadTags: () => Promise<void>;
+    reloadDrivers: () => Promise<void>;
+    reloadScanGroups: () => Promise<void>;
+    reloadTagManagementData: () => Promise<void>;
+  };
+  selectionState: {
+    getSelectionState: () => SelectionState;
+    setSelectionState: (state: SelectionState) => void;
+    setSelectedDriver: (driver: DriverDto | null) => void;
+    setSelectedTag: (tag: TagDto) => void;
+    clearSelectedTag: () => void;
+    clearSelectedDriver: () => void;
+    clearSelectedScanGroup: () => void;
+    getSelectedTag: () => TagDto | null;
+    getSelectedDriver: () => DriverDto | null;
+    getSelectedScanGroup: () => ScanGroupDto | null;
+  };
+  runtime: {
+    isRuntimeBusy: () => boolean;
+    setRuntimeBusy: (busy: boolean) => void;
+    setRuntimeStatus: (status: RuntimeStatusDto) => void;
+    setDashboardMessage: (message: string) => void;
+  };
+  driverUi: {
+    ensureDriverUiNotBusy: () => boolean;
+    setTagActionMessage: (message: string) => void;
+    setDriverUiPolling: (polling: boolean) => void;
+    getDriverUiPolling: () => boolean;
+    getDriverUiBaseDirSaved: () => string | null;
+    getDriverUiAvailableByType: () => Record<string, boolean>;
+    checkDriverUiResultApi: (req: { output_json_path: string }) => Promise<{ ready: boolean }>;
+    importDriverUiResultApi: (req: {
+      session_id: string;
+      driver_id?: string | null;
+      output_json_path: string;
+    }) => Promise<ImportDriverUiResultResponse>;
+    launchDriverUiForDriverApi: (req: {
+      driver_id: string;
+      driver_ui_base_dir?: string | null;
+    }) => Promise<LaunchDriverUiResponse>;
+    launchDriverUiForTypeApi: (req: {
+      driver_type: string;
+      driver_ui_base_dir?: string | null;
+    }) => Promise<LaunchDriverUiResponse>;
+  };
+  tagFlow: {
+    getDriversCount: () => number;
+    isDriversLoading: () => boolean;
+    setDriverPickerOpen: (open: boolean) => void;
+    setDriverTypePickerOpen: (open: boolean) => void;
+  };
+  deletion: {
+    getDeletingTag: () => boolean;
+    setDeletingTag: (value: boolean) => void;
+    deleteTagApi: (tagId: string) => Promise<void>;
+    deleteDriverApi: (driverId: string) => Promise<void>;
+  };
+  settings: {
+    getDriverUiBaseDirInput: () => string;
+    setDriverUiBaseDirInput: (value: string) => void;
+    setDriverUiBaseDirSaved: (value: string | null) => void;
+    setSettingsMessage: (message: string) => void;
+    normalizeDriverUiBaseDir: (value: string) => string | null;
+    saveDriverUiBaseDirToStorage: (value: string | null) => void;
+    pickFolder: (defaultPath: string | null) => Promise<string | null>;
+  };
 };
 
 export function createThreePaneControllers(deps: CreateThreePaneControllersDeps) {
+  const { common, data, selectionState, runtime, driverUi, tagFlow, deletion, settings } = deps;
+
   const driverUiPollingController = createDriverUiPollingController({
-    setPolling: deps.setDriverUiPolling,
-    setMessage: deps.setTagActionMessage,
+    setPolling: driverUi.setDriverUiPolling,
+    setMessage: driverUi.setTagActionMessage,
     checkReady: async (outputJsonPath) => {
-      const check = await deps.checkDriverUiResultApi({ output_json_path: outputJsonPath });
+      const check = await driverUi.checkDriverUiResultApi({ output_json_path: outputJsonPath });
       return check.ready;
     },
-    importResult: deps.importDriverUiResultApi,
+    importResult: driverUi.importDriverUiResultApi,
     onImported: async (imported) => {
-      await deps.reloadTagManagementData();
-      deps.setSelectedDriver(
-        deps.getDrivers().find((item) => item.id === imported.driver_id) ?? null,
+      await data.reloadTagManagementData();
+      selectionState.setSelectedDriver(
+        data.getDrivers().find((item) => item.id === imported.driver_id) ?? null,
       );
-      deps.clearSelectedScanGroup();
-      deps.clearSelectedTag();
-      deps.setTagActionMessage(
+      selectionState.clearSelectedScanGroup();
+      selectionState.clearSelectedTag();
+      driverUi.setTagActionMessage(
         `取込完了: ${imported.imported_tag_count}件のタグ / ${imported.imported_scan_group_count}件のスキャングループを反映しました`,
       );
     },
-    notify: deps.notify,
+    notify: common.notify,
   });
 
   const runtimeController = createRuntimeController({
-    isBusy: deps.isRuntimeBusy,
-    setBusy: deps.setRuntimeBusy,
-    setStatus: deps.setRuntimeStatus,
-    setMessage: deps.setDashboardMessage,
-    notify: deps.notify,
-    extractErrorMessage: deps.extractErrorMessage,
+    isBusy: runtime.isRuntimeBusy,
+    setBusy: runtime.setRuntimeBusy,
+    setStatus: runtime.setRuntimeStatus,
+    setMessage: runtime.setDashboardMessage,
+    notify: common.notify,
+    extractErrorMessage: common.extractErrorMessage,
   });
 
   const driverUiController = createDriverUiController({
-    getDriverUiPolling: deps.getDriverUiPolling,
-    getDriverUiBaseDirSaved: deps.getDriverUiBaseDirSaved,
-    launchDriverUiApi: deps.launchDriverUiForDriverApi,
-    setMessage: deps.setTagActionMessage,
+    getDriverUiPolling: driverUi.getDriverUiPolling,
+    getDriverUiBaseDirSaved: driverUi.getDriverUiBaseDirSaved,
+    launchDriverUiApi: driverUi.launchDriverUiForDriverApi,
+    setMessage: driverUi.setTagActionMessage,
     monitorAndImport: (result) => {
       void driverUiPollingController.monitorAndImport(result);
     },
-    notify: deps.notify,
-    getDrivers: deps.getDrivers,
-    getDriverUiAvailableByType: deps.getDriverUiAvailableByType,
+    notify: common.notify,
+    getDrivers: data.getDrivers,
+    getDriverUiAvailableByType: driverUi.getDriverUiAvailableByType,
   });
 
   const selectionController = createSelectionController({
-    getState: deps.getSelectionState,
-    setState: deps.setSelectionState,
-    getDrivers: deps.getDrivers,
-    getScanGroups: deps.getScanGroups,
-    reloadTags: deps.reloadTags,
+    getState: selectionState.getSelectionState,
+    setState: selectionState.setSelectionState,
+    getDrivers: data.getDrivers,
+    getScanGroups: data.getScanGroups,
+    reloadTags: data.reloadTags,
   });
 
   const tagUiController = createTagUiController({
-    ensureDriverUiNotBusy: deps.ensureDriverUiNotBusy,
-    getDriversCount: deps.getDriversCount,
-    isDriversLoading: deps.isDriversLoading,
-    reloadDrivers: deps.reloadDrivers,
-    setDriverPickerOpen: deps.setDriverPickerOpen,
-    setDriverTypePickerOpen: deps.setDriverTypePickerOpen,
+    ensureDriverUiNotBusy: driverUi.ensureDriverUiNotBusy,
+    getDriversCount: tagFlow.getDriversCount,
+    isDriversLoading: tagFlow.isDriversLoading,
+    reloadDrivers: data.reloadDrivers,
+    setDriverPickerOpen: tagFlow.setDriverPickerOpen,
+    setDriverTypePickerOpen: tagFlow.setDriverTypePickerOpen,
     canUseDriverUi: driverUiController.canUseDriverUi,
-    setSelectedTag: deps.setSelectedTag,
+    setSelectedTag: selectionState.setSelectedTag,
     openDriverUiForDriver: (driverId, actionLabel) => {
       void driverUiController.openForDriver(driverId, actionLabel);
     },
     openManualTagEditor: selectionController.openManualTagEditor,
-    getDriverUiBaseDirSaved: deps.getDriverUiBaseDirSaved,
-    launchDriverUiApi: deps.launchDriverUiForTypeApi,
-    setMessage: deps.setTagActionMessage,
+    getDriverUiBaseDirSaved: driverUi.getDriverUiBaseDirSaved,
+    launchDriverUiApi: driverUi.launchDriverUiForTypeApi,
+    setMessage: driverUi.setTagActionMessage,
     monitorAndImport: (result) => {
       void driverUiPollingController.monitorAndImport(result);
     },
-    extractErrorMessage: deps.extractErrorMessage,
-    notify: deps.notify,
+    extractErrorMessage: common.extractErrorMessage,
+    notify: common.notify,
   });
 
   const deletionController = createDeletionController({
-    getDeletingTag: deps.getDeletingTag,
-    setDeletingTag: deps.setDeletingTag,
-    getDriverUiPolling: deps.getDriverUiPolling,
-    setMessage: deps.setTagActionMessage,
-    confirmAction: deps.confirmAction,
-    deleteTagApi: deps.deleteTagApi,
-    deleteDriverApi: deps.deleteDriverApi,
-    reloadTags: deps.reloadTags,
-    reloadDrivers: deps.reloadDrivers,
-    reloadScanGroups: deps.reloadScanGroups,
-    getSelectedTag: deps.getSelectedTag,
-    getSelectedDriver: deps.getSelectedDriver,
-    getSelectedScanGroup: deps.getSelectedScanGroup,
-    clearSelectedTag: deps.clearSelectedTag,
-    clearSelectedDriver: deps.clearSelectedDriver,
-    clearSelectedScanGroup: deps.clearSelectedScanGroup,
-    extractErrorMessage: deps.extractErrorMessage,
-    notify: deps.notify,
+    getDeletingTag: deletion.getDeletingTag,
+    setDeletingTag: deletion.setDeletingTag,
+    getDriverUiPolling: driverUi.getDriverUiPolling,
+    setMessage: driverUi.setTagActionMessage,
+    confirmAction: common.confirmAction,
+    deleteTagApi: deletion.deleteTagApi,
+    deleteDriverApi: deletion.deleteDriverApi,
+    reloadTags: data.reloadTags,
+    reloadDrivers: data.reloadDrivers,
+    reloadScanGroups: data.reloadScanGroups,
+    getSelectedTag: selectionState.getSelectedTag,
+    getSelectedDriver: selectionState.getSelectedDriver,
+    getSelectedScanGroup: selectionState.getSelectedScanGroup,
+    clearSelectedTag: selectionState.clearSelectedTag,
+    clearSelectedDriver: selectionState.clearSelectedDriver,
+    clearSelectedScanGroup: selectionState.clearSelectedScanGroup,
+    extractErrorMessage: common.extractErrorMessage,
+    notify: common.notify,
   });
 
   const driverUiSettingsController = createDriverUiSettingsController({
-    getInput: deps.getDriverUiBaseDirInput,
-    setInput: deps.setDriverUiBaseDirInput,
-    getSaved: deps.getDriverUiBaseDirSaved,
-    setSaved: deps.setDriverUiBaseDirSaved,
-    setMessage: deps.setSettingsMessage,
-    normalize: deps.normalizeDriverUiBaseDir,
-    saveToStorage: deps.saveDriverUiBaseDirToStorage,
-    pickFolder: deps.pickFolder,
-    extractErrorMessage: deps.extractErrorMessage,
-    notify: deps.notify,
+    getInput: settings.getDriverUiBaseDirInput,
+    setInput: settings.setDriverUiBaseDirInput,
+    getSaved: driverUi.getDriverUiBaseDirSaved,
+    setSaved: settings.setDriverUiBaseDirSaved,
+    setMessage: settings.setSettingsMessage,
+    normalize: settings.normalizeDriverUiBaseDir,
+    saveToStorage: settings.saveDriverUiBaseDirToStorage,
+    pickFolder: settings.pickFolder,
+    extractErrorMessage: common.extractErrorMessage,
+    notify: common.notify,
   });
 
   return {
