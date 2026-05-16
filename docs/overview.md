@@ -23,10 +23,30 @@
 
 ## 用語
 
-- **タグ (Tag)**: ドライバ種別に依らず本体が統一的に扱うデータ単位。一意の ID、データ型、値、品質、タイムスタンプを持つ。
-- **ドライバ (Driver)**: 外部ソース（PLC, DB, SCADA 等）との接続・データ取得を担うコンポーネント。
-- **タグ登録ツール (Tag Registration Tool)**: ドライバ固有の登録フロー・探索 UI を持つ別ウィンドウ/別プロセス。タグ定義候補を生成し、本体へ渡す。
-- **パブリッシャ (Publisher)**: タグ値を MQTT/OPC 等へ配信するコンポーネント。
+本プロジェクトでは、タグ管理の正規階層を次で統一する。
+
+```text
+DriverKind（postgres / slmp / joywatcher）
+  └ Connection（接続先定義）
+      └ ScanGroup（読出し周期・取得単位）
+          └ Tag（共通項目 + driver_spec）
+```
+
+| 用語 | 定義 | 設定上の対応 |
+| ------ | ------ | ------ |
+| **DriverKind** | ドライバの種類。例: `postgres`, `slmp`, `joywatcher`。 | `drivers.toml` の `driver_type` |
+| **Connection** | 実際の接続先定義（ホスト、ポート、認証情報など）。 | `drivers.toml` の `[[driver]]` （`id` で識別） |
+| **ScanGroup** | 取得単位と周期を表すグループ。PostgreSQL では主にテーブル単位。 | `tags.toml` の `[[scan_group]]` |
+| **Tag** | 本体が統一的に扱うデータ定義。接続先・グループに紐づく。 | `tags.toml` の `[[tag]]` |
+| **driver_spec** | ドライバ固有設定（列名、アドレス、タグパス等）。 | `tag.driver_spec` |
+| **Tag Registration Tool** | ドライバ固有の登録フロー・探索 UI を持つ別ウィンドウ/別プロセス。 | `docs/ui-registration.md` |
+| **Publisher** | タグ値を MQTT/OPC 等へ配信するコンポーネント。 | `publishers.toml` の `[[publisher]]` |
+
+補足:
+
+- `tag.driver` は DriverKind ではなく、**Connection ID（`driver.id`）** を参照する。
+- `tag.scan_group` は `scan_group.id` を参照する。
+- `scan_group.scan_rate_ms` が読出し周期の正本であり、タグ単位周期は持たない。
 
 ## 非機能要件
 

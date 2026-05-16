@@ -6,7 +6,7 @@
 
 | ファイル | 内容 |
 | -------- | ---- |
-| [`overview.md`](./overview.md) | 目的、技術スタック、用語、非機能要件 |
+| [`overview.md`](./overview.md) | 目的、技術スタック、用語（DriverKind/Connection/ScanGroup/Tag の正本）、非機能要件 |
 | [`architecture.md`](./architecture.md) | 全体構成、設計原則、ドメインモデル、Tag Bus、データフロー |
 | [`ui-registration.md`](./ui-registration.md) | 3ペイン UI、ドライバ別タグ登録 UI、PostgreSQL 登録フロー |
 | [`decisions.md`](./decisions.md) | 方針決定事項、実現可能性レビュー |

@@ -85,6 +85,52 @@ PostgreSQL では、テーブルの最新値をタグ値として扱うため、
 - 初期実装: 一時 JSON ファイル
 - 将来: gRPC / Named Pipe に統一
 
+## タグ管理の階層モデル
+
+タグ管理の正規階層は以下とする。
+
+```text
+DriverKind（postgres / slmp / joywatcher）
+  └ Connection（接続先定義）
+      └ ScanGroup（読出し周期・取得単位）
+          └ Tag（共通項目 + driver_spec）
+```
+
+- UI 表示上は「接続先起点」の表示を許可するが、内部モデルは上記階層を正本とする。
+- `Tag.driver_id` は `Connection.id` を参照し、`Tag.scan_group_id` は `ScanGroup.id` を参照する。
+- 読出し周期はタグ単位ではなく `ScanGroup` 単位で管理する。
+
+## 本体-登録プロセス連携プロトコル（初期版）
+
+一時 JSON ファイル連携では、以下のメタ情報を必須とする。
+
+- `schemaVersion`: スキーマ互換判定用
+- `requestId`: 登録セッション識別子（重複取込防止）
+- `generatedAt`: 生成時刻（監査・再実行判断）
+- `driverKind` / `driverId`: ドライバ整合性確認
+
+本体側受信時の最低バリデーション:
+
+1. `schemaVersion` が対応範囲内であること
+2. `driverKind` と `driverSpec.kind` が一致すること
+3. `scanGroups[].id` と `tags[].driverSpec.scanGroup` が整合すること
+4. タグ ID/名称重複がないこと（既存定義との衝突含む）
+5. 参照不能な接続先・スキャングループがないこと
+
+## 異常系・ロールバック方針
+
+- 保存処理は「検証成功後に一括反映」とし、途中失敗時は反映しない。
+- `config/tags.toml` 書込時は `tags.toml.tmp` に出力後、アトミック rename で置換する。
+- 取込失敗時はエラー一覧（行/タグID/理由）を UI に返し、部分成功を作らない。
+- ドライバ登録プロセス異常終了時は、セッション破棄と再実行導線を表示する。
+
+## UX 要件（タグ登録）
+
+- ウィザード各ステップで「戻る」「進む」「キャンセル」を統一配置する。
+- 最終ステップで「確定前レビュー（追加件数/重複件数/警告）」を必須表示する。
+- 長時間処理（接続探索・列取得）は進捗表示とタイムアウト再試行を提供する。
+- 大量登録に備え、列フィルタ・全選択（時系列列除外）・命名ルール一括適用を提供する。
+
 ## タグ登録結果の概念例
 
 ```json
@@ -119,6 +165,131 @@ PostgreSQL では、テーブルの最新値をタグ値として扱うため、
   ]
 }
 ```
+
+## `config/tags.toml` スキーマ例（正式運用案）
+
+以下は本体へ取り込んだ後の永続化イメージである。
+
+### 1) 最小構成（PoC/検証用）
+
+```toml
+[[scan_group]]
+id = "sensors_1000ms"
+driver = "postgres-main"
+table = "sensors"
+timestamp_column = "created_at"
+scan_rate_ms = 1000
+
+[[tag]]
+id = "tag-0001"
+name = "temperature"
+data_type = "f32"
+driver = "postgres-main"
+scan_group = "sensors_1000ms"
+driver_spec = { value_column = "temperature" }
+enabled = true
+```
+
+### 2) 標準構成（推奨）
+
+```toml
+[[scan_group]]
+id = "line1_sensors_1000ms"
+driver = "postgres-main"
+table = "line1_sensors"
+timestamp_column = "measured_at"
+scan_rate_ms = 1000
+
+[[scan_group]]
+id = "line1_system_5000ms"
+driver = "postgres-main"
+table = "line1_system"
+timestamp_column = "updated_at"
+scan_rate_ms = 5000
+
+[[tag]]
+id = "tag-line1-temp"
+name = "Line1 Temperature"
+data_type = "f32"
+driver = "postgres-main"
+scan_group = "line1_sensors_1000ms"
+driver_spec = { value_column = "temperature" }
+enabled = true
+metadata = { unit = "degC", comment = "ライン1温度" }
+
+[[tag]]
+id = "tag-line1-pressure"
+name = "Line1 Pressure"
+data_type = "f64"
+driver = "postgres-main"
+scan_group = "line1_sensors_1000ms"
+driver_spec = { value_column = "pressure" }
+enabled = true
+metadata = { unit = "kPa", comment = "ライン1圧力" }
+
+[[tag]]
+id = "tag-line1-status"
+name = "Line1 Status"
+data_type = "string"
+driver = "postgres-main"
+scan_group = "line1_system_5000ms"
+driver_spec = { value_column = "status" }
+enabled = true
+metadata = { comment = "運転状態" }
+```
+
+### 3) 大量登録構成（命名規約前提）
+
+```toml
+[[scan_group]]
+id = "plant_a_sensors_1000ms"
+driver = "postgres-main"
+table = "plant_a_sensors"
+timestamp_column = "recorded_at"
+scan_rate_ms = 1000
+
+[[tag]]
+id = "plant-a-sensors-temperature"
+name = "plant_a_temperature"
+data_type = "f32"
+driver = "postgres-main"
+scan_group = "plant_a_sensors_1000ms"
+driver_spec = { value_column = "temperature" }
+enabled = true
+
+[[tag]]
+id = "plant-a-sensors-humidity"
+name = "plant_a_humidity"
+data_type = "f32"
+driver = "postgres-main"
+scan_group = "plant_a_sensors_1000ms"
+driver_spec = { value_column = "humidity" }
+enabled = true
+
+[[tag]]
+id = "plant-a-sensors-vibration"
+name = "plant_a_vibration"
+data_type = "f64"
+driver = "postgres-main"
+scan_group = "plant_a_sensors_1000ms"
+driver_spec = { value_column = "vibration" }
+enabled = true
+```
+
+## 命名規約（推奨）
+
+- `scan_group.id`: `<site>_<table>_<rate>ms`
+- `tag.id`: 永続IDとして不変（表示名変更の影響を受けない）
+- `tag.name`: UI 表示向け（ユーザーが変更可能）
+- `driver`: 接続先ID（`DriverKind` ではない）
+
+## 保存前チェックリスト（本体側）
+
+1. `scan_group.id` の重複がない
+2. `tag.id` の重複がない
+3. `tag.scan_group` が存在する
+4. `tag.driver` と `scan_group.driver` が一致する
+5. `driver_spec.value_column` が空でない
 
 ## SLMP 登録 UI（将来）
 
