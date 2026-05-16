@@ -65,6 +65,23 @@ impl PostgresDriver {
         format!("\"{}\"", name.replace('"', "\"\""))
     }
 
+    fn qualified_relation(schema: Option<&str>, table: &str) -> Result<String> {
+        if !Self::is_safe_identifier(table) {
+            return Err(anyhow!("Unsafe table identifier: {}", table));
+        }
+        if let Some(schema) = schema {
+            if !Self::is_safe_identifier(schema) {
+                return Err(anyhow!("Unsafe schema identifier: {}", schema));
+            }
+            return Ok(format!(
+                "{}.{}",
+                Self::quote_identifier(schema),
+                Self::quote_identifier(table)
+            ));
+        }
+        Ok(Self::quote_identifier(table))
+    }
+
     fn parse_value(data_type: DataType, raw: &str) -> Result<serde_json::Value> {
         match data_type {
             DataType::Bool => Ok(serde_json::json!(raw.parse::<bool>()?)),
@@ -79,13 +96,11 @@ impl PostgresDriver {
     /// スキャングループの SELECT クエリを構築する
     /// tags_with_cols の順序でカラムを並べ、結果取得は位置インデックスで行う
     fn build_group_query(
+        schema: Option<&str>,
         table: &str,
         timestamp_col: Option<&str>,
         tags_with_cols: &[(&Tag, String)],
     ) -> Result<String> {
-        if !Self::is_safe_identifier(table) {
-            return Err(anyhow!("Unsafe table identifier: {}", table));
-        }
         let col_expressions: Result<Vec<String>> = tags_with_cols
             .iter()
             .map(|(_, col)| {
@@ -96,7 +111,7 @@ impl PostgresDriver {
             })
             .collect();
         let col_list = col_expressions?.join(", ");
-        let relation = Self::quote_identifier(table);
+        let relation = Self::qualified_relation(schema, table)?;
         if let Some(ts_col) = timestamp_col {
             if !Self::is_safe_identifier(ts_col) {
                 return Err(anyhow!("Unsafe timestamp_column: {}", ts_col));
@@ -170,6 +185,25 @@ impl Driver for PostgresDriver {
         "postgres"
     }
 
+    fn registration_schema(&self) -> serde_json::Value {
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "host": { "type": "string", "default": "localhost" },
+                "port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 5432 },
+                "database": { "type": "string" },
+                "username": { "type": "string" },
+                "password": { "type": "string", "format": "password" },
+                "ssl_mode": {
+                    "type": "string",
+                    "enum": ["disable", "prefer", "require", "verify-ca", "verify-full"],
+                    "default": "disable"
+                }
+            },
+            "required": ["database", "username"]
+        })
+    }
+
     async fn start(&mut self, registry: &TagRegistry, bus: &TagBus) -> Result<()> {
         if self.task.is_some() {
             return Ok(());
@@ -180,10 +214,11 @@ impl Driver for PostgresDriver {
         let database = self.get_string_setting("database", None)?;
         let username = self.get_string_setting("username", None)?;
         let password = self.get_string_setting("password", Some(""))?;
+        let ssl_mode = self.get_string_setting("ssl_mode", Some("disable"))?;
 
         let dsn = format!(
-            "host={} port={} dbname={} user={} password={}",
-            host, port, database, username, password
+            "host={} port={} dbname={} user={} password={} sslmode={}",
+            host, port, database, username, password, ssl_mode
         );
 
         let (stop_tx, mut stop_rx) = oneshot::channel();
@@ -296,6 +331,7 @@ impl Driver for PostgresDriver {
                                 last_polled.insert(group.id.clone(), now);
 
                                 match Self::build_group_query(
+                                    group.schema.as_deref(),
                                     table,
                                     group.timestamp_column.as_deref(),
                                     &tags_with_cols,
@@ -356,5 +392,49 @@ impl Driver for PostgresDriver {
     async fn unregister_tag(&mut self, tag_id: &TagId) -> Result<()> {
         self.tags.write().await.remove(tag_id);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::{DataType, Tag, TagId};
+
+    fn sample_tag() -> Tag {
+        Tag {
+            id: TagId("tag-1".to_string()),
+            name: "tag-1".to_string(),
+            data_type: DataType::F32,
+            driver_id: "postgres-main".to_string(),
+            scan_group_id: "sensors-fast".to_string(),
+            driver_spec: serde_json::json!({ "value_column": "temperature" }),
+            metadata: None,
+        }
+    }
+
+    #[test]
+    fn build_group_query_with_schema() {
+        let tag = sample_tag();
+        let sql = PostgresDriver::build_group_query(
+            Some("public"),
+            "sensors",
+            Some("measured_at"),
+            &[(&tag, "temperature".to_string())],
+        )
+        .expect("query build should succeed");
+        assert!(sql.contains("FROM \"public\".\"sensors\""));
+        assert!(sql.contains("ORDER BY \"measured_at\" DESC LIMIT 1"));
+    }
+
+    #[test]
+    fn build_group_query_rejects_unsafe_identifier() {
+        let tag = sample_tag();
+        let result = PostgresDriver::build_group_query(
+            None,
+            "sensors;drop",
+            Some("measured_at"),
+            &[(&tag, "temperature".to_string())],
+        );
+        assert!(result.is_err());
     }
 }

@@ -34,6 +34,8 @@ pub struct ScanGroupConfig {
     pub driver: String,
     /// スキャン周期（ミリ秒）
     pub scan_rate_ms: u32,
+    /// PostgreSQL: スキーマ名（省略時は接続既定スキーマ）
+    pub schema: Option<String>,
     /// PostgreSQL: 読み出しテーブル名
     pub table: Option<String>,
     /// PostgreSQL: タイムスタンプカラム名（最新行取得に使用）
