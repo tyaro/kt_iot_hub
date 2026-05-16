@@ -1,4 +1,5 @@
 const DRIVER_UI_BASE_DIR_KEY = 'kt_iot_hub.driverUiBaseDir';
+export const DRIVER_UI_IMPORT_BUSY_MESSAGE = '前回のドライバUI結果を取込中です。完了までお待ちください。';
 
 export function normalizeDriverUiBaseDir(value: string): string | null {
   const trimmed = value.trim();
