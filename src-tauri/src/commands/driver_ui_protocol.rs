@@ -6,12 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct DriverUiImportPayload {
     #[serde(default)]
     pub schema_version: Option<u32>,
-    #[serde(default)]
-    pub driver_id: Option<String>,
-    #[serde(default, alias = "driverKind")]
-    pub driver_type: Option<String>,
-    #[serde(default)]
-    pub driver: Option<DriverUiDriverPayload>,
+  pub driver: DriverUiDriverPayload,
     #[serde(default)]
     pub tags: Vec<DriverUiTagPayload>,
     #[serde(default)]
@@ -55,8 +50,7 @@ pub struct DriverUiScanGroupPayload {
 #[serde(rename_all = "camelCase")]
 pub struct DriverUiDriverPayload {
     pub id: String,
-    #[serde(default, alias = "driverKind")]
-    pub driver_type: Option<String>,
+  pub driver_type: String,
     #[serde(default)]
     pub enabled: Option<bool>,
     #[serde(default)]
@@ -167,7 +161,7 @@ mod tests {
 
         let payload: DriverUiImportPayload = serde_json::from_str(json).expect("payload parse");
         assert_eq!(payload.schema_version, Some(1));
-        assert_eq!(payload.driver.as_ref().map(|d| d.id.as_str()), Some("postgres-main"));
+        assert_eq!(payload.driver.id, "postgres-main");
         assert_eq!(payload.scan_groups.len(), 1);
         assert_eq!(payload.tags.len(), 1);
     }

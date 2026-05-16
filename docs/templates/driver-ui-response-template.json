@@ -3,8 +3,6 @@
   "requestId": "req-20260517-0001",
   "generatedAt": "2026-05-17T12:03:00Z",
   "direction": "driver-to-host",
-  "driverKind": "postgres",
-  "driverId": "postgres-main",
   "driver": {
     "id": "postgres-main",
     "driverType": "postgres",

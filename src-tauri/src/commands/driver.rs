@@ -608,19 +608,9 @@ async fn validate_and_convert_payload(
         });
     }
 
-    let payload_driver_id = normalize_optional_string(payload.driver_id);
-    let payload_driver_type = normalize_optional_string(payload.driver_type);
     let driver_payload = payload.driver;
 
-    let effective_driver_id = driver_payload
-        .as_ref()
-        .map(|driver| driver.id.clone())
-        .or(payload_driver_id)
-        .or_else(|| session.target_driver_id.clone())
-        .ok_or(ErrorResponse {
-            error: "driver_id is required in session or payload".to_string(),
-            code: "VALIDATION_ERROR".to_string(),
-        })?;
+    let effective_driver_id = driver_payload.id.clone();
 
     if let Some(session_driver_id) = session.target_driver_id.as_ref() {
         if effective_driver_id != *session_driver_id {
@@ -634,19 +624,10 @@ async fn validate_and_convert_payload(
         }
     }
 
-    let effective_driver_type = driver_payload
-        .as_ref()
-        .and_then(|driver| driver.driver_type.clone())
-        .or(payload_driver_type)
-        .unwrap_or_else(|| session.driver_type.clone());
+    let effective_driver_type = driver_payload.driver_type.clone();
 
-    let driver_config = build_import_driver_config(
-        state,
-        &effective_driver_id,
-        &effective_driver_type,
-        driver_payload,
-    )
-    .await?;
+    let driver_config =
+        build_import_driver_config(&effective_driver_id, &effective_driver_type, driver_payload)?;
 
     let mut scan_group_ids = HashSet::new();
     let mut new_scan_groups = Vec::with_capacity(payload.scan_groups.len());
@@ -836,39 +817,38 @@ async fn apply_driver_import(
     Ok(())
 }
 
-async fn build_import_driver_config(
-    state: &tauri::State<'_, AppState>,
+fn build_import_driver_config(
     driver_id: &str,
     driver_type: &str,
-    driver_payload: Option<DriverUiDriverPayload>,
+    driver_payload: DriverUiDriverPayload,
 ) -> Result<DriverConfig, ErrorResponse> {
-    if let Some(driver_payload) = driver_payload {
-        let settings = merge_driver_settings(driver_payload.settings, driver_payload.extra);
-        return Ok(DriverConfig {
-            id: driver_payload.id,
-            driver_type: normalize_optional_string(driver_payload.driver_type)
-                .unwrap_or_else(|| driver_type.to_string()),
-            enabled: Some(driver_payload.enabled.unwrap_or(true)),
-            settings,
+    if driver_payload.id != driver_id {
+        return Err(ErrorResponse {
+            error: format!(
+                "driver.id mismatch (driver.id={}, expected={})",
+                driver_payload.id, driver_id
+            ),
+            code: "VALIDATION_ERROR".to_string(),
         });
     }
 
-    let existing = state
-        .driver_configs
-        .read()
-        .await
-        .iter()
-        .find(|cfg| cfg.id == driver_id)
-        .cloned()
-        .ok_or(ErrorResponse {
+    if driver_payload.driver_type != driver_type {
+        return Err(ErrorResponse {
             error: format!(
-                "Driver payload is required when creating a new connection: {}",
-                driver_id
+                "driver.driverType mismatch (driver.driverType={}, expected={})",
+                driver_payload.driver_type, driver_type
             ),
             code: "VALIDATION_ERROR".to_string(),
-        })?;
+        });
+    }
 
-    Ok(existing)
+    let settings = merge_driver_settings(driver_payload.settings, driver_payload.extra);
+    Ok(DriverConfig {
+        id: driver_payload.id,
+        driver_type: driver_payload.driver_type,
+        enabled: Some(driver_payload.enabled.unwrap_or(true)),
+        settings,
+    })
 }
 
 fn merge_driver_settings(

@@ -14,10 +14,7 @@
 | `requestId` | `string` | 推奨 | 本体から受け取った `requestId` の引き継ぎを推奨。 |
 | `generatedAt` | `string` | 推奨 | 返却JSONの生成時刻（ISO 8601 / RFC3339）。 |
 | `direction` | `string` | 任意 | `driver-to-host` を推奨。 |
-| `driverKind` | `string` | 条件付き必須 | `driverType` と同義の互換キー。どちらかは必須。 |
-| `driverType` | `string` | 条件付き必須 | `driverKind` と同義。どちらかは必須。 |
-| `driverId` | `string` | 条件付き必須 | 対象接続先ID。既存編集では必須。新規時は `driver.id` で代替可。 |
-| `driver` | `object` | 条件付き必須 | 新規接続先作成時は必須。既存接続先編集時は省略可。 |
+| `driver` | `object` | 必須 | 接続先定義。`id` と `driverType` を含む。 |
 | `scanGroups` | `array<object>` | 必須 | 対象接続先の ScanGroup 一覧。空配列可。 |
 | `tags` | `array<object>` | 必須 | 対象接続先の Tag 一覧。空配列可。 |
 
@@ -25,12 +22,10 @@
 
 ## `driver` オブジェクト
 
-> 新規接続先作成時は必須。既存接続先編集時は省略可（本体側既存定義を利用）。
-
 | フィールド | 型 | 必須 | 説明 |
 | --- | --- | --- | --- |
-| `id` | `string` | 必須 | 接続先ID（`driverId` と同一推奨）。 |
-| `driverType` | `string` | 推奨 | ドライバ種別（例: `postgres`）。 |
+| `id` | `string` | 必須 | 接続先ID。 |
+| `driverType` | `string` | 必須 | ドライバ種別（例: `postgres`）。 |
 | `enabled` | `boolean` | 任意 | 接続先有効/無効。省略時は `true` 扱い。 |
 | `settings` | `object` | 必須 | 接続設定。ドライバ固有キーを含む。 |
 
@@ -73,15 +68,15 @@
 `driverSpec` には以下を含めること:
 
 - `scanGroup`（`scanGroups[].id` と一致）
-- `kind`（`driverKind` / `driverType` と整合）
+- `kind`（`driver.driverType` と整合）
 
 ---
 
 ## 本体側の受信バリデーション（要点）
 
 1. `schemaVersion == 1` であること。  
-2. 新規接続先時は `driver.id` と `driverType` を含むこと。  
-3. `driverKind`（または `driverType`）と `tags[].driverSpec.kind` が整合すること。  
+2. `driver.id` と `driver.driverType` を含むこと。  
+3. `driver.driverType` と `tags[].driverSpec.kind` が整合すること。  
 4. `tags[].driverSpec.scanGroup` が `scanGroups[].id` に存在すること。  
 5. タグID重複がないこと（既存定義との衝突含む）。  
 6. 同一接続先・同一ScanGroup内でタグ名重複がないこと。
@@ -92,5 +87,5 @@
 
 1. 本体起動時に受け取った `outputJsonPath` へ最終結果を上書き保存する。  
 2. 途中保存ファイルではなく、**確定時の最終状態のみ**を書き出す。  
-3. 互換のため `driverKind` を維持しつつ、可能なら `driverType` も併記する。  
-4. 不明フィールドがあっても本体は既知フィールドで処理する（前方互換）。
+3. `driver` ブロックは常に出力し、`id` / `driverType` / `settings` を含める。  
+4. 不明フィールドがあっても本体は既知フィールドで処理する。

@@ -137,6 +137,73 @@ pub struct RuntimeStatusDto {
     pub last_error: Option<String>,
 }
 
+/// PostgreSQL 接続パラメータ DTO
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostgresConnectionParams {
+    pub host: String,
+    pub port: u16,
+    pub database: String,
+    pub username: String,
+    pub password: String,
+    pub ssl_mode: Option<String>,
+}
+
+/// PostgreSQL テーブル一覧 DTO
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostgresTableDto {
+    pub schema: String,
+    pub name: String,
+}
+
+/// PostgreSQL カラム一覧 DTO
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostgresColumnDto {
+    pub name: String,
+    pub data_type: String,
+    pub is_nullable: bool,
+}
+
+/// PostgreSQL カラム取得リクエスト DTO
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostgresColumnsRequest {
+    pub conn: PostgresConnectionParams,
+    pub schema: Option<String>,
+    pub table: String,
+}
+
+/// PostgreSQL 接続テスト結果 DTO
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostgresConnectionTestResult {
+    pub ok: bool,
+    pub message: String,
+}
+
+/// ドライバUI起動コンテキスト DTO
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DriverUiLaunchContextDto {
+    pub launched_as_driver_ui: bool,
+    pub session_id: Option<String>,
+    pub driver_type: Option<String>,
+    pub driver_id: Option<String>,
+    pub input_json_path: Option<String>,
+    pub output_json_path: Option<String>,
+    pub request_id: Option<String>,
+}
+
+/// ドライバUI出力JSON保存リクエスト DTO
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveDriverUiOutputRequest {
+    pub output_json_path: Option<String>,
+    pub payload: serde_json::Value,
+}
+
 /// エラーレスポンス DTO
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(crate = "serde")]

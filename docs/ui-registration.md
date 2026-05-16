@@ -333,14 +333,13 @@ MQTT 配信時のトピックは以下の階層構造に従う。
 - `schemaVersion`: スキーマ互換判定用
 - `requestId`: 登録セッション識別子（重複取込防止）
 - `generatedAt`: 生成時刻（監査・再実行判断）
-- `driverKind` / `driverId`: ドライバ整合性確認
 - `driver`: 新規接続先時の接続定義（`id`, `driverType`, `enabled`, `settings` を含む）
 
 本体側受信時の最低バリデーション:
 
 1. `schemaVersion` が対応範囲内であること
 2. 新規接続先時は `driver.id` と `driverType` が存在すること
-3. `driverKind` / `driverType` と `driverSpec.kind` が一致すること
+3. `driver.driverType` と `driverSpec.kind` が一致すること
 4. `scanGroups[].id` と `tags[].driverSpec.scanGroup` が整合すること
 5. タグ ID/名称重複がないこと（既存定義との衝突含む）
 6. 参照不能な接続先・スキャングループがないこと
@@ -353,8 +352,7 @@ MQTT 配信時のトピックは以下の階層構造に従う。
     - `DriverUiDriverPayload`
     - `DriverUiScanGroupPayload`
     - `DriverUiTagPayload`
-- `driverKind` は `driverType` のエイリアスとして受理する。
-- 既存接続先編集時は `driver` ブロック省略を許容し、新規接続先時は `driver` ブロック（`id`, `driverType`, `settings`）を必須とする。
+- 返却JSONでは `driver` ブロックを必須とし、`id` / `driverType` / `settings` を常に出力する。
 
 ## 異常系・ロールバック方針
 
@@ -375,8 +373,6 @@ MQTT 配信時のトピックは以下の階層構造に従う。
 ```json
 {
   "schemaVersion": 1,
-  "driverKind": "postgres",
-  "driverId": "postgres-main",
   "driver": {
     "id": "postgres-main",
     "driverType": "postgres",
