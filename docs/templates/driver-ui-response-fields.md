@@ -36,7 +36,6 @@
 - `database`: `string`
 - `username`: `string`
 - `password`: `string`
-- `registration_ui_path`: `string`（任意）
 
 ---
 
@@ -88,4 +87,5 @@
 1. 本体起動時に受け取った `outputJsonPath` へ最終結果を上書き保存する。  
 2. 途中保存ファイルではなく、**確定時の最終状態のみ**を書き出す。  
 3. `driver` ブロックは常に出力し、`id` / `driverType` / `settings` を含める。  
-4. 不明フィールドがあっても本体は既知フィールドで処理する。
+4. ドライバUIの配置先は本体側が `driverType` を使って解決するため、UI実行ファイルパスは返却不要。  
+5. 不明フィールドがあっても本体は既知フィールドで処理する。

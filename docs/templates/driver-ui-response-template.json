@@ -12,8 +12,7 @@
       "port": 5432,
       "database": "iot_hub",
       "username": "iot_user",
-      "password": "******",
-      "registration_ui_path": "C:/tools/postgres-tag-ui/postgres-tag-ui.exe"
+      "password": "******"
     }
   },
   "scanGroups": [

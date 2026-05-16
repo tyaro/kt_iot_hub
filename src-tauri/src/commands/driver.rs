@@ -84,16 +84,7 @@ pub async fn save_driver(
         serde_json::Value::String(req.password.clone())
     };
 
-    let registration_ui_path = existing
-        .as_ref()
-        .and_then(|cfg| cfg.settings.get("registration_ui_path"))
-        .cloned();
-    let driver_ui_path = existing
-        .as_ref()
-        .and_then(|cfg| cfg.settings.get("driver_ui_path"))
-        .cloned();
-
-    let mut settings = serde_json::Map::from_iter([
+    let settings = serde_json::Map::from_iter([
         ("host".to_string(), serde_json::Value::String(req.host.clone())),
         ("port".to_string(), serde_json::Value::from(req.port)),
         (
@@ -106,12 +97,6 @@ pub async fn save_driver(
         ),
         ("password".to_string(), password),
     ]);
-    if let Some(path) = registration_ui_path {
-        settings.insert("registration_ui_path".to_string(), path);
-    }
-    if let Some(path) = driver_ui_path {
-        settings.insert("driver_ui_path".to_string(), path);
-    }
 
     let config = DriverConfig {
         id: req.id.clone(),
@@ -265,7 +250,7 @@ pub async fn launch_driver_ui(
 
         let executable_path = resolve_driver_ui_path(&driver_config).ok_or(ErrorResponse {
             error: format!(
-                "Driver UI executable not found for driver {} (set registration_ui_path/driver_ui_path or place it under driver-ui/{}/registration-ui(.exe))",
+                "Driver UI executable not found for driver {} (place it under driver-ui/{}/registration-ui(.exe))",
                 driver_id,
                 driver_config.driver_type
             ),
@@ -281,7 +266,7 @@ pub async fn launch_driver_ui(
 
         let executable_path = resolve_driver_ui_path_for_type(&driver_configs, &driver_type).ok_or(ErrorResponse {
             error: format!(
-                "Driver UI executable not found for driver type {} (set registration_ui_path/driver_ui_path or place it under driver-ui/{}/registration-ui(.exe))",
+                "Driver UI executable not found for driver type {} (place it under driver-ui/{}/registration-ui(.exe))",
                 driver_type,
                 driver_type
             ),
@@ -560,54 +545,12 @@ pub async fn import_driver_ui_result(
 }
 
 fn resolve_driver_ui_path(config: &DriverConfig) -> Option<String> {
-    let explicit_path = config
-        .settings
-        .get("registration_ui_path")
-        .and_then(|v| v.as_str())
-        .map(ToString::to_string)
-        .or_else(|| {
-            config
-                .settings
-                .get("driver_ui_path")
-                .and_then(|v| v.as_str())
-                .map(ToString::to_string)
-        });
-
-    if let Some(path) = explicit_path {
-        if let Some(resolved) = resolve_candidate_path(&path) {
-            return Some(resolved);
-        }
-    }
-
     find_default_driver_ui_path(&config.driver_type)
 }
 
-fn resolve_candidate_path(value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    let raw = PathBuf::from(trimmed);
-    if raw.is_absolute() && raw.exists() {
-        return Some(path_to_string(raw));
-    }
-    if raw.exists() {
-        return Some(path_to_string(raw));
-    }
-
-    for root in app_root_candidates() {
-        let candidate = root.join(trimmed);
-        if candidate.exists() {
-            return Some(path_to_string(candidate));
-        }
-    }
-
-    None
-}
-
 fn find_default_driver_ui_path(driver_type: &str) -> Option<String> {
-    if driver_type.trim().is_empty() {
+    let driver_type = driver_type.trim();
+    if driver_type.is_empty() {
         return None;
     }
 
@@ -953,7 +896,13 @@ fn merge_driver_settings(
     };
 
     for (key, value) in extra {
-        if key != "id" && key != "driverType" && key != "driverKind" && key != "enabled" {
+        if key != "id"
+            && key != "driverType"
+            && key != "driverKind"
+            && key != "enabled"
+            && key != "registration_ui_path"
+            && key != "driver_ui_path"
+        {
             merged.insert(key, value);
         }
     }

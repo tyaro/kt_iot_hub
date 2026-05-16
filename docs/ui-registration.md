@@ -129,7 +129,7 @@
 ### 階層関係（重要）
 
 ```text
-DriverKind（postgres / slmp / joywatcher）
+DriverType（postgres / slmp / joywatcher）
   └ Driver / Connection（接続先：例 postgres-server1, postgres-server2）
       └ ScanGroup（テーブル/読出単位）
           └ Tag（カラム/レジスタ等）
@@ -229,16 +229,16 @@ PostgreSQL では、テーブルの最新値をタグ値として扱うため、
 - ドライバ固有設定（`driver_spec`）の生成
 - タグ候補の一括生成
 
-## drivers.toml 追加設定（ドライバUI起動用）
+## ドライバUI配置規約
 
-本体の `launch_driver_ui(driver_id)` コマンドは、対象ドライバ定義から
-ドライバUI実行ファイルパスを読み取って別プロセス起動する。
+本体の `launch_driver_ui(driver_id)` コマンドは、対象ドライバの `driver_type` を使って
+本体配下の決まった位置からドライバUI実行ファイルを探索し、別プロセス起動する。
 
-- 参照キー（優先順）
-  1. `registration_ui_path`
-  2. `driver_ui_path`
+表記ルール:
 
-未指定時は、本体アプリ配下の既定パスを探索する。
+- JSON では `driverType`（camelCase）
+- TOML では `driver_type`（snake_case）
+- 意味は同じ **DriverType** を指す
 
 - 既定探索パス: `<app-root>/driver-ui/<driver_type>/registration-ui(.exe)`
 - 互換探索: `<app-root>/driver-ui/<driver_type>/driver-ui(.exe)` など
@@ -249,7 +249,7 @@ PowerShell スクリプト `scripts/install-driver-ui.ps1` を使用する。
 
 - 例: `npm run driver-ui:install -- -DriverType postgres -SourcePath C:/tools/postgres-tag-ui/postgres-tag-ui.exe`
 
-### 設定例（明示指定する場合）
+### `drivers.toml` 設定例
 
 ```toml
 [[driver]]
@@ -261,7 +261,6 @@ port = 5432
 database = "iot_hub"
 username = "iot_user"
 password = "iot_password"
-registration_ui_path = "driver-ui/postgres/registration-ui.exe"
 ```
 
 ## 受け渡し方式
@@ -274,7 +273,7 @@ registration_ui_path = "driver-ui/postgres/registration-ui.exe"
 タグ管理の正規階層は以下とする。
 
 ```text
-DriverKind（postgres / slmp / joywatcher）
+DriverType（postgres / slmp / joywatcher）
   └ Connection（接続先定義）
       └ ScanGroup（読出し周期・取得単位）
           └ Tag（共通項目 + driver_spec）
@@ -393,8 +392,7 @@ MQTT 配信時のトピックは以下の階層構造に従う。
       "port": 5432,
       "database": "iot_hub",
       "username": "iot_user",
-      "password": "******",
-      "registration_ui_path": "C:/tools/postgres-tag-ui/postgres-tag-ui.exe"
+      "password": "******"
     }
   },
   "tags": [
@@ -540,7 +538,7 @@ enabled = true
 - `scan_group.id`: `<site>_<table>_<rate>ms`
 - `tag.id`: 永続IDとして不変（表示名変更の影響を受けない）
 - `tag.name`: UI 表示向け（ユーザーが変更可能）
-- `driver`: 接続先ID（`DriverKind` ではない）
+- `driver`: 接続先ID（`DriverType` ではない）
 
 ## 保存前チェックリスト（本体側）
 

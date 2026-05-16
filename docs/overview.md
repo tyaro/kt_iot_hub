@@ -26,7 +26,7 @@
 本プロジェクトでは、タグ管理の正規階層を次で統一する。
 
 ```text
-DriverKind（postgres / slmp / joywatcher）
+DriverType（postgres / slmp / joywatcher）
   └ Connection（接続先定義）
       └ ScanGroup（読出し周期・取得単位）
           └ Tag（共通項目 + driver_spec）
@@ -34,7 +34,7 @@ DriverKind（postgres / slmp / joywatcher）
 
 | 用語 | 定義 | 設定上の対応 |
 | ------ | ------ | ------ |
-| **DriverKind** | ドライバの種類。例: `postgres`, `slmp`, `joywatcher`。 | `drivers.toml` の `driver_type` |
+| **DriverType** | ドライバの種類。例: `postgres`, `slmp`, `joywatcher`。 | JSON: `driverType` / TOML: `driver_type` |
 | **Connection** | 実際の接続先定義（ホスト、ポート、認証情報など）。 | `drivers.toml` の `[[driver]]` （`id` で識別） |
 | **ScanGroup** | 取得単位と周期を表すグループ。PostgreSQL では主にテーブル単位。 | `tags.toml` の `[[scan_group]]` |
 | **Tag** | 本体が統一的に扱うデータ定義。接続先・グループに紐づく。 | `tags.toml` の `[[tag]]` |
@@ -44,7 +44,7 @@ DriverKind（postgres / slmp / joywatcher）
 
 補足:
 
-- `tag.driver` は DriverKind ではなく、**Connection ID（`driver.id`）** を参照する。
+- `tag.driver` は DriverType ではなく、**Connection ID（`driver.id`）** を参照する。
 - `tag.scan_group` は `scan_group.id` を参照する。
 - `scan_group.scan_rate_ms` が読出し周期の正本であり、タグ単位周期は持たない。
 

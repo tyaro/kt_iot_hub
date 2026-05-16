@@ -47,7 +47,7 @@ scan_rate_ms = 1000
 `tags.toml` の意味モデルは以下を正本とする。
 
 ```text
-DriverKind（postgres / slmp / joywatcher）
+DriverType（postgres / slmp / joywatcher）
   └ Connection（drivers.toml の driver.id）
       └ ScanGroup（scan_group）
           └ Tag（tag）

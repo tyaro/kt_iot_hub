@@ -23,7 +23,7 @@
 - 配置スクリプト:
   - `npm run driver-ui:install -- -DriverType postgres -SourcePath C:/tools/postgres-tag-ui/postgres-tag-ui.exe`
 
-本体は `registration_ui_path` / `driver_ui_path` が未指定でも、上記既定配置を探索して起動します。
+本体は `driver_type` を使って、上記既定配置を探索して起動します。
 
 ## 補足
 
