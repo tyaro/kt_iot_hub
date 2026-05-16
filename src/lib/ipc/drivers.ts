@@ -1,24 +1,20 @@
 import { invoke } from '@tauri-apps/api/core';
 
-export interface DriverDto {
+interface DriverCoreFields {
   id: string;
   driver_type: string;
   enabled: boolean;
-  registration_ui_available: boolean;
   host: string;
   port: number;
   database: string;
   username: string;
 }
 
-export interface SaveDriverRequest {
-  id: string;
-  driver_type: string;
-  enabled: boolean;
-  host: string;
-  port: number;
-  database: string;
-  username: string;
+export interface DriverDto extends DriverCoreFields {
+  registration_ui_available: boolean;
+}
+
+export interface SaveDriverRequest extends DriverCoreFields {
   password: string;
 }
 

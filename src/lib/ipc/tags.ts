@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 
-export interface TagDto {
+export interface TagShape {
   id: string;
   name: string;
   data_type: string;
@@ -8,6 +8,8 @@ export interface TagDto {
   scan_group_id: string;
   driver_spec: Record<string, unknown>;
 }
+
+export type TagDto = TagShape;
 
 export interface ScanGroupDto {
   id: string;
@@ -17,14 +19,7 @@ export interface ScanGroupDto {
   scan_rate_ms?: number;
 }
 
-export interface CreateTagRequest {
-  id: string;
-  name: string;
-  data_type: string;
-  driver_id: string;
-  scan_group_id: string;
-  driver_spec: Record<string, unknown>;
-}
+export type CreateTagRequest = TagShape;
 
 type ApiTagDto = {
   id: string;

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 /// タグレスポンス DTO
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TagDto {
+pub struct TagPayload {
     pub id: String,
     pub name: String,
     pub data_type: String,
@@ -14,6 +14,8 @@ pub struct TagDto {
     pub scan_group_id: String,
     pub driver_spec: serde_json::Value,
 }
+
+pub type TagDto = TagPayload;
 
 /// スキャングループ DTO
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -37,16 +39,7 @@ pub struct TagValueDto {
 }
 
 /// タグ作成リクエスト DTO
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateTagRequest {
-    pub id: String,
-    pub name: String,
-    pub data_type: String,
-    pub driver_id: String,
-    pub scan_group_id: String,
-    pub driver_spec: serde_json::Value,
-}
+pub type CreateTagRequest = TagPayload;
 
 /// ドライバレスポンス DTO
 #[derive(Clone, Debug, Serialize, Deserialize)]
