@@ -296,6 +296,26 @@ function validateConnection() {
   }
 }
 
+async function resolveTagId() {
+  validateConnection()
+
+  const tagPath = el('tagPath').value.trim()
+  if (!tagPath) {
+    throw new Error('タグパスを入力してください')
+  }
+
+  const settings = connectionSettings()
+  const nativeTagId = await invoke('resolve_joywatcher_tag', {
+    endpoint: settings.endpoint,
+    userId: settings.userId,
+    password: settings.password,
+    tagPath
+  })
+
+  el('tagNativeId').value = String(nativeTagId)
+  el('msgOk').textContent = `Tag ID を解決しました: ${nativeTagId}`
+}
+
 function upsertGroup() {
   const id = el('groupId').value.trim()
   const node = el('groupNode').value.trim()
@@ -544,6 +564,14 @@ el('btnResetGroup').addEventListener('click', () => {
   renderGroups()
   renderTags()
   refreshSummary()
+})
+el('btnResolveTag').addEventListener('click', async () => {
+  clearMessages()
+  try {
+    await resolveTagId()
+  } catch (error) {
+    el('msgErr').textContent = formatError(error)
+  }
 })
 el('btnSaveTag').addEventListener('click', () => {
   clearMessages()

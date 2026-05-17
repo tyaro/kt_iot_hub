@@ -172,7 +172,9 @@ kt_iot_hub.exe
 - `joywatcher-bridge-x86` に `dll` モードを追加し、`LoadLibraryW` / `GetProcAddress` による `ConnectNet` / `DisconnectNet` / `DisconnectNetForce` の最小ローダを実装した
 - `ping` / `connect` / `disconnect` / `forceDisconnect` / `resolveTags` / `read` の最小応答を持つ
 - IPC は `stdin` / `stdout` の JSON Lines で疎通確認済み
-- `resolveTags` / `read` はまだ mock 応答である
+- `resolveTags` は dll モードで `JWGetTagIDS2` を呼ぶ実装を追加済み
+- 登録UI 側には `resolve_joywatcher_tag` コマンドと「Tag ID を解決」ボタンを追加し、単一タグの `nativeTagId` をフォームへ反映できるようにした
+- `read` はまだ mock 応答である
 - 現在の開発環境で `cargo run -p joywatcher-bridge-x86 -- --mode dll` を実行すると `os error 193` で失敗し、x86 DLL を x64 プロセスへロードできないことを確認した
 - `cargo build -p joywatcher-bridge-x86 --target i686-pc-windows-msvc` は成功し、x86 ビルド済み EXE では `--mode dll` の起動が成功する
 - x86 ビルド済み EXE で `connect` / `disconnect` を送ると、`active_connections: 1 -> 0` の構造化応答が返ることを確認した
@@ -348,11 +350,12 @@ driver-ui/joywatcher/
 - x86 bridge の `connect` / `disconnect` は最小往復まで確認済み
 - `driver-joywatcher` からの bridge 起動と `ping` / `connect` も確認済み
 - 登録UI の保存 JSON は `driverSpec.nativeTagId` を保持できる形へ更新済み
-- 未実装なのは UI からの `resolveTags` 実呼出し、`read` の実 DLL 化、gRPC 送信統合
+- UI から bridge を使って単一タグの `resolveTags` を呼ぶ導線は追加済み
+- 未実装なのは `JWRead` の実 DLL 化、gRPC 送信統合、UI の実機手動確認
 
 ## 次の最小タスク
 
-1. 登録UI から x86 bridge を起動し、`JWGetTagIDS2` で `driverSpec.nativeTagId` を埋める
+1. 登録UI の `resolve_joywatcher_tag` を実機で手動確認し、妥当な `nativeTagId` が返るか確認する
 2. `JWRead` を実 DLL 呼び出しへ差し替え、runtime が `nativeTagId` で読めるようにする
 3. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
 4. `driver-joywatcher` から bridge の値を gRPC 送信へつなぐ

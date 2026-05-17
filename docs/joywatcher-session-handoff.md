@@ -28,6 +28,8 @@
 - `apps/joywatcher/driver/src/joywatcher_bridge.rs` を追加し、runtime から x86 bridge を起動して `ping` / `connect` する最小統合を実装した
 - `apps/joywatcher/ui/assets/app.js` を更新し、保存 JSON が `driverSpec.nativeTagId` を保持できるようにした
 - `ConnectNet.htm` の `CDaoDatabase*` 記述と同梱サンプルを突き合わせ、DAO ハンドルはタグ解決の正規ルートとみなさず、当面は `JWGetTagIDS2` / `JWRead` を主経路とする方針を確認した
+- `apps/joywatcher/ui/src/joywatcher_bridge_client.rs` を追加し、登録UI から x86 bridge を起動して単一タグの `JWGetTagIDS2` を呼ぶ最小導線を実装した
+- `apps/joywatcher/bridge-x86/src/dll_api.rs` に `JWGetTagIDS2` 実装を追加し、dll モードの `resolveTags` が動くようにした
 
 ## まだ未完了のこと
 
@@ -80,6 +82,8 @@
 - [x] `joywatcher-bridge-x86 --mode dll` で DLL ローダが動作し、現環境では `os error 193` により x86 / x64 不一致が明示される
 - [x] `cargo build -p joywatcher-bridge-x86 --target i686-pc-windows-msvc` が成功し、x86 ビルド済み EXE の `--mode dll` で `ping` / `connect` / `disconnect` が構造化応答を返す
 - [x] `driver-joywatcher.exe` 実行時に x86 bridge が起動し、`bridge ping ok` / `bridge connect ok` が出る
+- [x] `cargo test -p joywatcher-bridge-x86` が `JWGetTagIDS2` 実装追加後も成功する
+- [x] `cargo test --manifest-path apps/joywatcher/ui/Cargo.toml` が成功する
 
 ## 未確認 / 要確認
 
@@ -109,6 +113,8 @@
 - runtime 側は x86 bridge を優先探索するよう更新済み
 - bridge ログが stdout に混ざると runtime 側の JSON 読取が壊れるため、bridge は stderr へログ出力し、runtime 側も JSON 行のみ採用するよう修正済み
 - JoyWatcher の数値 tagId は本体タグ ID と別物なので、保存時は `driverSpec.nativeTagId` として分離する方針
+- 登録UI から単一タグの `nativeTagId` を解決する Tauri コマンド `resolve_joywatcher_tag` を追加済み
+- ただし UI 上の実機手動確認はまだ未実施
 
 ## 次セッションで最初に見るファイル
 
@@ -118,7 +124,7 @@
 
 ## 次の最小タスク
 
-1. 登録UI から x86 bridge を起動し、`JWGetTagIDS2` で `driverSpec.nativeTagId` を保存する
+1. 登録UI の `resolve_joywatcher_tag` を実機で手動確認する
 2. `JWRead` を実 DLL 呼び出しへ差し替え、runtime が `nativeTagId` で読めるようにする
 3. `ConnectNet` / `DisconnectNet` の呼出規約差分を実装上で吸収する
 4. DAO ハンドル調査が必要になった場合は、Rust ではなく x86 / MFC C++ shim を別途切る
@@ -139,6 +145,7 @@
 - 影響クレート: `cargo test -p driver-joywatcher`
 - 影響クレート: `cargo test -p joywatcher-bridge-x86`
 - 追加確認: `cargo build -p joywatcher-bridge-x86 --target i686-pc-windows-msvc`
+- 追加確認: `cargo test --manifest-path apps/joywatcher/ui/Cargo.toml`
 - 追加確認: `$env:RUST_LOG='info'; .\target\debug\driver-joywatcher.exe -- --driver-id jw-test --driver-kind joywatcher --grpc-addr 127.0.0.1:59999`
 - 追加確認: `cargo build --manifest-path apps/joywatcher/ui/Cargo.toml`
 - 追加確認: `cargo build --manifest-path apps/joywatcher/driver/Cargo.toml`
