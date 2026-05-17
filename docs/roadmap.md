@@ -5,7 +5,7 @@
 | フェーズ | 内容 |
 | --------- | ------ |
 | Phase 1 | 骨格構築: Tauri 起動、Tag Bus、TOML ロード、PostgreSQL ドライバ PoC、MQTT Publisher、最低限の UI |
-| Phase 2 | タグ管理 UI、ドライバ別タグ登録ツール、TOML インポート/エクスポート、ログビューア、Mosquitto 同梱インストーラ整備 |
+| Phase 2 | タグ管理 UI、ドライバ別タグ登録ツール、TOML インポート/エクスポート、MQTT モニタ UI、Mosquitto 同梱インストーラ整備 |
 | Phase 3 | JoyWatcher ドライバ、子プロセス IPC、ランタイム/登録 IPC の統一 |
 | Phase 4 | SLMP ドライバ追加 |
 | Phase 5+ | 外部ネットワーク対応時の暗号化・認証の追加検討 |
@@ -68,7 +68,7 @@
 | インポート・エクスポート | CSV/TOML ファイル選択、一括読込、export | 2-3日 |
 | バリデーション表示 | テーブルセル内のエラー表示 | 2-3日 |
 | PostgreSQL 登録ツール PoC | テーブル/カラム探索、タグ候補生成 | 4-6日 |
-| ログビューア | `/logs` ページ、ログファイル読み込み表示 | 2-3日 |
+| MQTT モニタ UI | ダッシュボードから展開する subscribe モニタ、受信一覧、topic filter | 3-4日 |
 
 ### Mosquitto インストーラ統合
 

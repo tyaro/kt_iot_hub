@@ -11,6 +11,7 @@
 | [`ui-registration.md`](./ui-registration.md) | 3ペイン UI、ドライバ別タグ登録 UI、PostgreSQL 登録フロー |
 | [`decisions.md`](./decisions.md) | 方針決定事項、実現可能性レビュー |
 | [`config-spec.md`](./config-spec.md) | TOML 設定ファイル仕様、`driver_spec`、`scan_group` |
+| [`mqtt-monitor.md`](./mqtt-monitor.md) | MQTT モニタ機能の責務分離、ダッシュボード導線、IPC / UI / state 設計 |
 | [`templates/driver-ui-request-template.json`](./templates/driver-ui-request-template.json) | 本体→ドライバUI 連携JSONテンプレート |
 | [`templates/driver-ui-request-fields.md`](./templates/driver-ui-request-fields.md) | 本体→ドライバUI `--input-json` フィールド仕様 |
 | [`templates/driver-ui-response-template.json`](./templates/driver-ui-response-template.json) | ドライバUI→本体 返却JSONテンプレート |
