@@ -303,6 +303,8 @@ driver-ui/joywatcher/
 - `scripts/build-dev-joywatcher-ui.ps1` は `driver_ui_joywatcher.exe` をビルドし、`driver-ui/joywatcher/registration-ui.exe` へ配置する
 - `scripts/build-dev-joywatcher-runtime.ps1` は `driver-joywatcher.exe` をビルドし、`driver-ui/joywatcher/driver-joywatcher.exe` へ配置する
 - `scripts/build-dev-joywatcher-suite.ps1` は UI / runtime / bridge をまとめてビルドし、`driver-ui/joywatcher/` 配下へ揃える
+- `scripts/launch-dev-joywatcher-ui.ps1` は launch context 用の一時 JSON を生成し、`registration-ui.exe` を手動確認用に起動する
+- `npm run joywatcher-ui:launch -- -Build` で UI のビルド/配置込みの起動準備ができる（パスワードは UI で直接入力）
 
 ## エラー処理方針
 

@@ -132,6 +132,7 @@
 - `driver-joywatcher` は driver definition の `driver_spec_json` から `nativeTagId` を抜き出して gRPC 送信値へ変換する
 - `driver-joywatcher` は `scan_group.scan_rate_ms` ごとに read を回し続ける継続ポーリング実装へ更新済み
 - UI 保存時の接続設定キーは `endpoint` / `user_id` / `password` / `notes` を正本とし、runtime は旧 `userId` も互換読込できるよう更新済み
+- `scripts/launch-dev-joywatcher-ui.ps1` を追加し、launch context 付きで JoyWatcher 登録UI を単体起動できるようにした
 - ただし UI 上の実機手動確認と呼出規約の実機確認はまだ未実施
 
 ## 次セッションで最初に見るファイル
@@ -168,6 +169,7 @@
 - 追加確認: `cargo build --manifest-path apps/joywatcher/driver/Cargo.toml`
 - 追加確認: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-dev-joywatcher-runtime.ps1`
 - 追加確認: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-dev-joywatcher-ui.ps1`
+- 追加確認: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\launch-dev-joywatcher-ui.ps1 -Build -NoLaunch`
 - 追加確認: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-dev-joywatcher-suite.ps1`
 
 ## 補足
