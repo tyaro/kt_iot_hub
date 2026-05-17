@@ -79,6 +79,14 @@
 
 gRPC は localhost のみで待ち受け、登録UIと通信ランタイムの双方が本体へ接続する。
 
+### ランタイム制御ポリシー（重要）
+
+- gRPC サーバーは本体プロセスの基盤機能として **常時稼働** とする。
+- `start_runtime_services` / `stop_runtime_services` の対象: ドライバ通信ランタイム（DriverProcessManager 管理の子プロセス）。
+- `start_runtime_services` / `stop_runtime_services` の対象: MQTT パブリッシャ（PublisherManager）。
+- したがって、ランタイム停止時でも gRPC は停止しない（登録UIとドライバIPCで継続利用するため）。
+- gRPC を停止するのは本体終了時（graceful shutdown）に限定する。
+
 ## ドメインモデル
 
 ### Tag

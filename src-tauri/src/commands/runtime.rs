@@ -141,13 +141,6 @@ pub async fn start_grpc_server(state: &AppState) -> Result<(), ErrorResponse> {
     Ok(())
 }
 
-async fn stop_grpc_server(state: &tauri::State<'_, AppState>) {
-    if let Some(shutdown_tx) = state.grpc_shutdown_tx.write().await.take() {
-        let _ = shutdown_tx.send(());
-    }
-    state.runtime_status.write().await.grpc_running = false;
-}
-
 async fn clear_last_error(state: &tauri::State<'_, AppState>) {
     state.runtime_status.write().await.last_error = None;
 }

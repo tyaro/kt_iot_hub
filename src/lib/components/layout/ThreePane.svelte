@@ -246,10 +246,31 @@
   $effect(() => {
     if (currentPage === 'dashboard' || currentPage === 'tags') {
       void reloadTagManagementData();
-      if (currentPage === 'dashboard') {
-        void runtimeController.refreshStatus(getRuntimeStatus);
-      }
     }
+  });
+
+  $effect(() => {
+    if (currentPage !== 'dashboard') {
+      return;
+    }
+
+    let disposed = false;
+    const refresh = async () => {
+      if (disposed) {
+        return;
+      }
+      await runtimeController.refreshStatus(getRuntimeStatus);
+    };
+
+    void refresh();
+    const timerId = window.setInterval(() => {
+      void refresh();
+    }, 2000);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(timerId);
+    };
   });
 </script>
 
