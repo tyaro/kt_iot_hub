@@ -22,6 +22,15 @@
 - `apps/postgres/ui/` : PostgreSQL 用ドライバ登録UI（別アプリ）
 - `apps/postgres/driver/` : PostgreSQL 通信ランタイム（別プロセス）
 
+### `dist/` と `apps/postgres/ui/assets/` の違い
+
+- ルートの `dist/` は、本体 Svelte UI を `npm run build` した結果の出力先です。
+- `src-tauri/tauri.conf.json` の `frontendDist` は `../dist` を参照します。
+- `apps/postgres/ui/assets/` は、PostgreSQL 登録UI (`registration-ui.exe`) が読み込む静的画面資産です。
+- `apps/postgres/ui/tauri.conf.json` の `frontendDist` は `./assets` を参照します。
+
+つまり、**本体アプリの画面はルート `dist/`、登録UI の画面は `apps/postgres/ui/assets/`** です。
+
 > 現在は段階移行のため、`apps/postgres/ui` は最小実装です。
 > まずは「本体と別物の実行ファイルとして起動できること」を優先し、
 > 本格UIは次フェーズで実装します。

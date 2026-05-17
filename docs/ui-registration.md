@@ -246,9 +246,15 @@ PostgreSQL では、テーブルの最新値をタグ値として扱うため、
 ### PostgreSQL ドライバUI（monorepo 分離後）
 
 - 実装本体: `apps/driver-ui-postgres/`
+- 静的画面資産: `apps/postgres/ui/assets/`
 - 開発用ビルド/配置: `npm run driver-ui:dev`
 - 生成バイナリ: `target/debug/driver_ui_postgres.exe`（workspace ルート）
 - 配置先: `driver-ui/postgres/registration-ui.exe`
+
+補足:
+
+- ルート `dist/` は本体アプリ (`kt_iot_hub`) 用のフロントエンド出力先であり、PostgreSQL 登録UIとは別物である。
+- PostgreSQL 登録UI は `apps/postgres/ui/tauri.conf.json` の `frontendDist = "./assets"` を通じて、`apps/postgres/ui/assets/` の HTML / CSS / JavaScript を読み込む。
 
 ### 配置スクリプト
 
