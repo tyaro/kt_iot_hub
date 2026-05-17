@@ -12,13 +12,11 @@ mod publishers;
 use app_state::AppState;
 use config::AppConfig;
 use core::{DataType, Tag, TagBus, TagId, TagRegistry};
-use drivers::postgres::PostgresDriver;
-use drivers::DriverManager;
+use drivers::DriverProcessManager;
 use publishers::mqtt::MqttPublisher;
 use publishers::PublisherManager;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::str::FromStr;
-use config::ScanGroupConfig;
 use tauri::Manager;
 use tracing::info;
 
@@ -95,18 +93,9 @@ fn main() {
                 }
             });
 
-            let mut driver_manager = DriverManager::new();
-            for d in &config.drivers {
-                if d.driver_type == "postgres" {
-                    let groups: Vec<ScanGroupConfig> = config
-                        .scan_groups
-                        .iter()
-                        .filter(|g| g.driver == d.id)
-                        .cloned()
-                        .collect();
-                    driver_manager.register(Box::new(PostgresDriver::new(d.clone(), groups)));
-                }
-            }
+            // gRPCアドレスは tag_registration と同じポートを使用
+            let grpc_addr = grpc::tag_registration::DEFAULT_GRPC_ADDR;
+            let driver_process_manager = DriverProcessManager::new(grpc_addr);
 
             let mut publisher_manager = PublisherManager::new();
             for p in &config.publishers {
@@ -118,7 +107,7 @@ fn main() {
             let app_state = AppState::new(
                 registry,
                 tag_bus,
-                driver_manager,
+                driver_process_manager,
                 publisher_manager,
                 config.drivers,
                 config.publishers,

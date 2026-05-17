@@ -1,16 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-/// 外部ドライバUIから本体へ返却される JSON ペイロード（初期版）
+/// 外部ドライバUIから本体へ返却される JSON ペイロード（入れ子構造）
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DriverUiImportPayload {
     #[serde(default)]
     pub schema_version: Option<u32>,
     pub driver: DriverUiDriverPayload,
-    #[serde(default)]
-    pub tags: Vec<DriverUiTagPayload>,
-    #[serde(default)]
-    pub scan_groups: Vec<DriverUiScanGroupPayload>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -42,6 +38,8 @@ pub struct DriverUiScanGroupPayload {
     pub schema: Option<String>,
     #[serde(default)]
     pub node: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<DriverUiTagPayload>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -53,6 +51,8 @@ pub struct DriverUiDriverPayload {
     pub enabled: Option<bool>,
     #[serde(default)]
     pub settings: Option<serde_json::Value>,
+    #[serde(default)]
+    pub scan_groups: Vec<DriverUiScanGroupPayload>,
     #[serde(flatten)]
     pub extra: serde_json::Map<String, serde_json::Value>,
 }
@@ -76,6 +76,8 @@ pub struct DriverUiLaunchSession {
     pub session_id: String,
     pub mode: String,
     pub output_json_path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub editing_tag_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -90,7 +92,6 @@ pub struct DriverUiLaunchDriver {
 #[serde(rename_all = "camelCase")]
 pub struct DriverUiLaunchData {
     pub scan_groups: Vec<DriverUiLaunchScanGroup>,
-    pub tags: Vec<DriverUiLaunchTag>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -107,6 +108,8 @@ pub struct DriverUiLaunchScanGroup {
     pub timestamp_column: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub node: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<DriverUiLaunchTag>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

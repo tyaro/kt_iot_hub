@@ -1,0 +1,42 @@
+[package]
+name = "driver-postgres"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "driver-postgres"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["full"] }
+
+# gRPC
+tonic = { version = "0.12", features = ["transport"] }
+prost = "0.13"
+
+# Database
+tokio-postgres = "0.7"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# CLI 引数パース
+clap = { version = "4.4", features = ["derive"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+[build-dependencies]
+tonic-build = "0.12"
+protoc-bin-vendored = "3"

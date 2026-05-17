@@ -4,6 +4,7 @@ export interface LaunchDriverUiRequest {
   driver_id?: string | null;
   driver_type?: string | null;
   driver_ui_base_dir?: string | null;
+  editing_tag_id?: string | null;
 }
 
 export interface LaunchDriverUiResponse {

@@ -156,8 +156,8 @@ export function createThreePaneControllers(deps: CreateThreePaneControllersDeps)
     setDriverTypePickerOpen: tagFlow.setDriverTypePickerOpen,
     canUseDriverUi: driverUiController.canUseDriverUi,
     setSelectedTag: selectionState.setSelectedTag,
-    openDriverUiForDriver: (driverId, actionLabel) => {
-      void driverUiController.openForDriver(driverId, actionLabel);
+    openDriverUiForDriver: (driverId: string, actionLabel: '新規' | '編集', editingTagId?: string) => {
+      void driverUiController.openForDriver(driverId, actionLabel, editingTagId);
     },
     openManualTagEditor: selectionController.openManualTagEditor,
     getDriverUiBaseDirSaved: driverUi.getDriverUiBaseDirSaved,

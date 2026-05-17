@@ -187,17 +187,19 @@ impl TagRegistrationService for TagRegistrationGrpcService {
 
 pub async fn serve(state: AppState, addr: &str, shutdown_rx: oneshot::Receiver<()>) -> anyhow::Result<()> {
     let addr: SocketAddr = addr.parse()?;
-    let service = TagRegistrationGrpcService { state };
+    let registration_service = TagRegistrationGrpcService { state: state.clone() };
+    let runtime_service = crate::grpc::driver_runtime::build_server(state);
 
-    info!("Starting TagRegistration gRPC server on {}", addr);
+    info!("Starting gRPC server on {} (TagRegistration + DriverRuntime)", addr);
     tonic::transport::Server::builder()
-        .add_service(TagRegistrationServiceServer::new(service))
+        .add_service(TagRegistrationServiceServer::new(registration_service))
+        .add_service(runtime_service)
         .serve_with_shutdown(addr, async move {
             let _ = shutdown_rx.await;
-            info!("TagRegistration gRPC shutdown signal received");
+            info!("gRPC shutdown signal received");
         })
         .await?;
 
-    warn!("TagRegistration gRPC server stopped");
+    warn!("gRPC server stopped");
     Ok(())
 }

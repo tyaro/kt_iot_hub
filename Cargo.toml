@@ -4,7 +4,8 @@ members = [
   "src-tauri",
   "packages/protocol-rs",
   "packages/driver-ui-host",
-  "apps/driver-ui-postgres",
+  "apps/postgres/ui",
+  "apps/postgres/driver",
 ]
 
 [workspace.package]

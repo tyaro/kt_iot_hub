@@ -401,33 +401,30 @@ MQTT 配信時のトピックは以下の階層構造に従う。
       "database": "iot_hub",
       "username": "iot_user",
       "password": "******"
-    }
-  },
-  "tags": [
-    {
-      "id": "tag-0001",
-      "name": "temperature",
-      "dataType": "f32",
-      "unit": "degC",
-      "comment": "温度",
-      "enabled": true,
-      "driverSpec": {
-        "kind": "postgres",
+    },
+    "scanGroups": [
+      {
+        "id": "sensors_1000ms",
         "table": "sensors",
-        "valueColumn": "temperature",
         "timestampColumn": "created_at",
-        "scanGroup": "sensors_1000ms"
+        "scanRateMs": 1000,
+        "tags": [
+          {
+            "id": "tag-0001",
+            "name": "temperature",
+            "dataType": "f32",
+            "unit": "degC",
+            "comment": "温度",
+            "enabled": true,
+            "driverSpec": {
+              "kind": "postgres",
+              "valueColumn": "temperature"
+            }
+          }
+        ]
       }
-    }
-  ],
-  "scanGroups": [
-    {
-      "id": "sensors_1000ms",
-      "table": "sensors",
-      "timestampColumn": "created_at",
-      "scanRateMs": 1000
-    }
-  ]
+    ]
+  }
 }
 ```
 

@@ -36,19 +36,19 @@ pub async fn stop_runtime_services(
 }
 
 async fn start_drivers(state: &tauri::State<'_, AppState>) -> Result<(), ErrorResponse> {
-    let driver_ids: Vec<String> = state
+    let drivers: Vec<(String, String)> = state
         .driver_configs
         .read()
         .await
         .iter()
         .filter(|cfg| cfg.enabled.unwrap_or(true))
-        .map(|cfg| cfg.id.clone())
+        .map(|cfg| (cfg.id.clone(), cfg.driver_type.clone()))
         .collect();
 
     let mut manager = state.drivers.write().await;
-    for driver_id in driver_ids {
+    for (driver_id, driver_type) in drivers {
         manager
-            .start_driver(&driver_id, &state.registry, &state.tag_bus)
+            .start_driver(&driver_id, &driver_type)
             .await
             .map_err(ErrorResponse::from)?;
     }

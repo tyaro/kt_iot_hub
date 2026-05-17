@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package kt_iot_hub.driver_runtime;
+
+// ドライバ通信プロセス ↔ 本体間の IPC サービス
+// ドライバプロセスが本体の gRPC サーバへ接続する（クライアント = ドライバプロセス）
+service DriverRuntimeService {
+  // 起動時にタグ定義・接続設定を取得する
+  rpc GetDriverDefinition(GetDriverDefinitionRequest) returns (GetDriverDefinitionResponse);
+
+  // タグ値をストリームで本体へ送信する（双方向ストリームの代わりにクライアントストリームを使用）
+  rpc StreamTagValues(stream TagValueMessage) returns (StreamTagValuesAck);
+}
+
+// --- GetDriverDefinition ---
+
+message GetDriverDefinitionRequest {
+  string driver_id   = 1;
+  string driver_kind = 2;
+}
+
+message ConnectionSettings {
+  // 接続設定を文字列マップで渡す（postgres: host/port/user/password/dbname 等）
+  map<string, string> settings = 1;
+}
+
+message ScanGroupDef {
+  string id               = 1;
+  uint32 scan_rate_ms     = 2;
+  string schema           = 3;
+  string table            = 4;
+  string timestamp_column = 5;
+  string node             = 6;
+}
+
+message TagDef {
+  string id              = 1;
+  string name            = 2;
+  string data_type       = 3;
+  string scan_group_id   = 4;
+  string driver_spec_json = 5; // serde_json でシリアライズした driver_spec
+  bool   enabled         = 6;
+}
+
+message GetDriverDefinitionResponse {
+  ConnectionSettings connection = 1;
+  repeated ScanGroupDef scan_groups = 2;
+  repeated TagDef tags = 3;
+}
+
+// --- StreamTagValues ---
+
+message TagValueMessage {
+  string tag_id      = 1;
+  string value_json  = 2; // serde_json::Value をシリアライズした文字列
+  string quality     = 3; // "good" | "bad" | "uncertain"
+  string timestamp   = 4; // RFC 3339 形式
+}
+
+message StreamTagValuesAck {
+  bool   success = 1;
+  string message = 2;
+}

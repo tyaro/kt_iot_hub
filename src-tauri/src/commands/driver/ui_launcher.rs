@@ -121,6 +121,7 @@ pub async fn launch_driver_ui(
         driver_id.clone(),
         driver_type.clone(),
         output_json_path.to_string_lossy().to_string(),
+        req.editing_tag_id.clone(),
     )
     .await?;
 
@@ -191,10 +192,32 @@ async fn build_driver_ui_launch_context(
     driver_id: Option<String>,
     driver_type: String,
     output_json_path: String,
+    editing_tag_id: Option<String>,
 ) -> Result<DriverUiLaunchContext, ErrorResponse> {
     let scan_groups = state.scan_groups.read().await.clone();
     let tags = state.registry.list_all().await;
 
+    // ドライバ配下のタグを scanGroupId でグループ化
+    let tags_by_scan_group: std::collections::HashMap<String, Vec<_>> = tags
+        .iter()
+        .filter(|tag| {
+            if let Some(ref target_driver_id) = driver_id {
+                tag.driver_id == *target_driver_id
+            } else {
+                false
+            }
+        })
+        .fold(
+            std::collections::HashMap::new(),
+            |mut map, tag| {
+                map.entry(tag.scan_group_id.clone())
+                    .or_insert_with(Vec::new)
+                    .push(tag);
+                map
+            },
+        );
+
+    // scanGroups にネストされたタグ構造を生成
     let filtered_scan_groups: Vec<DriverUiLaunchScanGroup> = scan_groups
         .into_iter()
         .filter(|group| {
@@ -204,35 +227,36 @@ async fn build_driver_ui_launch_context(
                 false
             }
         })
-        .map(|group| DriverUiLaunchScanGroup {
-            id: group.id,
-            driver: group.driver,
-            scan_rate_ms: group.scan_rate_ms,
-            schema: group.schema,
-            table: group.table,
-            timestamp_column: group.timestamp_column,
-            node: group.node,
-        })
-        .collect();
+        .map(|group| {
+            let group_tags = tags_by_scan_group
+                .get(&group.id)
+                .map(|tag_refs| {
+                    tag_refs
+                        .iter()
+                        .map(|tag| DriverUiLaunchTag {
+                            id: tag.id.0.clone(),
+                            name: tag.name.clone(),
+                            data_type: tag.data_type.as_str().to_string(),
+                            driver_id: tag.driver_id.clone(),
+                            scan_group_id: tag.scan_group_id.clone(),
+                            enabled: true,
+                            driver_spec: tag.driver_spec.clone(),
+                            metadata: tag.metadata.clone(),
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
 
-    let filtered_tags: Vec<DriverUiLaunchTag> = tags
-        .into_iter()
-        .filter(|tag| {
-            if let Some(ref target_driver_id) = driver_id {
-                tag.driver_id == *target_driver_id
-            } else {
-                false
+            DriverUiLaunchScanGroup {
+                id: group.id,
+                driver: group.driver,
+                scan_rate_ms: group.scan_rate_ms,
+                schema: group.schema,
+                table: group.table,
+                timestamp_column: group.timestamp_column,
+                node: group.node,
+                tags: group_tags,
             }
-        })
-        .map(|tag| DriverUiLaunchTag {
-            id: tag.id.0,
-            name: tag.name,
-            data_type: tag.data_type.as_str().to_string(),
-            driver_id: tag.driver_id,
-            scan_group_id: tag.scan_group_id,
-            enabled: true,
-            driver_spec: tag.driver_spec,
-            metadata: tag.metadata,
         })
         .collect();
 
@@ -245,6 +269,7 @@ async fn build_driver_ui_launch_context(
             session_id: session_id.to_string(),
             mode: "create-or-edit".to_string(),
             output_json_path,
+            editing_tag_id,
         },
         driver: DriverUiLaunchDriver {
             driver_type,
@@ -252,7 +277,6 @@ async fn build_driver_ui_launch_context(
         },
         context: DriverUiLaunchData {
             scan_groups: filtered_scan_groups,
-            tags: filtered_tags,
         },
     })
 }

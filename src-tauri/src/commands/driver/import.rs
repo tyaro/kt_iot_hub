@@ -142,11 +142,14 @@ async fn validate_and_convert_payload(
 
     let effective_driver_type = driver_payload.driver_type.clone();
     let driver_config =
-        build_import_driver_config(&effective_driver_id, &effective_driver_type, driver_payload)?;
+        build_import_driver_config(&effective_driver_id, &effective_driver_type, &driver_payload)?;
 
     let mut scan_group_ids = HashSet::new();
-    let mut new_scan_groups = Vec::with_capacity(payload.scan_groups.len());
-    for sg in payload.scan_groups {
+    let mut new_scan_groups = Vec::new();
+    let mut all_new_tags = Vec::new();
+
+    // scanGroups とそこに含まれるタグを処理
+    for sg in &driver_payload.scan_groups {
         if !scan_group_ids.insert(sg.id.clone()) {
             return Err(ErrorResponse {
                 error: format!("Duplicate scan_group id: {}", sg.id),
@@ -154,14 +157,17 @@ async fn validate_and_convert_payload(
             });
         }
         new_scan_groups.push(ScanGroupConfig {
-            id: sg.id,
+            id: sg.id.clone(),
             driver: effective_driver_id.clone(),
             scan_rate_ms: sg.scan_rate_ms.unwrap_or(1000),
-            schema: sg.schema,
-            table: sg.table,
-            timestamp_column: sg.timestamp_column,
-            node: sg.node,
+            schema: sg.schema.clone(),
+            table: sg.table.clone(),
+            timestamp_column: sg.timestamp_column.clone(),
+            node: sg.node.clone(),
         });
+
+        // この scanGroup に含まれるタグを処理
+        all_new_tags.reserve(sg.tags.len());
     }
 
     let existing_tags = state.registry.list_all().await;
@@ -173,60 +179,47 @@ async fn validate_and_convert_payload(
 
     let mut local_tag_ids = HashSet::new();
     let mut local_name_keys = HashSet::new();
-    let mut new_tags = Vec::with_capacity(payload.tags.len());
 
-    for t in payload.tags {
-        if !local_tag_ids.insert(t.id.clone()) || !existing_tag_ids.insert(t.id.clone()) {
-            return Err(ErrorResponse {
-                error: format!("Duplicate tag id: {}", t.id),
-                code: "VALIDATION_ERROR".to_string(),
+    for sg in &driver_payload.scan_groups {
+        for t in &sg.tags {
+            if !local_tag_ids.insert(t.id.clone()) || !existing_tag_ids.insert(t.id.clone()) {
+                return Err(ErrorResponse {
+                    error: format!("Duplicate tag id: {}", t.id),
+                    code: "VALIDATION_ERROR".to_string(),
+                });
+            }
+
+            // ネストされたタグは既に正しい scanGroup に紐付いている
+            let scan_group_id = sg.id.clone();
+
+            let name_key = format!("{}:{}:{}", effective_driver_id, scan_group_id, t.name);
+            if !local_name_keys.insert(name_key) {
+                return Err(ErrorResponse {
+                    error: format!(
+                        "Duplicate tag name in same scanGroup: {} (scanGroup={})",
+                        t.name, scan_group_id
+                    ),
+                    code: "VALIDATION_ERROR".to_string(),
+                });
+            }
+
+            DataType::from_str(&t.data_type).map_err(ErrorResponse::from)?;
+
+            let metadata = build_metadata(&t.unit, &t.comment);
+            all_new_tags.push(TagConfig {
+                id: t.id.clone(),
+                name: t.name.clone(),
+                data_type: t.data_type.clone(),
+                driver: effective_driver_id.clone(),
+                scan_group: scan_group_id,
+                driver_spec: t.driver_spec.clone(),
+                enabled: t.enabled,
+                metadata,
             });
         }
-
-        let scan_group_id = t
-            .driver_spec
-            .get("scanGroup")
-            .and_then(|v| v.as_str())
-            .ok_or(ErrorResponse {
-                error: format!("Tag {} missing driverSpec.scanGroup", t.id),
-                code: "VALIDATION_ERROR".to_string(),
-            })?
-            .to_string();
-
-        if !scan_group_ids.contains(&scan_group_id) {
-            return Err(ErrorResponse {
-                error: format!("Tag {} references unknown scanGroup {}", t.id, scan_group_id),
-                code: "VALIDATION_ERROR".to_string(),
-            });
-        }
-
-        let name_key = format!("{}:{}:{}", effective_driver_id, scan_group_id, t.name);
-        if !local_name_keys.insert(name_key) {
-            return Err(ErrorResponse {
-                error: format!(
-                    "Duplicate tag name in same scanGroup: {} (scanGroup={})",
-                    t.name, scan_group_id
-                ),
-                code: "VALIDATION_ERROR".to_string(),
-            });
-        }
-
-        DataType::from_str(&t.data_type).map_err(ErrorResponse::from)?;
-
-        let metadata = build_metadata(&t.unit, &t.comment);
-        new_tags.push(TagConfig {
-            id: t.id,
-            name: t.name,
-            data_type: t.data_type,
-            driver: effective_driver_id.clone(),
-            scan_group: scan_group_id,
-            driver_spec: t.driver_spec,
-            enabled: t.enabled,
-            metadata,
-        });
     }
 
-    Ok((driver_config, new_scan_groups, new_tags))
+    Ok((driver_config, new_scan_groups, all_new_tags))
 }
 
 fn build_metadata(unit: &Option<String>, comment: &Option<String>) -> Option<serde_json::Value> {
@@ -332,7 +325,7 @@ async fn apply_driver_import(
 fn build_import_driver_config(
     driver_id: &str,
     driver_type: &str,
-    driver_payload: DriverUiDriverPayload,
+    driver_payload: &DriverUiDriverPayload,
 ) -> Result<DriverConfig, ErrorResponse> {
     if driver_payload.id != driver_id {
         return Err(ErrorResponse {
@@ -354,10 +347,10 @@ fn build_import_driver_config(
         });
     }
 
-    let settings = merge_driver_settings(driver_payload.settings, driver_payload.extra);
+    let settings = merge_driver_settings(driver_payload.settings.clone(), driver_payload.extra.clone());
     Ok(DriverConfig {
-        id: driver_payload.id,
-        driver_type: driver_payload.driver_type,
+        id: driver_payload.id.clone(),
+        driver_type: driver_payload.driver_type.clone(),
         enabled: Some(driver_payload.enabled.unwrap_or(true)),
         settings,
     })

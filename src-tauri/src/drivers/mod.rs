@@ -1,131 +1,119 @@
-pub mod postgres;
+// ドライバプロセスマネージャー
+// 各ドライバは独立したプロセスとして起動・管理される
+// 本体はプロセスのライフサイクルのみを担当し、通信処理はドライバプロセス側が実装する
 
-// ドライバ trait と管理
-
-use crate::core::{TagBus, TagId, TagRegistry};
-use anyhow::Result;
-use async_trait::async_trait;
-use serde_json::json;
+use anyhow::{anyhow, Result};
 use std::collections::HashMap;
-use tracing::{error, info};
+use tokio::process::Child;
+use tracing::{error, info, warn};
 
-/// すべてのドライバが実装すべき trait
-#[async_trait]
-pub trait Driver: Send + Sync {
-    /// ドライバの一意識別子
-    fn id(&self) -> &str;
-
-    /// ドライバの種類（"postgres", "mqtt" など）
-    fn driver_type(&self) -> &str;
-
-    /// 登録スキーマ（UI が設定フォーム生成に使う JSON Schema）
-    fn registration_schema(&self) -> serde_json::Value {
-        json!({
-            "type": "object",
-            "properties": {},
-            "required": []
-        })
-    }
-
-    /// 起動（非同期、リソース取得など）
-    async fn start(&mut self, registry: &TagRegistry, bus: &TagBus) -> Result<()>;
-
-    /// 停止（クリーンアップ）
-    async fn stop(&mut self) -> Result<()>;
-
-    /// タグを登録
-    async fn register_tag(&mut self, tag_id: &TagId) -> Result<()>;
-
-    /// タグの登録を解除
-    async fn unregister_tag(&mut self, tag_id: &TagId) -> Result<()>;
+/// ドライバ種別からプロセス実行ファイル名を決定する
+/// 例: "postgres" → "driver-postgres" (.exe は OS が補完)
+fn executable_name(driver_type: &str) -> String {
+    format!("driver-{}", driver_type)
 }
 
-/// ドライバマネージャー
-pub struct DriverManager {
-    drivers: HashMap<String, Box<dyn Driver>>,
+/// ドライバプロセスマネージャー
+/// 各ドライバを子プロセスとして起動・停止・監視する
+pub struct DriverProcessManager {
+    processes: HashMap<String, Child>,
+    /// 本体の gRPC アドレス（ドライバプロセスへの引数に渡す）
+    grpc_addr: String,
 }
 
-impl DriverManager {
-    pub fn new() -> Self {
+impl DriverProcessManager {
+    pub fn new(grpc_addr: impl Into<String>) -> Self {
         Self {
-            drivers: HashMap::new(),
+            processes: HashMap::new(),
+            grpc_addr: grpc_addr.into(),
         }
     }
 
-    /// ドライバを登録
-    pub fn register(&mut self, driver: Box<dyn Driver>) {
-        let id = driver.id().to_string();
-        self.drivers.insert(id, driver);
-    }
-
-    /// ドライバを起動
-    pub async fn start_driver(
-        &mut self,
-        driver_id: &str,
-        registry: &TagRegistry,
-        bus: &TagBus,
-    ) -> Result<()> {
-        if let Some(driver) = self.drivers.get_mut(driver_id) {
-            info!("Starting driver: {}", driver_id);
-            driver.start(registry, bus).await?;
-            Ok(())
-        } else {
-            Err(anyhow::anyhow!("Driver not found: {}", driver_id))
+    /// 指定ドライバのプロセスを起動する
+    /// executable は本体と同じディレクトリから解決する
+    /// 開発時は DRIVER_BIN_DIR 環境変数で上書き可能
+    pub async fn start_driver(&mut self, driver_id: &str, driver_type: &str) -> Result<()> {
+        if self.processes.contains_key(driver_id) {
+            warn!("Driver process already running: {}", driver_id);
+            return Ok(());
         }
-    }
 
-    /// すべてのドライバを起動
-    pub async fn start_all(&mut self, registry: &TagRegistry, bus: &TagBus) -> Result<()> {
-        for driver in self.drivers.values_mut() {
-            if let Err(e) = driver.start(registry, bus).await {
-                error!("Failed to start driver {}: {}", driver.id(), e);
-            }
-        }
+        let exe_name = executable_name(driver_type);
+        let exe_path = self.resolve_exe_path(&exe_name);
+
+        info!(
+            "Starting driver process: id={} exe={}",
+            driver_id,
+            exe_path.display()
+        );
+
+        let child = tokio::process::Command::new(&exe_path)
+            .arg("--driver-id")
+            .arg(driver_id)
+            .arg("--driver-kind")
+            .arg(driver_type)
+            .arg("--grpc-addr")
+            .arg(&self.grpc_addr)
+            .kill_on_drop(true)
+            .spawn()
+            .map_err(|e| {
+                anyhow!(
+                    "Failed to spawn driver process '{}': {}",
+                    exe_path.display(),
+                    e
+                )
+            })?;
+
+        self.processes.insert(driver_id.to_string(), child);
+        info!("Driver process started: {}", driver_id);
         Ok(())
     }
 
-    /// ドライバを停止
+    /// 指定ドライバのプロセスを停止する
     pub async fn stop_driver(&mut self, driver_id: &str) -> Result<()> {
-        if let Some(driver) = self.drivers.get_mut(driver_id) {
-            info!("Stopping driver: {}", driver_id);
-            driver.stop().await?;
-            Ok(())
+        if let Some(mut child) = self.processes.remove(driver_id) {
+            info!("Stopping driver process: {}", driver_id);
+            if let Err(e) = child.kill().await {
+                warn!("Failed to kill driver process {}: {}", driver_id, e);
+            }
         } else {
-            Err(anyhow::anyhow!("Driver not found: {}", driver_id))
+            warn!("Driver process not found: {}", driver_id);
         }
+        Ok(())
     }
 
-    /// すべてのドライバを停止
+    /// 全ドライバプロセスを停止する
     pub async fn stop_all(&mut self) -> Result<()> {
-        for driver in self.drivers.values_mut() {
-            if let Err(e) = driver.stop().await {
-                error!("Failed to stop driver {}: {}", driver.id(), e);
+        let ids: Vec<String> = self.processes.keys().cloned().collect();
+        for id in ids {
+            if let Err(e) = self.stop_driver(&id).await {
+                error!("Failed to stop driver {}: {}", id, e);
             }
         }
         Ok(())
     }
 
-    /// ドライバを取得
-    pub fn get(&self, id: &str) -> Option<&Box<dyn Driver>> {
-        self.drivers.get(id)
+    /// 起動中のドライバID一覧を返す
+    pub fn running_driver_ids(&self) -> Vec<&str> {
+        self.processes.keys().map(|s| s.as_str()).collect()
     }
 
-    /// 登録済みドライバのID一覧
-    pub fn list_driver_ids(&self) -> Vec<&str> {
-        self.drivers.keys().map(|s| s.as_str()).collect()
+    /// ドライバプロセスが起動中か確認する
+    pub fn is_running(&self, driver_id: &str) -> bool {
+        self.processes.contains_key(driver_id)
     }
 
-    pub fn contains(&self, id: &str) -> bool {
-        self.drivers.contains_key(id)
-    }
-
-    pub fn remove(&mut self, id: &str) -> Option<Box<dyn Driver>> {
-        self.drivers.remove(id)
-    }
-}
-
-impl Default for DriverManager {
-    fn default() -> Self {
-        Self::new()
+    /// executable のパスを解決する
+    /// 優先順位: DRIVER_BIN_DIR 環境変数 > 本体と同じディレクトリ
+    fn resolve_exe_path(&self, exe_name: &str) -> std::path::PathBuf {
+        if let Ok(bin_dir) = std::env::var("DRIVER_BIN_DIR") {
+            return std::path::PathBuf::from(bin_dir).join(exe_name);
+        }
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                return dir.join(exe_name);
+            }
+        }
+        std::path::PathBuf::from(exe_name)
     }
 }

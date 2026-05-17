@@ -3,11 +3,15 @@ fn main() {
     std::env::set_var("PROTOC", protoc_path);
 
     println!("cargo:rerun-if-changed=proto/tag_registration.proto");
+    println!("cargo:rerun-if-changed=proto/driver_runtime.proto");
 
     tonic_build::configure()
         .build_server(true)
         .build_client(false)
-        .compile_protos(&["proto/tag_registration.proto"], &["proto"])
+        .compile_protos(
+            &["proto/tag_registration.proto", "proto/driver_runtime.proto"],
+            &["proto"],
+        )
         .expect("Failed to compile gRPC proto");
 
     tauri_build::build()

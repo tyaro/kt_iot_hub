@@ -166,11 +166,13 @@ export async function runOpenDriverUiForTypeFlow({
 export type OpenDriverUiForDriverFlowDeps = {
   driverId: string;
   actionLabel: '新規' | '編集';
+  editingTagId?: string;
   driverUiPolling: boolean;
   driverUiBaseDirSaved: string | null;
   launchDriverUiApi: (req: {
     driver_id: string;
     driver_ui_base_dir?: string | null;
+    editing_tag_id?: string | null;
   }) => Promise<LaunchDriverUiResponse>;
   setMessage: (message: string) => void;
   monitorAndImport: (result: LaunchDriverUiResponse) => void;
@@ -180,6 +182,7 @@ export type OpenDriverUiForDriverFlowDeps = {
 export async function runOpenDriverUiForDriverFlow({
   driverId,
   actionLabel,
+  editingTagId,
   driverUiPolling,
   driverUiBaseDirSaved,
   launchDriverUiApi,
@@ -196,6 +199,7 @@ export async function runOpenDriverUiForDriverFlow({
     const result = await launchDriverUiApi({
       driver_id: driverId,
       driver_ui_base_dir: driverUiBaseDirSaved,
+      editing_tag_id: editingTagId,
     });
     setMessage(
       `${actionLabel}用ドライバUIを起動しました (driver_id=${result.driver_id}, session_id=${result.session_id})`,
@@ -222,12 +226,12 @@ export function runRequestEditTagFlow(
   tag: TagDto,
   canUseDriverUi: (driverId: string) => boolean,
   setSelectedTag: (tag: TagDto) => void,
-  openDriverUi: (driverId: string, actionLabel: '編集') => void,
+  openDriverUi: (driverId: string, actionLabel: '編集', editingTagId?: string) => void,
   openManualTagEditor: (driverId: string, mode: 'edit', tag?: TagDto | null) => void,
 ): void {
   if (canUseDriverUi(tag.driver_id)) {
     setSelectedTag(tag);
-    openDriverUi(tag.driver_id, '編集');
+    openDriverUi(tag.driver_id, '編集', tag.id);
     return;
   }
   openManualTagEditor(tag.driver_id, 'edit', tag);

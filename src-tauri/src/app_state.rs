@@ -1,6 +1,6 @@
 use crate::config::{DriverConfig, PublisherConfig, ScanGroupConfig};
 use crate::core::{TagBus, TagRegistry};
-use crate::drivers::DriverManager;
+use crate::drivers::DriverProcessManager;
 use crate::publishers::PublisherManager;
 use std::collections::{HashMap, HashSet};
 
@@ -23,7 +23,7 @@ pub struct RuntimeStatusState {
 pub struct AppState {
     pub registry: TagRegistry,
     pub tag_bus: TagBus,
-    pub drivers: std::sync::Arc<tokio::sync::RwLock<DriverManager>>,
+    pub drivers: std::sync::Arc<tokio::sync::RwLock<DriverProcessManager>>,
     pub publishers: std::sync::Arc<tokio::sync::RwLock<PublisherManager>>,
     pub driver_configs: std::sync::Arc<tokio::sync::RwLock<Vec<DriverConfig>>>,
     pub publisher_configs: std::sync::Arc<tokio::sync::RwLock<Vec<PublisherConfig>>>,
@@ -42,7 +42,7 @@ impl AppState {
     pub fn new(
         registry: TagRegistry,
         tag_bus: TagBus,
-        drivers: DriverManager,
+        drivers: DriverProcessManager,
         publishers: PublisherManager,
         driver_configs: Vec<DriverConfig>,
         publisher_configs: Vec<PublisherConfig>,

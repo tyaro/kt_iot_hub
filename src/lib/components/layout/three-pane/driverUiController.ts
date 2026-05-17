@@ -8,6 +8,7 @@ export type CreateDriverUiControllerDeps = {
   launchDriverUiApi: (req: {
     driver_id: string;
     driver_ui_base_dir?: string | null;
+    editing_tag_id?: string | null;
   }) => Promise<LaunchDriverUiResponse>;
   setMessage: (message: string) => void;
   monitorAndImport: (result: LaunchDriverUiResponse) => void;
@@ -17,17 +18,18 @@ export type CreateDriverUiControllerDeps = {
 };
 
 export type DriverUiController = {
-  openForDriver: (driverId: string, actionLabel: '新規' | '編集') => Promise<void>;
+  openForDriver: (driverId: string, actionLabel: '新規' | '編集', editingTagId?: string) => Promise<void>;
   canUseDriverUi: (driverId: string) => boolean;
 };
 
 export function createDriverUiController(
   deps: CreateDriverUiControllerDeps,
 ): DriverUiController {
-  async function openForDriver(driverId: string, actionLabel: '新規' | '編集') {
+  async function openForDriver(driverId: string, actionLabel: '新規' | '編集', editingTagId?: string) {
     await runOpenDriverUiForDriverFlow({
       driverId,
       actionLabel,
+      editingTagId,
       driverUiPolling: deps.getDriverUiPolling(),
       driverUiBaseDirSaved: deps.getDriverUiBaseDirSaved(),
       launchDriverUiApi: deps.launchDriverUiApi,

@@ -15,12 +15,13 @@ export type CreateTagUiControllerDeps = {
   setDriverTypePickerOpen: (open: boolean) => void;
   canUseDriverUi: (driverId: string) => boolean;
   setSelectedTag: (tag: TagDto) => void;
-  openDriverUiForDriver: (driverId: string, actionLabel: '新規' | '編集') => void;
+  openDriverUiForDriver: (driverId: string, actionLabel: '新規' | '編集', editingTagId?: string) => void;
   openManualTagEditor: (driverId: string, mode: 'new' | 'edit', tag?: TagDto | null) => void;
   getDriverUiBaseDirSaved: () => string | null;
   launchDriverUiApi: (req: {
     driver_type: string;
     driver_ui_base_dir?: string | null;
+    editing_tag_id?: string | null;
   }) => Promise<LaunchDriverUiResponse>;
   setMessage: (message: string) => void;
   monitorAndImport: (result: LaunchDriverUiResponse) => void;

@@ -62,6 +62,7 @@ pub struct LaunchDriverUiRequest {
     pub driver_id: Option<String>,
     pub driver_type: Option<String>,
     pub driver_ui_base_dir: Option<String>,
+    pub editing_tag_id: Option<String>,
 }
 
 /// ドライバ作成/更新リクエスト DTO

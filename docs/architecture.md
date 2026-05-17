@@ -18,30 +18,32 @@
 │                                │  └─────┬───────────┬────┘   │  │
 │                                │        │           │        │  │
 │                                │  ┌─────▼────┐ ┌────▼─────┐  │  │
-│                                │  │ Drivers  │ │ Publish. │  │  │
-│                                │  │ Manager  │ │ Manager  │  │  │
-│                                │  └─┬──┬──┬──┘ └──┬───┬───┘  │  │
-│                                └────┼──┼──┼───────┼───┼──────┘  │
+│                                │  │ Driver   │ │ Publish. │  │  │
+│                                │  │ Process  │ │ Manager  │  │  │
+│                                │  │ Manager  │ │          │  │  │
+│                                │  └─────┬────┘ └──┬───┬───┘  │  │
+│                                └────────┼─────────┼───┼──────┘  │
 └──────────────────────────────────────┼──┼──┼───────┼───┼─────────┘
-                                       │  │  │       │   │
-              ┌────────────────────────┘  │  └──┐    │   └──┐
-              ▼                           ▼     ▼    ▼      ▼
-        PostgreSQL                  JoyWatcher  ... MQTT   (OPC UA/DA 将来)
-        (DB ドライバ)               (SCADA)         Broker
+                           │              │   │
+          ┌────────────────────────┘              │   └──┐
+          ▼                                       ▼      ▼
+    driver-postgres.exe                        MQTT Publisher
+    (別プロセス, gRPC client)                  (本体内)
 ```
 
 ## 設計原則
 
 - **疎結合**: ドライバ、パブリッシャ、UI は Tag Bus または IPC 境界を介して通信する。
-- **拡張容易性**: ドライバは独立プロセスとして追加可能にする。
+- **拡張容易性**: ドライバ通信処理は独立プロセスとして追加可能にする。
 - **登録UIの分離**: ドライバ固有のタグ登録 UI は本体 UI に差し込まず、別ウィンドウ/別プロセスとして実装する。
 - **役割分離**: バックエンドは責務ごとにファイル分割し、原則 300 行以内/ファイルを目指す。
 - **フロントは表示と入力に専念**: ビジネスロジックは Rust 側に置く。
 
-## ドライバ登録プロセス構成
+## ドライバ登録・通信プロセス構成
 
 タグ登録方法は PostgreSQL / SLMP / JoyWatcher で大きく異なるため、登録 UI は本体 UI に埋め込まない。
-本体は「タグ定義の正本管理」と「共通項目の検証・保存」を担い、ドライバ登録プロセスは「接続先探索」と「タグ候補生成」を担う。
+本体は「タグ定義の正本管理」「MQTT配信」「ドライバプロセス管理」を担い、
+ドライバ側は「登録UIプロセス」と「通信ランタイムプロセス」に責務分離する。
 
 ```shell
 ┌──────────────────────────────┐
@@ -50,21 +52,32 @@
 │ - Tag Registry                │
 │ - config/tags.toml 保存       │
 │ - Driver Process Manager      │
+│ - gRPC Server (:55051)        │
+│ - MQTT Publisher              │
 └──────────────┬───────────────┘
-               │ 起動 / 結果取込
+           │ 起動 / 結果取込 / IPC
                ▼
 ┌──────────────────────────────┐
-│ driver-postgres.exe register  │
+│ apps/postgres/ui (Tauri)      │
 │ - PostgreSQL接続設定          │
 │ - テーブル/カラム探索         │
 │ - タグ候補生成                │
 └──────────────┬───────────────┘
-               │ JSON / IPC
+           │ gRPC (TagRegistrationService)
+           ▼
+    タグ定義候補を本体へ反映
+
+┌──────────────────────────────┐
+│ apps/postgres/driver (Rust)  │
+│ - PostgreSQLポーリング        │
+│ - 値をgRPCストリーム送信      │
+└──────────────┬───────────────┘
+           │ gRPC (DriverRuntimeService)
                ▼
-        タグ定義候補を本体へ返却
+     本体Tag Busへ値を反映
 ```
 
-初期実装では、一時 JSON ファイル経由でタグ定義候補を受け渡す。将来的には gRPC / Named Pipe に統一する。
+gRPC は localhost のみで待ち受け、登録UIと通信ランタイムの双方が本体へ接続する。
 
 ## ドメインモデル
 
@@ -88,18 +101,13 @@ pub struct TagValue {
 }
 ```
 
-### Driver trait
+### Driver runtime IPC
 
-```rust
-#[async_trait]
-pub trait Driver: Send + Sync {
-    fn kind(&self) -> &'static str;
-    async fn start(&mut self, ctx: DriverCtx) -> Result<()>;
-    async fn stop(&mut self) -> Result<()>;
-    async fn register_tag(&mut self, spec: TagSpec) -> Result<TagId>;
-    async fn unregister_tag(&mut self, id: TagId) -> Result<()>;
-}
-```
+- `TagRegistrationService`: 登録UIプロセス → 本体
+- `UpsertTagRegistration`: スキャングループとタグ定義の一括登録
+- `DriverRuntimeService`: 通信ランタイムプロセス ↔ 本体
+- `GetDriverDefinition`: ドライバ起動時に接続設定・タグ定義を取得
+- `StreamTagValues`: タグ値をストリーム送信
 
 ### Publisher trait
 
@@ -121,10 +129,11 @@ pub trait Publisher: Send + Sync {
 ## データフロー
 
 1. 起動時に TOML ファイルからタグ定義・ドライバ設定・パブリッシャ設定をロードする。
-2. DriverManager が各ドライバを起動する。
-3. ドライバが周期またはイベントで値を取得し Tag Bus に publish する。
-4. PublisherManager 配下の各 Publisher が購読し、MQTT 等へ送出する。
-5. UI は Tauri Event または購読型 store で最新値を表示する。
+2. DriverProcessManager が `driver-{type}` 実行ファイルを子プロセス起動する。
+3. ドライバプロセスが `GetDriverDefinition` で定義を取得し、外部機器/DBをポーリングする。
+4. ドライバプロセスが `StreamTagValues` で値を本体へ送信し、本体が Tag Bus に publish する。
+5. PublisherManager 配下の各 Publisher が購読し、MQTT 等へ送出する。
+6. UI は Tauri Event または購読型 store で最新値を表示する。
 
 ## ディレクトリ構成方針
 
@@ -136,8 +145,14 @@ src-tauri/src/
 ├─ config/
 ├─ core/
 ├─ drivers/
+├─ grpc/
 ├─ publishers/
 └─ telemetry/
+
+apps/
+└─ postgres/
+    ├─ ui/      # 登録UI (Tauri)
+    └─ driver/  # 通信ランタイム (Rust binary)
 
 src/
 ├─ App.svelte

@@ -197,9 +197,8 @@ pub async fn delete_driver(
 
     {
         let mut manager = state.drivers.write().await;
-        if manager.contains(&driver_id) {
+        if manager.is_running(&driver_id) {
             let _ = manager.stop_driver(&driver_id).await;
-            manager.remove(&driver_id);
         }
     }
 
