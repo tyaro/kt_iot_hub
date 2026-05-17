@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::connection::JoyWatcherBridgeApi;
-use crate::protocol::ResolvedTag;
+use crate::connection::{JoyWatcherBridgeApi, JoyWatcherConnectionOptions};
+use crate::protocol::{MockValue, ReadValuePayload, ResolvedTag};
 
 type ConnectNetFn = unsafe extern "C" fn() -> i32;
 type DisconnectNetFn = unsafe extern "C" fn() -> i32;
@@ -21,6 +21,12 @@ type JwGetTagIds2Fn = unsafe extern "C" fn(
     kata_offs: i32,
     len_offs: i32,
 ) -> i32;
+type JwReadFn = unsafe extern "C" fn(
+    uid: i32,
+    password: *const i8,
+    nid: i32,
+    data: *mut JoyWatcherComData1,
+) -> i32;
 
 const TAG_NAME_SLOT_SIZE: usize = 256;
 
@@ -31,6 +37,9 @@ pub struct JoyWatcherDllApi {
     disconnect_net_fn: DisconnectNetFn,
     disconnect_net_force_fn: DisconnectNetForceFn,
     jw_get_tag_ids2_fn: JwGetTagIds2Fn,
+    jw_read_fn: JwReadFn,
+    read_user_id: i32,
+    read_password: String,
 }
 
 impl JoyWatcherDllApi {
@@ -44,6 +53,7 @@ impl JoyWatcherDllApi {
             library.load_symbol::<DisconnectNetForceFn>("DisconnectNetForce")?
         };
         let jw_get_tag_ids2_fn = unsafe { library.load_symbol::<JwGetTagIds2Fn>("JWGetTagIDS2")? };
+        let jw_read_fn = unsafe { library.load_symbol::<JwReadFn>("JWRead")? };
 
         Ok(Self {
             _library: library,
@@ -52,6 +62,9 @@ impl JoyWatcherDllApi {
             disconnect_net_fn,
             disconnect_net_force_fn,
             jw_get_tag_ids2_fn,
+            jw_read_fn,
+            read_user_id: 0,
+            read_password: String::new(),
         })
     }
 
@@ -65,9 +78,15 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
         "dll"
     }
 
-    fn connect_net(&mut self) -> Result<()> {
+    fn connect_net(&mut self, options: &JoyWatcherConnectionOptions) -> Result<()> {
+        let password = options.password.clone().unwrap_or_default();
+        let _ = CString::new(password.as_str()).context("JoyWatcher password contains NUL")?;
+
         let result = unsafe { (self.connect_net_fn)() };
-        ensure_bool_like_success("ConnectNet", result)
+        ensure_bool_like_success("ConnectNet", result)?;
+        self.read_user_id = options.user_id.unwrap_or_default();
+        self.read_password = password;
+        Ok(())
     }
 
     fn disconnect_net(&mut self) -> Result<()> {
@@ -110,6 +129,97 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
                 tag_id,
             })
             .collect())
+    }
+
+    fn read_tags(&self, tag_ids: &[i32]) -> Result<Vec<ReadValuePayload>> {
+        if tag_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let password = CString::new(self.read_password.as_str())
+            .context("JoyWatcher password contains NUL")?;
+        let mut rows = tag_ids
+            .iter()
+            .map(|tag_id| JoyWatcherComData1 {
+                col_id: *tag_id,
+                raw_value: [0u8; 16],
+                dtype: 0,
+            })
+            .collect::<Vec<_>>();
+
+        let result = unsafe {
+            (self.jw_read_fn)(
+                self.read_user_id,
+                password.as_ptr(),
+                rows.len() as i32,
+                rows.as_mut_ptr(),
+            )
+        };
+        ensure_bool_like_success("JWRead", result)?;
+
+        rows.into_iter()
+            .map(|row| row.into_payload())
+            .collect::<Result<Vec<_>>>()
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct JoyWatcherComData1 {
+    col_id: i32,
+    raw_value: [u8; 16],
+    dtype: i8,
+}
+
+impl JoyWatcherComData1 {
+    const TYPE_ERROR: i8 = -2;
+    const TYPE_BIT: i8 = 4;
+    const TYPE_STRING: i8 = 5;
+    const TYPE_LSTRING: i8 = 8;
+
+    fn into_payload(self) -> Result<ReadValuePayload> {
+        let (quality, value) = match self.decode_value() {
+            Ok(value) => ("good".to_string(), value),
+            Err(error) => ("bad".to_string(), MockValue::String(error.to_string())),
+        };
+
+        Ok(ReadValuePayload {
+            tag_id: self.col_id,
+            quality,
+            value,
+        })
+    }
+
+    fn decode_value(&self) -> Result<MockValue> {
+        match self.dtype {
+            Self::TYPE_BIT => Ok(MockValue::Bool(self.bool_value())),
+            Self::TYPE_STRING | Self::TYPE_LSTRING => Ok(MockValue::String(self.string_value())),
+            Self::TYPE_ERROR => Err(anyhow!(
+                "JoyWatcher returned error dtype for col_id={}",
+                self.col_id
+            )),
+            _ => Ok(MockValue::Number(self.double_value())),
+        }
+    }
+
+    fn double_value(&self) -> f64 {
+        let bytes: [u8; 8] = self.raw_value[..8]
+            .try_into()
+            .expect("slice with exact length");
+        f64::from_le_bytes(bytes)
+    }
+
+    fn bool_value(&self) -> bool {
+        self.raw_value.first().copied().unwrap_or_default() != 0
+    }
+
+    fn string_value(&self) -> String {
+        let end = self
+            .raw_value
+            .iter()
+            .position(|byte| *byte == 0)
+            .unwrap_or(self.raw_value.len());
+        String::from_utf8_lossy(&self.raw_value[..end]).to_string()
     }
 }
 
@@ -339,5 +449,41 @@ mod tests {
             b"Line1/Tank/Temp"
         );
         assert_eq!(buffer[TAG_NAME_SLOT_SIZE + 15], 0);
+    }
+
+    #[test]
+    fn com_data_decodes_numeric_value() {
+        let mut raw_value = [0u8; 16];
+        raw_value[..8].copy_from_slice(&42.25f64.to_le_bytes());
+
+        let payload = JoyWatcherComData1 {
+            col_id: 77,
+            raw_value,
+            dtype: 0,
+        }
+        .into_payload()
+        .unwrap();
+
+        assert_eq!(payload.tag_id, 77);
+        assert_eq!(payload.quality, "good");
+        assert_eq!(payload.value, MockValue::Number(42.25));
+    }
+
+    #[test]
+    fn com_data_converts_error_dtype_to_bad_quality() {
+        let payload = JoyWatcherComData1 {
+            col_id: 90,
+            raw_value: [0u8; 16],
+            dtype: JoyWatcherComData1::TYPE_ERROR,
+        }
+        .into_payload()
+        .unwrap();
+
+        assert_eq!(payload.tag_id, 90);
+        assert_eq!(payload.quality, "bad");
+        match payload.value {
+            MockValue::String(message) => assert!(message.contains("error dtype")),
+            other => panic!("expected error string payload, got {other:?}"),
+        }
     }
 }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 
-use crate::connection::JoyWatcherBridgeApi;
+use crate::connection::{JoyWatcherBridgeApi, JoyWatcherConnectionOptions};
 use crate::protocol::{MockValue, ReadValuePayload, ResolvedTag};
 
 #[derive(Debug, Default)]
@@ -44,7 +44,7 @@ impl JoyWatcherBridgeApi for MockJoyWatcherApi {
         "mock"
     }
 
-    fn connect_net(&mut self) -> Result<()> {
+    fn connect_net(&mut self, _options: &JoyWatcherConnectionOptions) -> Result<()> {
         Ok(())
     }
 

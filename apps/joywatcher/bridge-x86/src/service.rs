@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::connection::ConnectionManager;
+use crate::connection::{ConnectionManager, JoyWatcherConnectionOptions};
 use crate::protocol::{BridgeRequest, BridgeResponse};
 
 pub struct JoyWatcherBridgeService {
@@ -24,8 +24,17 @@ impl JoyWatcherBridgeService {
     fn try_handle_request(&mut self, request: BridgeRequest) -> Result<BridgeResponse> {
         match request {
             BridgeRequest::Ping => Ok(BridgeResponse::Pong),
-            BridgeRequest::Connect { .. } => {
-                let active_connections = self.connections.connect()?;
+            BridgeRequest::Connect {
+                endpoint,
+                user_id,
+                password,
+            } => {
+                let options = JoyWatcherConnectionOptions {
+                    endpoint,
+                    user_id,
+                    password,
+                };
+                let active_connections = self.connections.connect(&options)?;
                 Ok(BridgeResponse::Connected {
                     active_connections,
                     mode: self.connections.api_ref().mode(),

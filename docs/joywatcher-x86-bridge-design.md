@@ -174,14 +174,14 @@ kt_iot_hub.exe
 - IPC は `stdin` / `stdout` の JSON Lines で疎通確認済み
 - `resolveTags` は dll モードで `JWGetTagIDS2` を呼ぶ実装を追加済み
 - 登録UI 側には `resolve_joywatcher_tag` コマンドと「Tag ID を解決」ボタンを追加し、単一タグの `nativeTagId` をフォームへ反映できるようにした
-- `read` はまだ mock 応答である
+- `read` は dll モードで `JWRead` を呼び、`TCOM_DATA1` を `bool | number | string` へ変換する実装を追加済み
 - 現在の開発環境で `cargo run -p joywatcher-bridge-x86 -- --mode dll` を実行すると `os error 193` で失敗し、x86 DLL を x64 プロセスへロードできないことを確認した
 - `cargo build -p joywatcher-bridge-x86 --target i686-pc-windows-msvc` は成功し、x86 ビルド済み EXE では `--mode dll` の起動が成功する
 - x86 ビルド済み EXE で `connect` / `disconnect` を送ると、`active_connections: 1 -> 0` の構造化応答が返ることを確認した
 - `driver-joywatcher` から x86 bridge を起動する最小統合を追加済み
 - runtime 側は `driver-ui/joywatcher/joywatcher-bridge-x86.exe` → `target/i686-pc-windows-msvc/debug/joywatcher-bridge-x86.exe` の順で x86 bridge を優先探索する
 - bridge 側ログは stderr へ出し、runtime 側は stdout から JSON 行だけ読むようにしたため、`ping` / `connect` 応答がログ混線で壊れない
-- `driver-joywatcher.exe` 実行時に `JoyWatcher bridge started` / `bridge ping ok` / `bridge connect ok` を確認済み
+- `driver-joywatcher` は `driverSpec.nativeTagId` を読んで bridge の `read` を呼び、結果を `StreamTagValues` 用 `TagValueMessage` へ変換する最小経路を実装済み
 
 ### 理由
 
@@ -348,14 +348,15 @@ driver-ui/joywatcher/
 現状:
 
 - x86 bridge の `connect` / `disconnect` は最小往復まで確認済み
-- `driver-joywatcher` からの bridge 起動と `ping` / `connect` も確認済み
+- `driver-joywatcher` からの bridge 起動と `ping` / `read` 実装、`nativeTagId` ベースの値読取導線を追加済み
 - 登録UI の保存 JSON は `driverSpec.nativeTagId` を保持できる形へ更新済み
 - UI から bridge を使って単一タグの `resolveTags` を呼ぶ導線は追加済み
-- 未実装なのは `JWRead` の実 DLL 化、gRPC 送信統合、UI の実機手動確認
+- `JWRead` の実 DLL 化と gRPC 送信への最小統合は追加済み
+- 残タスクは UI の実機手動確認、scan rate に基づく継続ポーリング、`ConnectNet` / `DisconnectNet` 呼出規約の実機確定
 
 ## 次の最小タスク
 
 1. 登録UI の `resolve_joywatcher_tag` を実機で手動確認し、妥当な `nativeTagId` が返るか確認する
-2. `JWRead` を実 DLL 呼び出しへ差し替え、runtime が `nativeTagId` で読めるようにする
+2. `driver-joywatcher` を scan group の `scan_rate_ms` に沿って継続ポーリングするよう整理する
 3. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
-4. `driver-joywatcher` から bridge の値を gRPC 送信へつなぐ
+4. `endpoint` / `user_id` / `password` の設定キー名を UI / runtime / bridge 間で固定する

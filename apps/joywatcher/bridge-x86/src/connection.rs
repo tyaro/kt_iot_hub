@@ -2,9 +2,16 @@ use anyhow::{anyhow, Result};
 
 use crate::protocol::{ReadValuePayload, ResolvedTag};
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct JoyWatcherConnectionOptions {
+    pub endpoint: Option<String>,
+    pub user_id: Option<i32>,
+    pub password: Option<String>,
+}
+
 pub trait JoyWatcherBridgeApi {
     fn mode(&self) -> &'static str;
-    fn connect_net(&mut self) -> Result<()>;
+    fn connect_net(&mut self, _options: &JoyWatcherConnectionOptions) -> Result<()>;
     fn disconnect_net(&mut self) -> Result<()>;
     fn disconnect_net_force(&mut self) -> Result<()>;
 
@@ -28,8 +35,8 @@ impl<T: JoyWatcherBridgeApi + ?Sized> JoyWatcherBridgeApi for Box<T> {
         (**self).mode()
     }
 
-    fn connect_net(&mut self) -> Result<()> {
-        (**self).connect_net()
+    fn connect_net(&mut self, options: &JoyWatcherConnectionOptions) -> Result<()> {
+        (**self).connect_net(options)
     }
 
     fn disconnect_net(&mut self) -> Result<()> {
@@ -63,8 +70,8 @@ impl<A: JoyWatcherBridgeApi> ConnectionManager<A> {
         }
     }
 
-    pub fn connect(&mut self) -> Result<usize> {
-        self.api.connect_net()?;
+    pub fn connect(&mut self, options: &JoyWatcherConnectionOptions) -> Result<usize> {
+        self.api.connect_net(options)?;
         self.active_connections += 1;
         Ok(self.active_connections)
     }
@@ -112,6 +119,7 @@ mod tests {
         connect_calls: usize,
         disconnect_calls: usize,
         force_calls: usize,
+        last_options: Option<JoyWatcherConnectionOptions>,
     }
 
     impl JoyWatcherBridgeApi for MockApi {
@@ -119,8 +127,9 @@ mod tests {
             "mock"
         }
 
-        fn connect_net(&mut self) -> Result<()> {
+        fn connect_net(&mut self, options: &JoyWatcherConnectionOptions) -> Result<()> {
             self.connect_calls += 1;
+            self.last_options = Some(options.clone());
             Ok(())
         }
 
@@ -138,8 +147,9 @@ mod tests {
     #[test]
     fn connect_and_disconnect_balance_counts() {
         let mut manager = ConnectionManager::new(MockApi::default());
+        let options = JoyWatcherConnectionOptions::default();
 
-        assert_eq!(manager.connect().unwrap(), 1);
+        assert_eq!(manager.connect(&options).unwrap(), 1);
         assert_eq!(manager.disconnect().unwrap(), 0);
     }
 
@@ -154,10 +164,25 @@ mod tests {
     #[test]
     fn force_disconnect_resets_count() {
         let mut manager = ConnectionManager::new(MockApi::default());
-        manager.connect().unwrap();
-        manager.connect().unwrap();
+        let options = JoyWatcherConnectionOptions::default();
+        manager.connect(&options).unwrap();
+        manager.connect(&options).unwrap();
 
         assert_eq!(manager.force_disconnect().unwrap(), 0);
         assert!(manager.ensure_connected().is_err());
+    }
+
+    #[test]
+    fn connect_passes_connection_options_to_api() {
+        let mut manager = ConnectionManager::new(MockApi::default());
+        let options = JoyWatcherConnectionOptions {
+            endpoint: Some("127.0.0.1".to_string()),
+            user_id: Some(7),
+            password: Some("secret".to_string()),
+        };
+
+        manager.connect(&options).unwrap();
+
+        assert_eq!(manager.api_ref().last_options.as_ref(), Some(&options));
     }
 }

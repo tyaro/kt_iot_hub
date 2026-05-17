@@ -3,6 +3,7 @@ mod joywatcher_artifacts;
 mod joywatcher_bridge;
 mod joywatcher_connection;
 mod joywatcher_ffi;
+mod joywatcher_runtime;
 
 use anyhow::Result;
 use clap::Parser;
@@ -11,7 +12,9 @@ use joywatcher_artifacts::JoyWatcherArtifacts;
 use joywatcher_bridge::{BridgeMode, JoyWatcherBridgeProcess};
 use joywatcher_connection::JoyWatcherConnectionPlan;
 use joywatcher_ffi::observed_calling_conventions;
+use joywatcher_runtime::JoyWatcherPollPlan;
 use std::time::Duration;
+use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
 pub mod proto {
@@ -90,10 +93,7 @@ async fn run() -> Result<()> {
             }
 
             if matches!(bridge.mode(), BridgeMode::Dll) {
-                match bridge.connect() {
-                    Ok(response) => info!("JoyWatcher bridge connect ok: {}", response),
-                    Err(error) => warn!("JoyWatcher bridge connect failed: {}", error),
-                }
+                info!("JoyWatcher bridge connect will be deferred until driver settings are loaded");
             }
 
             Some(bridge)
@@ -159,6 +159,37 @@ async fn run() -> Result<()> {
             match bridge.ping() {
                 Ok(response) => info!("JoyWatcher bridge heartbeat ok: {}", response),
                 Err(error) => warn!("JoyWatcher bridge heartbeat failed: {}", error),
+            }
+
+            let poll_plan = JoyWatcherPollPlan::from_definition(&definition);
+            if poll_plan.tags.is_empty() {
+                warn!("JoyWatcher definition has no enabled tags with nativeTagId");
+            } else if let Err(error) = bridge.ensure_connection(&poll_plan.connection) {
+                warn!("JoyWatcher bridge connect failed: {}", error);
+            } else {
+                let native_tag_ids = poll_plan.native_tag_ids();
+                match bridge.read_tags(&native_tag_ids) {
+                    Ok(values) => {
+                        let messages = poll_plan.build_messages(&values);
+                        if messages.is_empty() {
+                            warn!("JoyWatcher read returned no mapped messages");
+                        } else {
+                            let (tx, rx) = mpsc::channel(messages.len().max(1));
+                            for message in messages {
+                                if tx.send(message).await.is_err() {
+                                    warn!("JoyWatcher stream sender closed before enqueue");
+                                    break;
+                                }
+                            }
+                            drop(tx);
+
+                            if let Err(error) = client.stream_tag_values(rx).await {
+                                warn!("JoyWatcher stream_tag_values failed: {}", error);
+                            }
+                        }
+                    }
+                    Err(error) => warn!("JoyWatcher bridge read failed: {}", error),
+                }
             }
         }
 

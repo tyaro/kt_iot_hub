@@ -30,14 +30,17 @@
 - `ConnectNet.htm` の `CDaoDatabase*` 記述と同梱サンプルを突き合わせ、DAO ハンドルはタグ解決の正規ルートとみなさず、当面は `JWGetTagIDS2` / `JWRead` を主経路とする方針を確認した
 - `apps/joywatcher/ui/src/joywatcher_bridge_client.rs` を追加し、登録UI から x86 bridge を起動して単一タグの `JWGetTagIDS2` を呼ぶ最小導線を実装した
 - `apps/joywatcher/bridge-x86/src/dll_api.rs` に `JWGetTagIDS2` 実装を追加し、dll モードの `resolveTags` が動くようにした
+- `apps/joywatcher/bridge-x86/src/dll_api.rs` に `JWRead` 実装を追加し、dll モードの `read` が `TCOM_DATA1` を `bool | number | string` へ変換できるようにした
+- `apps/joywatcher/driver/src/joywatcher_runtime.rs` を追加し、`driverSpec.nativeTagId` を driver definition から拾って bridge の `read` 結果を `TagValueMessage` へ変換する最小ポーリング計画を実装した
+- `apps/joywatcher/driver/src/main.rs` / `joywatcher_bridge.rs` を更新し、bridge への接続設定保持・`read` 実行・gRPC 送信の最小導線を追加した
 
 ## まだ未完了のこと
 
 - JoyWatcher DLL / LIB 実体の配置方針確認（`参考/JoyWaApi.dll` と `C:\Windows\SysWOW64\JoyWaApi.dll` は確認済み）
 - `JoyWApi.h` をベースにした FFI 設計、または 32bit 別プロセスブリッジ方式の確定
-- `ConnectNet` / `DisconnectNet` / `DisconnectNetForce` を実DLLに結び付ける FFI 実装
-- 登録UI からの接続テスト / `JWGetTagIDS2` 実行 / `nativeTagId` 保存
-- runtime からの `JWRead` 実装とタグ値送信
+- 登録UI からの接続テスト / `JWGetTagIDS2` 実行 / `nativeTagId` 保存の実機確認
+- scan group の `scan_rate_ms` に基づく継続ポーリング
+- `ConnectNet` / `DisconnectNet` の呼出規約差分の実機確認
 
 ## 変更ファイル
 
@@ -57,6 +60,7 @@
 - `apps/joywatcher/driver/src/joywatcher_ffi.rs`
 - `apps/joywatcher/driver/src/joywatcher_artifacts.rs`
 - `apps/joywatcher/driver/src/joywatcher_bridge.rs`
+- `apps/joywatcher/driver/src/joywatcher_runtime.rs`
 - `apps/joywatcher/bridge-x86/Cargo.toml`
 - `apps/joywatcher/bridge-x86/src/main.rs`
 - `apps/joywatcher/bridge-x86/src/protocol.rs`
@@ -81,9 +85,11 @@
 - [x] `joywatcher-bridge-x86` が起動し、標準入出力 JSON Lines で応答する
 - [x] `joywatcher-bridge-x86 --mode dll` で DLL ローダが動作し、現環境では `os error 193` により x86 / x64 不一致が明示される
 - [x] `cargo build -p joywatcher-bridge-x86 --target i686-pc-windows-msvc` が成功し、x86 ビルド済み EXE の `--mode dll` で `ping` / `connect` / `disconnect` が構造化応答を返す
-- [x] `driver-joywatcher.exe` 実行時に x86 bridge が起動し、`bridge ping ok` / `bridge connect ok` が出る
+- [x] `driver-joywatcher` が `nativeTagId` を bridge の `read` へ渡し、`TagValueMessage` へ変換できる形までビルド / テスト確認済み
 - [x] `cargo test -p joywatcher-bridge-x86` が `JWGetTagIDS2` 実装追加後も成功する
+- [x] `cargo test -p joywatcher-bridge-x86` が `JWRead` 実装追加後も成功する
 - [x] `cargo test --manifest-path apps/joywatcher/ui/Cargo.toml` が成功する
+- [x] `cargo test -p driver-joywatcher` が `read` / `nativeTagId` 連携追加後も成功する
 
 ## 未確認 / 要確認
 
@@ -114,21 +120,23 @@
 - bridge ログが stdout に混ざると runtime 側の JSON 読取が壊れるため、bridge は stderr へログ出力し、runtime 側も JSON 行のみ採用するよう修正済み
 - JoyWatcher の数値 tagId は本体タグ ID と別物なので、保存時は `driverSpec.nativeTagId` として分離する方針
 - 登録UI から単一タグの `nativeTagId` を解決する Tauri コマンド `resolve_joywatcher_tag` を追加済み
-- ただし UI 上の実機手動確認はまだ未実施
+- bridge の `connect` は `user_id` / `password` を保持し、`JWRead` 呼び出し時に再利用する実装へ更新済み
+- `driver-joywatcher` は driver definition の `driver_spec_json` から `nativeTagId` を抜き出して gRPC 送信値へ変換する
+- ただし UI 上の実機手動確認、scan rate ベースの継続ポーリング、設定キー名の固定はまだ未実施
 
 ## 次セッションで最初に見るファイル
 
-1. `apps/joywatcher/driver/src/joywatcher_bridge.rs`
-2. `apps/joywatcher/bridge-x86/src/dll_api.rs`
-3. `apps/joywatcher/driver/src/joywatcher_ffi.rs`
+1. `apps/joywatcher/driver/src/joywatcher_runtime.rs`
+2. `apps/joywatcher/driver/src/joywatcher_bridge.rs`
+3. `apps/joywatcher/bridge-x86/src/dll_api.rs`
 
 ## 次の最小タスク
 
 1. 登録UI の `resolve_joywatcher_tag` を実機で手動確認する
-2. `JWRead` を実 DLL 呼び出しへ差し替え、runtime が `nativeTagId` で読めるようにする
-3. `ConnectNet` / `DisconnectNet` の呼出規約差分を実装上で吸収する
+2. scan group の `scan_rate_ms` に基づく継続ポーリングを入れる
+3. `ConnectNet` / `DisconnectNet` の呼出規約差分を実機で確定する
 4. DAO ハンドル調査が必要になった場合は、Rust ではなく x86 / MFC C++ shim を別途切る
-5. bridge の読取結果を `driver-joywatcher` から gRPC 送信へつなぐ
+5. `endpoint` / `user_id` / `password` の設定キー名を UI / runtime / bridge 間で固定する
 
 ## 完了条件の見込み
 
