@@ -143,9 +143,11 @@ kt_iot_hub.exe
 
 - `apps/joywatcher/bridge-x86/` を追加済み
 - `joywatcher-bridge-x86` は `mock` モードで起動する
+- `joywatcher-bridge-x86` に `dll` モードを追加し、`LoadLibraryW` / `GetProcAddress` による `ConnectNet` / `DisconnectNet` / `DisconnectNetForce` の最小ローダを実装した
 - `ping` / `connect` / `disconnect` / `forceDisconnect` / `resolveTags` / `read` の最小応答を持つ
 - IPC は `stdin` / `stdout` の JSON Lines で疎通確認済み
-- 現時点では DLL ロードは未実装で、`resolveTags` / `read` は mock 応答である
+- `resolveTags` / `read` はまだ mock 応答である
+- 現在の開発環境で `cargo run -p joywatcher-bridge-x86 -- --mode dll` を実行すると `os error 193` で失敗し、x86 DLL を x64 プロセスへロードできないことを確認した
 
 ### 理由
 
@@ -288,6 +290,8 @@ driver-ui/joywatcher/
 - `joywatcher-bridge-x86` の mock 実装は作成済み
 - `cargo test -p joywatcher-bridge-x86` は成功
 - JSON Lines の `ping` / `connect` / `resolveTags` / `read` スモーク確認済み
+- `dll` モードの最小ローダも作成済み
+- ただし実 DLL は x86 のため、現状の x64 開発ビルドでは `LoadLibraryW` が `os error 193` で失敗する
 
 ### Phase C: 実通信
 
@@ -297,7 +301,7 @@ driver-ui/joywatcher/
 
 ## 次の最小タスク
 
-1. `ConnectNet` / `DisconnectNet` / `DisconnectNetForce` を DLL 実体へ結び付ける最小 FFI を追加する
+1. `joywatcher-bridge-x86` を x86 ターゲットでビルド・起動できるようにする
 2. `driver-joywatcher` から `joywatcher-bridge-x86` を起動する導線を作る
-3. `JWGetTagIDS2` / `JWRead` の実シンボル有無と呼出規約を確定する
-4. mock `resolveTags` / `read` を実 DLL 呼び出しへ差し替える
+3. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
+4. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える

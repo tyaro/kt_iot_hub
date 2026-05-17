@@ -23,6 +23,7 @@
 - `apps/joywatcher/driver/src/joywatcher_artifacts.rs` を追加し、`JoyWaApi.dll` / `JoyWaApi.lib` / `Project2.dll` の探索と起動時警告を実装した
 - `docs/joywatcher-x86-bridge-design.md` を追加し、x86 ブリッジ方式の責務分担・IPC・配置案を整理した
 - `apps/joywatcher/bridge-x86` を追加し、JSON Lines ベースの `joywatcher-bridge-x86` mock 実装を作成した
+- `apps/joywatcher/bridge-x86/src/dll_api.rs` を追加し、`LoadLibraryW` / `GetProcAddress` による DLL ローダを実装した
 
 ## まだ未完了のこと
 
@@ -55,6 +56,7 @@
 - `apps/joywatcher/bridge-x86/src/connection.rs`
 - `apps/joywatcher/bridge-x86/src/mock_api.rs`
 - `apps/joywatcher/bridge-x86/src/service.rs`
+- `apps/joywatcher/bridge-x86/src/dll_api.rs`
 - `docs/joywatcher-x86-bridge-design.md`
 - `docs/joywatcher-session-handoff.md`
 
@@ -69,6 +71,7 @@
 - [ ] gRPC 接続が成功する
 - [ ] タグ値を 1 件以上送信できる
 - [x] `joywatcher-bridge-x86` が起動し、標準入出力 JSON Lines で応答する
+- [x] `joywatcher-bridge-x86 --mode dll` で DLL ローダが動作し、現環境では `os error 193` により x86 / x64 不一致が明示される
 
 ## 未確認 / 要確認
 
@@ -90,16 +93,17 @@
 - DLL export には `ConnectNet` / `DisconnectNet` / `DisconnectNetForce` / `GetTagCount` / `GetTagName` / `JWAsyncSelect` / `JWAsyncSelect2` が見えている
 - `参考/JoyWaApi/BC/Project2.dll` は `JoyWApi.h` の API 本体ではなく、サンプル/ラッパ DLL の可能性が高い
 - `apps/joywatcher/bridge-x86` は現時点で mock 実装。`ping` / `connect` / `disconnect` / `forceDisconnect` / `resolveTags` / `read` を JSON Lines で返す
+- `apps/joywatcher/bridge-x86/src/dll_api.rs` で DLL ローダは追加済み。ただし現在の開発ビルドは x64 のため、x86 DLL ロード時に `os error 193` となる
 
 ## 次セッションで最初に見るファイル
 
-1. `apps/joywatcher/bridge-x86/src/main.rs`
-2. `apps/joywatcher/bridge-x86/src/service.rs`
+1. `apps/joywatcher/bridge-x86/src/dll_api.rs`
+2. `apps/joywatcher/bridge-x86/src/main.rs`
 3. `apps/joywatcher/driver/src/joywatcher_ffi.rs`
 
 ## 次の最小タスク
 
-1. `joywatcher-bridge-x86` に DLL ロードと `ConnectNet` / `DisconnectNet` / `DisconnectNetForce` を結び付ける
+1. `joywatcher-bridge-x86` を x86 ターゲットでビルド・起動できるようにする
 2. `driver-joywatcher` からブリッジ子プロセスを起動する
 3. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える
 

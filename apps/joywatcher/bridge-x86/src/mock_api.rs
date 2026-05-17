@@ -40,6 +40,10 @@ impl MockJoyWatcherApi {
 }
 
 impl JoyWatcherBridgeApi for MockJoyWatcherApi {
+    fn mode(&self) -> &'static str {
+        "mock"
+    }
+
     fn connect_net(&mut self) -> Result<()> {
         Ok(())
     }
@@ -50,6 +54,14 @@ impl JoyWatcherBridgeApi for MockJoyWatcherApi {
 
     fn disconnect_net_force(&mut self) -> Result<()> {
         Ok(())
+    }
+
+    fn resolve_tags(&mut self, tags: &[String]) -> Result<Vec<ResolvedTag>> {
+        Ok(self.resolve_tags(tags))
+    }
+
+    fn read_tags(&self, tag_ids: &[i32]) -> Result<Vec<ReadValuePayload>> {
+        Ok(self.read_tags(tag_ids))
     }
 }
 

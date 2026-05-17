@@ -1,9 +1,52 @@
 use anyhow::{anyhow, Result};
 
+use crate::protocol::{ReadValuePayload, ResolvedTag};
+
 pub trait JoyWatcherBridgeApi {
+    fn mode(&self) -> &'static str;
     fn connect_net(&mut self) -> Result<()>;
     fn disconnect_net(&mut self) -> Result<()>;
     fn disconnect_net_force(&mut self) -> Result<()>;
+
+    fn resolve_tags(&mut self, _tags: &[String]) -> Result<Vec<ResolvedTag>> {
+        Err(anyhow!(
+            "ResolveTags is not implemented for {} mode",
+            self.mode()
+        ))
+    }
+
+    fn read_tags(&self, _tag_ids: &[i32]) -> Result<Vec<ReadValuePayload>> {
+        Err(anyhow!(
+            "Read is not implemented for {} mode",
+            self.mode()
+        ))
+    }
+}
+
+impl<T: JoyWatcherBridgeApi + ?Sized> JoyWatcherBridgeApi for Box<T> {
+    fn mode(&self) -> &'static str {
+        (**self).mode()
+    }
+
+    fn connect_net(&mut self) -> Result<()> {
+        (**self).connect_net()
+    }
+
+    fn disconnect_net(&mut self) -> Result<()> {
+        (**self).disconnect_net()
+    }
+
+    fn disconnect_net_force(&mut self) -> Result<()> {
+        (**self).disconnect_net_force()
+    }
+
+    fn resolve_tags(&mut self, tags: &[String]) -> Result<Vec<ResolvedTag>> {
+        (**self).resolve_tags(tags)
+    }
+
+    fn read_tags(&self, tag_ids: &[i32]) -> Result<Vec<ReadValuePayload>> {
+        (**self).read_tags(tag_ids)
+    }
 }
 
 #[derive(Debug)]
@@ -72,6 +115,10 @@ mod tests {
     }
 
     impl JoyWatcherBridgeApi for MockApi {
+        fn mode(&self) -> &'static str {
+            "mock"
+        }
+
         fn connect_net(&mut self) -> Result<()> {
             self.connect_calls += 1;
             Ok(())

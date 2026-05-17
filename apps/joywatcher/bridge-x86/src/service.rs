@@ -1,23 +1,19 @@
 use anyhow::Result;
 
 use crate::connection::ConnectionManager;
-use crate::mock_api::MockJoyWatcherApi;
 use crate::protocol::{BridgeRequest, BridgeResponse};
 
-#[derive(Debug)]
 pub struct JoyWatcherBridgeService {
-    connections: ConnectionManager<MockJoyWatcherApi>,
-}
-
-impl Default for JoyWatcherBridgeService {
-    fn default() -> Self {
-        Self {
-            connections: ConnectionManager::new(MockJoyWatcherApi::default()),
-        }
-    }
+    connections: ConnectionManager<Box<dyn crate::connection::JoyWatcherBridgeApi>>,
 }
 
 impl JoyWatcherBridgeService {
+    pub fn new(api: Box<dyn crate::connection::JoyWatcherBridgeApi>) -> Self {
+        Self {
+            connections: ConnectionManager::new(api),
+        }
+    }
+
     pub fn handle_request(&mut self, request: BridgeRequest) -> BridgeResponse {
         match self.try_handle_request(request) {
             Ok(response) => response,
@@ -32,7 +28,7 @@ impl JoyWatcherBridgeService {
                 let active_connections = self.connections.connect()?;
                 Ok(BridgeResponse::Connected {
                     active_connections,
-                    mode: "mock",
+                    mode: self.connections.api_ref().mode(),
                 })
             }
             BridgeRequest::Disconnect => {
@@ -45,7 +41,7 @@ impl JoyWatcherBridgeService {
             }
             BridgeRequest::ResolveTags { tags } => {
                 self.connections.ensure_connected()?;
-                let items = self.connections.api_mut().resolve_tags(&tags);
+                let items = self.connections.api_mut().resolve_tags(&tags)?;
                 Ok(BridgeResponse::ResolvedTags { items })
             }
             BridgeRequest::Read {
@@ -53,7 +49,7 @@ impl JoyWatcherBridgeService {
                 tag_ids,
             } => {
                 self.connections.ensure_connected()?;
-                let values = self.connections.api_ref().read_tags(&tag_ids);
+                let values = self.connections.api_ref().read_tags(&tag_ids)?;
                 Ok(BridgeResponse::ReadResult { request_id, values })
             }
         }
@@ -62,20 +58,21 @@ impl JoyWatcherBridgeService {
 
 #[cfg(test)]
 mod tests {
+    use crate::mock_api::MockJoyWatcherApi;
     use crate::protocol::BridgeRequest;
 
     use super::*;
 
     #[test]
     fn ping_returns_pong() {
-        let mut service = JoyWatcherBridgeService::default();
+        let mut service = JoyWatcherBridgeService::new(Box::new(MockJoyWatcherApi::default()));
         let response = service.handle_request(BridgeRequest::Ping);
         assert_eq!(response, BridgeResponse::Pong);
     }
 
     #[test]
     fn resolve_tags_requires_connection() {
-        let mut service = JoyWatcherBridgeService::default();
+        let mut service = JoyWatcherBridgeService::new(Box::new(MockJoyWatcherApi::default()));
         let response = service.handle_request(BridgeRequest::ResolveTags {
             tags: vec!["Line1/Tank/Level".to_string()],
         });
@@ -88,7 +85,7 @@ mod tests {
 
     #[test]
     fn connect_then_read_returns_mock_values() {
-        let mut service = JoyWatcherBridgeService::default();
+        let mut service = JoyWatcherBridgeService::new(Box::new(MockJoyWatcherApi::default()));
         service.handle_request(BridgeRequest::Connect {
             endpoint: None,
             user_id: None,
