@@ -1,5 +1,7 @@
 # UI・タグ登録設計
 
+> 実装手順・受け入れ条件・別セッション向けの再開導線は [`driver-development.md`](./driver-development.md) を参照。
+
 ## 本体 UI
 
 本体の画面構成は 3 ペイン管理画面とする。
