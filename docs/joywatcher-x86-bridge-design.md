@@ -123,6 +123,7 @@ kt_iot_hub.exe
 - DriverDefinition の取得
 - ScanGroup 単位のポーリング計画
 - ブリッジプロセス起動 / 停止 / 再接続
+- UI で確定保存された `tagPath -> nativeTagId` を読み、`nativeTagId` ベースで読取する
 - ブリッジから受けた値を `StreamTagValues` へ流す
 - ブリッジ異常終了時の再試行制御
 
@@ -130,7 +131,7 @@ kt_iot_hub.exe
 
 - JoyWaApi.dll のロード
 - `ConnectNet` / `DisconnectNet` / `DisconnectNetForce` の参照カウント管理
-- `JWGetTagIDS2` によるタグ名 → ID 解決
+- 登録UI から呼ばれる `JWGetTagIDS2` によるタグ名 → ID 解決
 - `JWRead` による値取得
 - C ABI / 呼出規約差分の吸収
 - 最小限のエラーコードとメッセージを IPC で返却
@@ -221,14 +222,20 @@ kt_iot_hub.exe
 ## タグ解決フロー
 
 1. UI または設定から `tagPath` を受け取る
-2. `driver-joywatcher` が `resolveTags` をブリッジへ送る
-3. ブリッジが `JWGetTagIDS2` を呼んで `tagId` を得る
-4. `driver-joywatcher` は `tagPath -> tagId` をキャッシュする
-5. 読取時は `tagId` 配列で `read` を送る
+2. 登録UI が `resolveTags` をブリッジへ送り、`JWGetTagIDS2` で `nativeTagId` を得る
+3. 登録UI は `driverSpec.tagPath` と `driverSpec.nativeTagId` をセットで保存する
+4. `driver-joywatcher` は設定読込時に保存済み `nativeTagId` を利用する
+5. 再読取時は `nativeTagId` 配列で `read` を送る
+
+補足:
+
+- システム内の永続タグ識別子は従来どおり `tag.id`
+- JoyWatcher DLL が返す数値 ID は `driverSpec.nativeTagId` として別管理する
+- これにより本体タグ ID と JoyWatcher ネイティブ ID を混同しない
 
 ## 値読取フロー
 
-1. `driver-joywatcher` が poll 周期で `read` を送る
+1. `driver-joywatcher` が poll 周期で保存済み `nativeTagId` をまとめて `read` へ送る
 2. ブリッジが `JWRead` を実行する
 3. `TCOM_DATA1` を `bool | number | string` へ変換する
 4. 応答 JSON として返す
@@ -314,11 +321,12 @@ driver-ui/joywatcher/
 
 - x86 bridge の `connect` / `disconnect` は最小往復まで確認済み
 - `driver-joywatcher` からの bridge 起動と `ping` / `connect` も確認済み
-- 未実装なのは `resolveTags` / `read` の実 DLL 化と gRPC 送信統合
+- 登録UI の保存 JSON は `driverSpec.nativeTagId` を保持できる形へ更新済み
+- 未実装なのは UI からの `resolveTags` 実呼出し、`read` の実 DLL 化、gRPC 送信統合
 
 ## 次の最小タスク
 
-1. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える
-2. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
-3. bridge の `resolveTags` / `read` を mock から実装へ置き換える
+1. 登録UI から x86 bridge を起動し、`JWGetTagIDS2` で `driverSpec.nativeTagId` を埋める
+2. `JWRead` を実 DLL 呼び出しへ差し替え、runtime が `nativeTagId` で読めるようにする
+3. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
 4. `driver-joywatcher` から bridge の値を gRPC 送信へつなぐ

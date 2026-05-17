@@ -26,14 +26,15 @@
 - `apps/joywatcher/bridge-x86/src/dll_api.rs` を追加し、`LoadLibraryW` / `GetProcAddress` による DLL ローダを実装した
 - `scripts/build-dev-joywatcher-bridge-x86.ps1` を追加し、x86 bridge の開発用ビルド / 配置を自動化した
 - `apps/joywatcher/driver/src/joywatcher_bridge.rs` を追加し、runtime から x86 bridge を起動して `ping` / `connect` する最小統合を実装した
+- `apps/joywatcher/ui/assets/app.js` を更新し、保存 JSON が `driverSpec.nativeTagId` を保持できるようにした
 
 ## まだ未完了のこと
 
 - JoyWatcher DLL / LIB 実体の配置方針確認（`参考/JoyWaApi.dll` と `C:\Windows\SysWOW64\JoyWaApi.dll` は確認済み）
 - `JoyWApi.h` をベースにした FFI 設計、または 32bit 別プロセスブリッジ方式の確定
 - `ConnectNet` / `DisconnectNet` / `DisconnectNetForce` を実DLLに結び付ける FFI 実装
-- `driver-joywatcher` から `joywatcher-bridge-x86` を起動して接続する導線
-- 登録UI からの接続テスト / タグ一覧自動取得 / runtime からのタグ値送信実装
+- 登録UI からの接続テスト / `JWGetTagIDS2` 実行 / `nativeTagId` 保存
+- runtime からの `JWRead` 実装とタグ値送信
 
 ## 変更ファイル
 
@@ -104,6 +105,7 @@
 - x86 ビルド済み bridge では `connect` / `disconnect` が少なくともクラッシュせず構造化応答を返す
 - runtime 側は x86 bridge を優先探索するよう更新済み
 - bridge ログが stdout に混ざると runtime 側の JSON 読取が壊れるため、bridge は stderr へログ出力し、runtime 側も JSON 行のみ採用するよう修正済み
+- JoyWatcher の数値 tagId は本体タグ ID と別物なので、保存時は `driverSpec.nativeTagId` として分離する方針
 
 ## 次セッションで最初に見るファイル
 
@@ -113,9 +115,10 @@
 
 ## 次の最小タスク
 
-1. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える
-2. `ConnectNet` / `DisconnectNet` の呼出規約差分を実装上で吸収する
-3. bridge の読取結果を `driver-joywatcher` から gRPC 送信へつなぐ
+1. 登録UI から x86 bridge を起動し、`JWGetTagIDS2` で `driverSpec.nativeTagId` を保存する
+2. `JWRead` を実 DLL 呼び出しへ差し替え、runtime が `nativeTagId` で読めるようにする
+3. `ConnectNet` / `DisconnectNet` の呼出規約差分を実装上で吸収する
+4. bridge の読取結果を `driver-joywatcher` から gRPC 送信へつなぐ
 
 ## 完了条件の見込み
 

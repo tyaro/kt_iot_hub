@@ -33,6 +33,7 @@ enabled = true
 kind = "joywatcher"
 node = "PLC1"
 tag_path = "Line1/Tank/Level"
+native_tag_id = 101
 
 [[scan_group]]
 id = "sensors_1000ms"

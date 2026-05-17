@@ -130,6 +130,10 @@
                 <input id="tagPath" type="text" placeholder="Line1/Tank/Level" />
               </label>
               <label>
+                <span>JoyWatcher Tag ID</span>
+                <input id="tagNativeId" type="number" step="1" placeholder="JWGetTagIDS2 で解決した数値ID" />
+              </label>
+              <label>
                 <span>単位</span>
                 <input id="tagUnit" type="text" placeholder="% / mm / degC" />
               </label>
@@ -149,8 +153,8 @@
         <aside class="summary-panel">
           <h2>段階メモ</h2>
           <ul class="note-list">
-            <li>将来ここに DLL 接続テスト / タグ一覧取得を追加する予定です。</li>
-            <li>今は手動入力でも `driver` / `scanGroups` / `tags` 相当の JSON を返却できます。</li>
+            <li>将来ここに DLL 接続テスト / `JWGetTagIDS2` によるタグID解決を追加する予定です。</li>
+            <li>今は手動入力でも `driver` / `scanGroups` / `tags` 相当の JSON を返却でき、必要なら JoyWatcher 側の数値 Tag ID も保持できます。</li>
             <li>x86 DLL の可能性が高いため、まずは UI と runtime の導線だけを検証対象にします。</li>
           </ul>
           <div class="actions between">

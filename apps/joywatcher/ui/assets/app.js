@@ -74,6 +74,10 @@ function restoreScanGroups(rawGroups) {
           name: tag.name || '',
           dataType: tag.dataType || 'f32',
           tagPath: tag.driverSpec?.tagPath || tag.driverSpec?.tag_path || '',
+          nativeTagId:
+            tag.driverSpec?.nativeTagId ??
+            tag.driverSpec?.native_tag_id ??
+            '',
           unit: tag.unit || tag.metadata?.unit || '',
           comment: tag.comment || tag.metadata?.comment || '',
           enabled: tag.enabled !== false
@@ -158,6 +162,7 @@ function resetTagForm() {
   el('tagName').value = ''
   el('tagDataType').value = 'f32'
   el('tagPath').value = ''
+  el('tagNativeId').value = ''
   el('tagUnit').value = ''
   el('tagComment').value = ''
 }
@@ -256,6 +261,7 @@ function renderTags() {
       <div class="item-meta">
         <span>tagId: ${tag.id}</span>
         <span>tagPath: ${tag.tagPath}</span>
+        <span>nativeTagId: ${tag.nativeTagId || '-'}</span>
       </div>
       <div class="item-actions">
         <button type="button" class="btn secondary edit-tag">編集</button>
@@ -268,6 +274,7 @@ function renderTags() {
       el('tagName').value = tag.name
       el('tagDataType').value = tag.dataType
       el('tagPath').value = tag.tagPath
+      el('tagNativeId').value = tag.nativeTagId || ''
       el('tagUnit').value = tag.unit || ''
       el('tagComment').value = tag.comment || ''
       renderTags()
@@ -329,12 +336,16 @@ function upsertTag() {
 
   const name = el('tagName').value.trim()
   const tagPath = el('tagPath').value.trim()
+  const nativeTagIdRaw = el('tagNativeId').value.trim()
   const explicitTagId = el('tagId').value.trim()
   const tagId = explicitTagId || normalizeId(`tag-${el('driverId').value}-${group.id}-${name || tagPath}`)
 
   if (!name) throw new Error('表示名を入力してください')
   if (!tagPath) throw new Error('タグパスを入力してください')
   if (!tagId) throw new Error('タグIDを入力してください')
+  if (nativeTagIdRaw && !Number.isInteger(Number(nativeTagIdRaw))) {
+    throw new Error('JoyWatcher Tag ID は整数で入力してください')
+  }
 
   const duplicateIndex = group.tags.findIndex((tag, index) => tag.id === tagId && index !== editingTagIndex)
   if (duplicateIndex >= 0) {
@@ -346,6 +357,7 @@ function upsertTag() {
     name,
     dataType: el('tagDataType').value,
     tagPath,
+    nativeTagId: nativeTagIdRaw,
     unit: el('tagUnit').value.trim(),
     comment: el('tagComment').value.trim(),
     enabled: true
@@ -403,7 +415,7 @@ function renderReview() {
         <span>rate: ${group.scanRateMs} ms</span>
       </div>
       <div class="item-meta">
-        <span>${group.tags.map((tag) => `${tag.name} (${tag.tagPath})`).join(' / ') || '-'}</span>
+        <span>${group.tags.map((tag) => `${tag.name} (${tag.tagPath}${tag.nativeTagId ? ` / native:${tag.nativeTagId}` : ''})`).join(' / ') || '-'}</span>
       </div>
     `
     list.appendChild(item)
@@ -435,7 +447,10 @@ function buildPayload() {
             kind: 'joywatcher',
             node: group.node,
             scanGroup: group.id,
-            tagPath: tag.tagPath
+            tagPath: tag.tagPath,
+            ...(tag.nativeTagId
+              ? { nativeTagId: Number(tag.nativeTagId) }
+              : {})
           }
         }))
       }))
