@@ -25,6 +25,7 @@
 - `apps/joywatcher/bridge-x86` を追加し、JSON Lines ベースの `joywatcher-bridge-x86` mock 実装を作成した
 - `apps/joywatcher/bridge-x86/src/dll_api.rs` を追加し、`LoadLibraryW` / `GetProcAddress` による DLL ローダを実装した
 - `scripts/build-dev-joywatcher-bridge-x86.ps1` を追加し、x86 bridge の開発用ビルド / 配置を自動化した
+- `apps/joywatcher/driver/src/joywatcher_bridge.rs` を追加し、runtime から x86 bridge を起動して `ping` / `connect` する最小統合を実装した
 
 ## まだ未完了のこと
 
@@ -51,6 +52,7 @@
 - `apps/joywatcher/driver/src/joywatcher_connection.rs`
 - `apps/joywatcher/driver/src/joywatcher_ffi.rs`
 - `apps/joywatcher/driver/src/joywatcher_artifacts.rs`
+- `apps/joywatcher/driver/src/joywatcher_bridge.rs`
 - `apps/joywatcher/bridge-x86/Cargo.toml`
 - `apps/joywatcher/bridge-x86/src/main.rs`
 - `apps/joywatcher/bridge-x86/src/protocol.rs`
@@ -75,6 +77,7 @@
 - [x] `joywatcher-bridge-x86` が起動し、標準入出力 JSON Lines で応答する
 - [x] `joywatcher-bridge-x86 --mode dll` で DLL ローダが動作し、現環境では `os error 193` により x86 / x64 不一致が明示される
 - [x] `cargo build -p joywatcher-bridge-x86 --target i686-pc-windows-msvc` が成功し、x86 ビルド済み EXE の `--mode dll` で `ping` / `connect` / `disconnect` が構造化応答を返す
+- [x] `driver-joywatcher.exe` 実行時に x86 bridge が起動し、`bridge ping ok` / `bridge connect ok` が出る
 
 ## 未確認 / 要確認
 
@@ -99,18 +102,20 @@
 - `apps/joywatcher/bridge-x86/src/dll_api.rs` で DLL ローダは追加済み。ただし現在の開発ビルドは x64 のため、x86 DLL ロード時に `os error 193` となる
 - `i686-pc-windows-msvc` ターゲットを追加済みで、x86 ビルド済み `joywatcher-bridge-x86.exe --mode dll` は起動できる
 - x86 ビルド済み bridge では `connect` / `disconnect` が少なくともクラッシュせず構造化応答を返す
+- runtime 側は x86 bridge を優先探索するよう更新済み
+- bridge ログが stdout に混ざると runtime 側の JSON 読取が壊れるため、bridge は stderr へログ出力し、runtime 側も JSON 行のみ採用するよう修正済み
 
 ## 次セッションで最初に見るファイル
 
-1. `apps/joywatcher/bridge-x86/src/dll_api.rs`
-2. `scripts/build-dev-joywatcher-bridge-x86.ps1`
+1. `apps/joywatcher/driver/src/joywatcher_bridge.rs`
+2. `apps/joywatcher/bridge-x86/src/dll_api.rs`
 3. `apps/joywatcher/driver/src/joywatcher_ffi.rs`
 
 ## 次の最小タスク
 
-1. `driver-joywatcher` からブリッジ子プロセスを起動する
-2. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える
-3. `ConnectNet` / `DisconnectNet` の呼出規約差分を実装上で吸収する
+1. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える
+2. `ConnectNet` / `DisconnectNet` の呼出規約差分を実装上で吸収する
+3. bridge の読取結果を `driver-joywatcher` から gRPC 送信へつなぐ
 
 ## 完了条件の見込み
 
@@ -127,6 +132,7 @@
 - 影響クレート: `cargo test -p driver-joywatcher`
 - 影響クレート: `cargo test -p joywatcher-bridge-x86`
 - 追加確認: `cargo build -p joywatcher-bridge-x86 --target i686-pc-windows-msvc`
+- 追加確認: `$env:RUST_LOG='info'; .\target\debug\driver-joywatcher.exe -- --driver-id jw-test --driver-kind joywatcher --grpc-addr 127.0.0.1:59999`
 - 追加確認: `cargo build --manifest-path apps/joywatcher/ui/Cargo.toml`
 - 追加確認: `cargo build --manifest-path apps/joywatcher/driver/Cargo.toml`
 

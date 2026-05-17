@@ -150,6 +150,10 @@ kt_iot_hub.exe
 - 現在の開発環境で `cargo run -p joywatcher-bridge-x86 -- --mode dll` を実行すると `os error 193` で失敗し、x86 DLL を x64 プロセスへロードできないことを確認した
 - `cargo build -p joywatcher-bridge-x86 --target i686-pc-windows-msvc` は成功し、x86 ビルド済み EXE では `--mode dll` の起動が成功する
 - x86 ビルド済み EXE で `connect` / `disconnect` を送ると、`active_connections: 1 -> 0` の構造化応答が返ることを確認した
+- `driver-joywatcher` から x86 bridge を起動する最小統合を追加済み
+- runtime 側は `driver-ui/joywatcher/joywatcher-bridge-x86.exe` → `target/i686-pc-windows-msvc/debug/joywatcher-bridge-x86.exe` の順で x86 bridge を優先探索する
+- bridge 側ログは stderr へ出し、runtime 側は stdout から JSON 行だけ読むようにしたため、`ping` / `connect` 応答がログ混線で壊れない
+- `driver-joywatcher.exe` 実行時に `JoyWatcher bridge started` / `bridge ping ok` / `bridge connect ok` を確認済み
 
 ### 理由
 
@@ -306,9 +310,15 @@ driver-ui/joywatcher/
 - 少なくとも 1 件の `tagPath -> tagId` 解決ができる
 - 少なくとも 1 件の `JWRead` 結果を `driver-joywatcher` 経由で gRPC 送信できる
 
+現状:
+
+- x86 bridge の `connect` / `disconnect` は最小往復まで確認済み
+- `driver-joywatcher` からの bridge 起動と `ping` / `connect` も確認済み
+- 未実装なのは `resolveTags` / `read` の実 DLL 化と gRPC 送信統合
+
 ## 次の最小タスク
 
-1. `driver-joywatcher` から x86 ビルド済み `joywatcher-bridge-x86` を起動する導線を作る
+1. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える
 2. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
-3. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える
-4. bridge の `resolveTags` / `read` を mock から実装へ置き換える
+3. bridge の `resolveTags` / `read` を mock から実装へ置き換える
+4. `driver-joywatcher` から bridge の値を gRPC 送信へつなぐ

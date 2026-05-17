@@ -1,5 +1,6 @@
 mod grpc_client;
 mod joywatcher_artifacts;
+mod joywatcher_bridge;
 mod joywatcher_connection;
 mod joywatcher_ffi;
 
@@ -7,6 +8,7 @@ use anyhow::Result;
 use clap::Parser;
 use grpc_client::DriverRuntimeGrpcClient;
 use joywatcher_artifacts::JoyWatcherArtifacts;
+use joywatcher_bridge::{BridgeMode, JoyWatcherBridgeProcess};
 use joywatcher_connection::JoyWatcherConnectionPlan;
 use joywatcher_ffi::observed_calling_conventions;
 use std::time::Duration;
@@ -74,6 +76,34 @@ async fn run() -> Result<()> {
         warn!("{}", message);
     }
 
+    let mut bridge = match JoyWatcherBridgeProcess::start(&artifacts) {
+        Ok(mut bridge) => {
+            info!(
+                "JoyWatcher bridge started: mode={:?} exe={}",
+                bridge.mode(),
+                bridge.exe_path().display()
+            );
+
+            match bridge.ping() {
+                Ok(response) => info!("JoyWatcher bridge ping ok: {}", response),
+                Err(error) => warn!("JoyWatcher bridge ping failed: {}", error),
+            }
+
+            if matches!(bridge.mode(), BridgeMode::Dll) {
+                match bridge.connect() {
+                    Ok(response) => info!("JoyWatcher bridge connect ok: {}", response),
+                    Err(error) => warn!("JoyWatcher bridge connect failed: {}", error),
+                }
+            }
+
+            Some(bridge)
+        }
+        Err(error) => {
+            warn!("JoyWatcher bridge start failed: {}", error);
+            None
+        }
+    };
+
     // JoyWatcher DLL 実装時の接続ライフサイクルメモ:
     // - `ConnectNet()` は複数回呼んでもよいが、呼んだ回数ぶん `DisconnectNet()` を実行する
     // - 通常終了時は `DisconnectNet()` で参照カウントを戻す
@@ -83,7 +113,7 @@ async fn run() -> Result<()> {
 
     if cfg!(all(target_os = "windows", target_pointer_width = "64")) {
         warn!(
-            "JoyWatcher DLL may be 32-bit only. Current runtime build is 64-bit, so this scaffold intentionally avoids DLL loading until an x86 build path is prepared."
+            "JoyWatcher runtime build is 64-bit. Native DLL loading stays in the x86 bridge process, while this runtime only orchestrates bridge startup and gRPC."
         );
     }
 
@@ -123,6 +153,13 @@ async fn run() -> Result<()> {
         }
         if definition.tags.is_empty() {
             warn!("JoyWatcher definition has no tags yet");
+        }
+
+        if let Some(bridge) = bridge.as_mut() {
+            match bridge.ping() {
+                Ok(response) => info!("JoyWatcher bridge heartbeat ok: {}", response),
+                Err(error) => warn!("JoyWatcher bridge heartbeat failed: {}", error),
+            }
         }
 
         tokio::time::sleep(Duration::from_secs(2)).await;
