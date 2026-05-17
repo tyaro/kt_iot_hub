@@ -1065,6 +1065,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "driver-joywatcher"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "prost",
+ "protoc-bin-vendored",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-build",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "driver-postgres"
 version = "0.1.0"
 dependencies = [
@@ -1083,6 +1099,15 @@ dependencies = [
  "tonic-build",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "driver_ui_joywatcher"
+version = "0.1.0"
+dependencies = [
+ "kt_driver_ui_host",
+ "tauri",
+ "tauri-build",
 ]
 
 [[package]]
@@ -2244,6 +2269,18 @@ checksum = "9afb3de4395d6b3e67a780b6de64b51c978ecf11cb9a462c66be7d4ca9039d33"
 dependencies = [
  "getrandom 0.3.4",
  "libc",
+]
+
+[[package]]
+name = "joywatcher-bridge-x86"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

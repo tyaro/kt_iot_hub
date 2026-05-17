@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JoyWatcher 登録UI</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="hero">
+        <div>
+          <div class="eyebrow" id="modeBadge">新規登録</div>
+          <h1 id="pageTitle">JoyWatcher 登録UI</h1>
+          <p id="pageDesc">接続先設定 → 手動タグ構成 → 確認して保存 の順で最小雛形を作成します。</p>
+        </div>
+        <div class="hero-note warning">
+          <strong>DLL解析フェーズ</strong>
+          <span>現段階では JoyWatcher DLL を呼ばず、手動定義入力と本体連携の骨組みだけを提供します。</span>
+        </div>
+      </header>
+
+      <nav class="stepper" aria-label="登録ステップ">
+        <button type="button" class="step active" data-step="1">1. 接続先</button>
+        <button type="button" class="step" data-step="2">2. グループ / タグ</button>
+        <button type="button" class="step" data-step="3">3. 確認 / 保存</button>
+      </nav>
+
+      <section class="messages">
+        <div class="message ok" id="msgOk"></div>
+        <div class="message err" id="msgErr"></div>
+        <div class="message ok" id="outOk"></div>
+        <div class="message err" id="outErr"></div>
+      </section>
+
+      <section class="panel-grid" data-step-panel="1">
+        <article class="panel">
+          <h2>接続先設定</h2>
+          <div class="form-grid two">
+            <label>
+              <span>接続先ID</span>
+              <input id="driverId" type="text" placeholder="joywatcher1" />
+            </label>
+            <label>
+              <span>エンドポイント</span>
+              <input id="endpoint" type="text" placeholder="localhost" />
+            </label>
+            <label>
+              <span>User ID</span>
+              <input id="userId" type="number" min="0" value="0" />
+            </label>
+            <label>
+              <span>Password</span>
+              <input id="password" type="password" placeholder="空でも可" />
+            </label>
+          </div>
+          <label>
+            <span>メモ</span>
+            <textarea id="notes" rows="3" placeholder="DLL解析メモ、接続先用途など"></textarea>
+          </label>
+          <p class="muted">
+            JoyWatcher サンプルでは `uid` / `password` を読書き API に渡しているため、現時点ではこの2項目を保持します。
+          </p>
+          <div class="actions end">
+            <button id="btnStep1Next" type="button" class="btn primary">次へ</button>
+          </div>
+        </article>
+
+        <aside class="summary-panel">
+          <h2>概要</h2>
+          <div id="summary" class="summary-cards"></div>
+        </aside>
+      </section>
+
+      <section class="panel-grid hidden" data-step-panel="2">
+        <article class="panel split-panel">
+          <div>
+            <div class="panel-head">
+              <h2>ScanGroup</h2>
+              <span id="groupsCountText" class="badge neutral">0件</span>
+            </div>
+            <div class="form-grid">
+              <label>
+                <span>ScanGroup ID</span>
+                <input id="groupId" type="text" placeholder="main_scan" />
+              </label>
+              <label>
+                <span>ノード</span>
+                <input id="groupNode" type="text" placeholder="PLC1" />
+              </label>
+              <label>
+                <span>読出し周期(ms)</span>
+                <input id="groupRate" type="number" min="100" value="1000" />
+              </label>
+            </div>
+            <div class="actions">
+              <button id="btnSaveGroup" type="button" class="btn secondary">グループ追加 / 更新</button>
+              <button id="btnResetGroup" type="button" class="btn ghost">入力クリア</button>
+            </div>
+            <div id="groupsList" class="list-box"></div>
+          </div>
+
+          <div>
+            <div class="panel-head">
+              <h2>タグ</h2>
+              <span id="activeGroupBadge" class="badge neutral">未選択</span>
+            </div>
+            <div class="form-grid two">
+              <label>
+                <span>タグID</span>
+                <input id="tagId" type="text" placeholder="jw-main-level" />
+              </label>
+              <label>
+                <span>表示名</span>
+                <input id="tagName" type="text" placeholder="Level" />
+              </label>
+              <label>
+                <span>データ型</span>
+                <select id="tagDataType">
+                  <option value="bool">bool</option>
+                  <option value="i32">i32</option>
+                  <option value="i64">i64</option>
+                  <option value="f32" selected>f32</option>
+                  <option value="f64">f64</option>
+                  <option value="string">string</option>
+                </select>
+              </label>
+              <label>
+                <span>タグパス</span>
+                <input id="tagPath" type="text" placeholder="Line1/Tank/Level" />
+              </label>
+              <label>
+                <span>単位</span>
+                <input id="tagUnit" type="text" placeholder="% / mm / degC" />
+              </label>
+              <label>
+                <span>コメント</span>
+                <input id="tagComment" type="text" placeholder="任意" />
+              </label>
+            </div>
+            <div class="actions">
+              <button id="btnSaveTag" type="button" class="btn secondary">タグ追加 / 更新</button>
+              <button id="btnResetTag" type="button" class="btn ghost">入力クリア</button>
+            </div>
+            <div id="tagsList" class="list-box"></div>
+          </div>
+        </article>
+
+        <aside class="summary-panel">
+          <h2>段階メモ</h2>
+          <ul class="note-list">
+            <li>将来ここに DLL 接続テスト / タグ一覧取得を追加する予定です。</li>
+            <li>今は手動入力でも `driver` / `scanGroups` / `tags` 相当の JSON を返却できます。</li>
+            <li>x86 DLL の可能性が高いため、まずは UI と runtime の導線だけを検証対象にします。</li>
+          </ul>
+          <div class="actions between">
+            <button id="btnStep2Prev" type="button" class="btn ghost">戻る</button>
+            <button id="btnStep2Next" type="button" class="btn primary">確認へ</button>
+          </div>
+        </aside>
+      </section>
+
+      <section class="panel-grid hidden" data-step-panel="3">
+        <article class="panel">
+          <h2>保存前レビュー</h2>
+          <div id="reviewConnection" class="review-grid"></div>
+          <div class="review-head">
+            <h3>ScanGroup / タグ一覧</h3>
+            <span id="reviewCounts" class="badge success">0件</span>
+          </div>
+          <div id="reviewGroups" class="review-list"></div>
+          <div class="actions between">
+            <button id="btnStep3Prev" type="button" class="btn ghost">戻る</button>
+            <div class="actions">
+              <button id="cancelButton" type="button" class="btn ghost">キャンセル</button>
+              <button id="saveButton" type="button" class="btn primary">保存</button>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

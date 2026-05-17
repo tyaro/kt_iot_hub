@@ -1,0 +1,30 @@
+{
+  "productName": "driver_ui_joywatcher",
+  "version": "0.1.0",
+  "identifier": "com.example.driver_ui_joywatcher",
+  "build": {
+    "frontendDist": "./assets"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "JoyWatcher 登録UI",
+        "width": 1360,
+        "height": 920,
+        "minWidth": 1180,
+        "minHeight": 760,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": [
+      "../../../src-tauri/icons/icon.ico"
+    ]
+  }
+}

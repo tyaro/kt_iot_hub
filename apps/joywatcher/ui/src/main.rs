@@ -1,0 +1,25 @@
+#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
+
+//! JoyWatcher レジストレーション用のドライバUI Tauri アプリ。
+//! 初期段階では DLL 呼び出しをまだ実装せず、
+//! 本体との launch context / 保存導線を先に確立する。
+
+use kt_driver_ui_host::bridge;
+
+#[tauri::command]
+fn close_driver_ui_window(window: tauri::WebviewWindow) -> Result<(), String> {
+    window
+        .close()
+        .map_err(|e| format!("failed to close driver ui window: {}", e))
+}
+
+fn main() {
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![
+            close_driver_ui_window,
+            bridge::get_driver_ui_launch_context,
+            bridge::save_driver_ui_output,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running driver_ui_joywatcher");
+}

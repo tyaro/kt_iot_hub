@@ -1,0 +1,22 @@
+[package]
+name = "driver-joywatcher"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "driver-joywatcher"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1.35", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["full"] }
+tonic = { version = "0.12", features = ["transport"] }
+prost = "0.13"
+anyhow = "1.0"
+clap = { version = "4.4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[build-dependencies]
+tonic-build = "0.12"
+protoc-bin-vendored = "3"

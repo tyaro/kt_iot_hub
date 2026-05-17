@@ -1,0 +1,11 @@
+[package]
+name = "driver_ui_joywatcher"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tauri = { version = "2.1", features = [] }
+kt_driver_ui_host = { path = "../../../packages/driver-ui-host" }
+
+[build-dependencies]
+tauri-build = { version = "2.6", features = [] }
