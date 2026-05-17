@@ -206,10 +206,10 @@ function renderTables() {
       <button type="button" class="table-item-trigger table-cell table-muted">${timestamp}</button>
       <button type="button" class="table-item-trigger table-cell">${tagCount}</button>
       <div class="table-item-actions">
-        <span class="badge ${activeTableKey === key ? 'active' : group ? 'success' : 'neutral'}">${activeTableKey === key ? '選択中' : group ? '追加済み' : '未設定'}</span>
+        <span class="badge ${activeTableKey === key ? 'active' : group ? 'success' : 'neutral'}">${activeTableKey === key ? '選択' : group ? '済' : '未'}</span>
         ${group ? `
-          <button type="button" class="btn ghost tiny table-edit">編集</button>
-          <button type="button" class="btn ghost tiny table-remove">削除</button>
+          <button type="button" class="btn ghost tiny icon-btn table-edit" title="編集" aria-label="編集">編</button>
+          <button type="button" class="btn ghost tiny icon-btn table-remove" title="削除" aria-label="削除">削</button>
         ` : ''}
       </div>
     `;
@@ -268,38 +268,47 @@ function renderColumns() {
   const fieldList = el('fieldList');
   const fieldHint = el('fieldHint');
   const fieldActions = el('fieldActions');
+  const fieldCountText = el('fieldCountText');
+  const fieldSearch = el('fieldSearch');
   const timestampColumn = el('timestampSelect').value;
   const selectableColumns = columns.filter((column) => column.name !== timestampColumn);
+  const fieldFilter = fieldSearch.value.trim().toLowerCase();
+  const filteredColumns = selectableColumns.filter((column) => {
+    const value = `${column.name} ${column.dataType || ''}`.toLowerCase();
+    return !fieldFilter || value.includes(fieldFilter);
+  });
 
   fieldList.innerHTML = '';
   fieldActions.innerHTML = '';
+  fieldCountText.textContent = `${selectableColumns.length}件`;
 
   if (columns.length === 0) {
     fieldHint.textContent = 'テーブル選択後に、時系列フィールドを除いたフィールドが表示されます。';
     fieldHint.style.display = 'block';
+    fieldCountText.textContent = '0件';
     return;
   }
 
   if (!timestampColumn) {
     fieldHint.textContent = '時系列フィールドを選択すると、タグ化対象フィールドを選べます。';
     fieldHint.style.display = 'block';
+    fieldCountText.textContent = '0件';
     return;
   }
 
   if (selectableColumns.length === 0) {
     fieldHint.textContent = '時系列フィールド以外に選択可能なフィールドがありません。';
     fieldHint.style.display = 'block';
+    fieldCountText.textContent = '0件';
     return;
   }
-
-  fieldHint.style.display = 'none';
 
   const selectAllButton = document.createElement('button');
   selectAllButton.type = 'button';
   selectAllButton.className = 'btn secondary';
   selectAllButton.textContent = '全選択';
   selectAllButton.addEventListener('click', () => {
-    for (const column of selectableColumns) {
+    for (const column of filteredColumns) {
       selectedFields.add(column.name);
     }
     renderColumns();
@@ -319,7 +328,16 @@ function renderColumns() {
   fieldActions.appendChild(selectAllButton);
   fieldActions.appendChild(clearAllButton);
 
-  for (const column of selectableColumns) {
+  if (filteredColumns.length === 0) {
+    fieldHint.textContent = '条件に一致するフィールドがありません。';
+    fieldHint.style.display = 'block';
+    fieldList.innerHTML = '<li class="empty-state muted">一致するフィールドがありません。</li>';
+    return;
+  }
+
+  fieldHint.style.display = 'none';
+
+  for (const column of filteredColumns) {
     const li = document.createElement('li');
     li.className = 'item';
     li.innerHTML = `<label class="item"><input type="checkbox" /> <span>${column.name}</span> <small>${column.dataType}</small></label>`;
@@ -788,6 +806,10 @@ el('btnStep3Prev').addEventListener('click', () => {
 
 el('tableSearch').addEventListener('input', () => {
   renderTables();
+});
+
+el('fieldSearch').addEventListener('input', () => {
+  renderColumns();
 });
 
 document.querySelectorAll('.stepper .step').forEach((button) => {
