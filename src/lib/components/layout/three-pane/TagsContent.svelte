@@ -14,6 +14,7 @@
     onSelectDriver,
     onSelectScanGroup,
     onRequestNewTag,
+    onRequestEditDriver,
     onRequestDeleteDriver,
     onRequestEditTag,
     onRequestDeleteTag,
@@ -29,6 +30,7 @@
     onSelectDriver: (driver: DriverDto | null) => void;
     onSelectScanGroup: (scanGroup: ScanGroupDto | null) => void;
     onRequestNewTag: (driverId: string) => void;
+    onRequestEditDriver: (driverId: string) => void;
     onRequestDeleteDriver: (driverId: string) => void | Promise<void>;
     onRequestEditTag: (tag: TagDto) => void;
     onRequestDeleteTag: (tag: TagDto) => void | Promise<void>;
@@ -54,6 +56,7 @@
     {selectedDriverId}
     {selectedScanGroupId}
     onRequestNewTag={onRequestNewTag}
+    onRequestEditDriver={onRequestEditDriver}
     onRequestDeleteDriver={onRequestDeleteDriver}
     onRequestEditTag={onRequestEditTag}
     onRequestDeleteTag={onRequestDeleteTag}

@@ -23,6 +23,8 @@ pub async fn get_driver_ui_launch_context() -> Result<DriverUiLaunchContextDto, 
     let mut output_json_path = args.output_json_path.clone();
     let mut driver_type = args.driver_type.clone();
     let mut driver_id = args.driver_id.clone();
+    let mut context = None;
+    let mut editing_tag_id = None;
 
     if let Some(input_path) = args.input_json_path.as_ref() {
         let text = std::fs::read_to_string(input_path).map_err(|e| ErrorResponse {
@@ -37,6 +39,11 @@ pub async fn get_driver_ui_launch_context() -> Result<DriverUiLaunchContextDto, 
             })?;
 
         request_id = Some(parsed.request_id);
+        context = Some(serde_json::to_value(&parsed.context).map_err(|e| ErrorResponse {
+            error: format!("Failed to serialize launch context: {}", e),
+            code: "SERIALIZE_ERROR".to_string(),
+        })?);
+        editing_tag_id = parsed.session.editing_tag_id.clone();
         if output_json_path.is_none() {
             output_json_path = Some(parsed.session.output_json_path);
         }
@@ -61,6 +68,8 @@ pub async fn get_driver_ui_launch_context() -> Result<DriverUiLaunchContextDto, 
         input_json_path: args.input_json_path,
         output_json_path,
         request_id,
+        context,
+        editing_tag_id,
     })
 }
 

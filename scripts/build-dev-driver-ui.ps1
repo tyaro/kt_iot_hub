@@ -7,10 +7,10 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $PSCommandPath
 $repoRoot = Resolve-Path (Join-Path $scriptDir "..")
 
-Write-Host ">>> cargo build driver-ui-postgres (debug)..."
+Write-Host ">>> cargo build postgres driver-ui (debug)..."
 Push-Location $repoRoot
 try {
-    cargo build --manifest-path apps/driver-ui-postgres/Cargo.toml
+    cargo build --manifest-path apps/postgres/ui/Cargo.toml
     if ($LASTEXITCODE -ne 0) { throw "cargo build failed (exit code $LASTEXITCODE)" }
 } finally {
     Pop-Location

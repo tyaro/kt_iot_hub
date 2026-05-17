@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PostgreSQL 登録UI</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="wrap shell">
+    <div class="page-head">
+      <div class="page-head-main">
+        <div>
+          <h1 id="pageTitle">PostgreSQL 登録UI</h1>
+          <p class="desc" id="pageDesc">接続先設定 → グループ設定 → 確認して保存 の3ステップで登録します。</p>
+        </div>
+        <div class="header-summary" id="summary"></div>
+      </div>
+      <div class="mode-badge" id="modeBadge">新規登録</div>
+    </div>
+
+    <div class="stepper" id="stepper">
+      <button type="button" class="step active" data-step="1">
+        <span class="step-index">1</span>
+        <span class="step-label">接続先設定</span>
+      </button>
+      <button type="button" class="step" data-step="2">
+        <span class="step-index">2</span>
+        <span class="step-label">グループ設定</span>
+      </button>
+      <button type="button" class="step" data-step="3">
+        <span class="step-index">3</span>
+        <span class="step-label">確認・保存</span>
+      </button>
+    </div>
+
+    <p class="msg ok" id="msgOk"></p>
+    <p class="msg err" id="msgErr"></p>
+
+    <div class="content-layout">
+      <div class="content-main">
+        <section class="step-panel" data-step-panel="1">
+          <div class="box">
+            <div class="section-head">
+              <div>
+                <h2>接続先設定</h2>
+                <p class="muted">接続先情報を入力し、接続確認後にテーブル一覧を取得します。</p>
+              </div>
+            </div>
+
+            <div class="grid2">
+              <label>接続先ID<input id="driverId" placeholder="postgresql1" /></label>
+              <label>ホスト<input id="host" value="127.0.0.1" /></label>
+            </div>
+            <div class="grid3">
+              <label>ポート<input id="port" type="number" min="1" max="65535" value="5432" /></label>
+              <label>データベース<input id="database" placeholder="mydb" /></label>
+              <label>ユーザー名<input id="username" placeholder="postgres" /></label>
+            </div>
+            <label>パスワード<input id="password" type="password" placeholder="(任意)" /></label>
+
+            <div class="row">
+              <button class="btn" id="btnTest">テスト接続</button>
+              <button class="btn secondary" id="btnTables">テーブル取得 / 再取得</button>
+            </div>
+
+            <div class="step-actions">
+              <div class="step-actions-left">
+                <span class="muted" id="connectionHint">テーブル取得後にグループ設定へ進めます。</span>
+              </div>
+              <div class="step-actions-right">
+                <button class="btn" id="btnStep1Next">グループ設定へ進む</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="step-panel hidden" data-step-panel="2">
+          <div class="box">
+            <div class="section-head">
+              <div>
+                <h2>グループ設定</h2>
+                <p class="muted">左でテーブルを選び、右で周期・時系列・タグ対象フィールドを設定します。</p>
+              </div>
+            </div>
+
+            <div class="two-column-layout">
+              <div class="column">
+                <div class="box inner-box">
+                  <div class="field-head">
+                    <strong>テーブル一覧 / 登録状態</strong>
+                    <span class="muted compact-meta" id="groupsCountText">登録済み 0件</span>
+                  </div>
+                  <div class="field-head compact-head-row">
+                    <input id="tableSearch" class="search-input" placeholder="テーブル名で絞り込み" />
+                  </div>
+                  <div class="table-list-header" aria-hidden="true">
+                    <span>テーブル名</span>
+                    <span>スキーマ</span>
+                    <span>周期</span>
+                    <span>時系列</span>
+                    <span>タグ数</span>
+                    <span>操作</span>
+                  </div>
+                  <div class="table-browser" id="tablesList"></div>
+                  <p class="msg muted" id="tablesHint">まずは接続設定画面でテーブルを取得してください。</p>
+                </div>
+              </div>
+
+              <div class="column">
+                <div class="box inner-box editor-panel">
+                  <div class="field-head">
+                    <strong>選択中テーブルの設定</strong>
+                    <span class="table-chip" id="activeTableBadge">未選択</span>
+                  </div>
+
+                  <div class="grid2 compact-grid">
+                    <label>グループ<input id="groupName" disabled placeholder="テーブル選択後に自動設定" /></label>
+                    <label>周期(ms)<input id="groupRate" type="number" min="100" step="100" value="1000" /></label>
+                  </div>
+
+                  <label>時系列フィールド
+                    <select id="timestampSelect" disabled>
+                      <option value="">時系列フィールドを選択</option>
+                    </select>
+                  </label>
+
+                  <div class="box inner-box">
+                    <div class="field-head">
+                      <strong>フィールド選択（タグ化対象）</strong>
+                      <div class="field-actions" id="fieldActions"></div>
+                    </div>
+                    <ul class="list" id="fieldList"></ul>
+                    <p class="msg muted" id="fieldHint">テーブル選択後に、時系列フィールドを除いたフィールドが表示されます。</p>
+                  </div>
+
+                  <div class="row">
+                    <button class="btn secondary" id="btnSaveGroup">このテーブルをグループに追加 / 更新</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="step-actions">
+              <div class="step-actions-left">
+                <button class="btn ghost" id="btnStep2Prev">接続先設定へ戻る</button>
+              </div>
+              <div class="step-actions-right">
+                <button class="btn" id="btnStep2Next">確認・保存へ進む</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="step-panel hidden" data-step-panel="3">
+          <div class="box">
+            <div class="section-head">
+              <div>
+                <h2>確認して保存</h2>
+                <p class="muted">接続先・グループ・タグ構成を確認して一括保存します。</p>
+              </div>
+            </div>
+
+            <div class="review-grid">
+              <div class="box inner-box" id="reviewConnection"></div>
+              <div class="box inner-box" id="reviewCounts"></div>
+            </div>
+
+            <div class="box inner-box">
+              <div class="field-head">
+                <strong>登録対象グループ</strong>
+                <span class="muted" id="reviewGroupsCount"></span>
+              </div>
+              <div id="reviewGroups" class="groups-list"></div>
+            </div>
+
+            <div class="step-actions">
+              <div class="step-actions-left">
+                <button class="btn ghost" id="btnStep3Prev">グループ設定へ戻る</button>
+              </div>
+              <div class="step-actions-right">
+                <button class="btn confirm" id="btnConfirm">確定してウィンドウを閉じる</button>
+              </div>
+            </div>
+
+            <p class="msg ok" id="outOk"></p>
+            <p class="msg err" id="outErr"></p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

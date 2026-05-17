@@ -17,7 +17,10 @@ export type MonitorDriverUiImportDeps = {
   isTokenValid: (token: number) => boolean;
   setMessage: (message: string) => void;
   setPolling: (polling: boolean) => void;
-  checkReady: (outputJsonPath: string) => Promise<boolean>;
+  checkReady: (
+    outputJsonPath: string,
+    sessionId: string,
+  ) => Promise<{ ready: boolean; process_active: boolean }>;
   importResult: (req: {
     session_id: string;
     driver_id?: string | null;
@@ -26,8 +29,8 @@ export type MonitorDriverUiImportDeps = {
   onImported: (imported: ImportDriverUiResultResponse) => Promise<void>;
   waitFn: (ms: number) => Promise<void>;
   notify: (message: string) => void;
-  maxAttempts?: number;
   intervalMs?: number;
+  inactiveGraceAttempts?: number;
 };
 
 export async function monitorDriverUiImport({
@@ -41,19 +44,21 @@ export async function monitorDriverUiImport({
   onImported,
   waitFn,
   notify,
-  maxAttempts = 90,
   intervalMs = 1000,
+  inactiveGraceAttempts = 5,
 }: MonitorDriverUiImportDeps): Promise<void> {
   setPolling(true);
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+  let attempt = 1;
+  let inactiveAttempts = 0;
+  while (isTokenValid(token)) {
     if (!isTokenValid(token)) {
       return;
     }
 
     try {
-      const ready = await checkReady(result.output_json_path);
-      if (ready) {
+      const check = await checkReady(result.output_json_path, result.session_id);
+      if (check.ready) {
         const imported = await importResult({
           session_id: result.session_id,
           driver_id: result.driver_id,
@@ -64,7 +69,23 @@ export async function monitorDriverUiImport({
         return;
       }
 
-      setMessage(`ドライバUIの完了待機中... (${attempt}/${maxAttempts})`);
+      if (!check.process_active) {
+        inactiveAttempts += 1;
+        if (inactiveAttempts <= inactiveGraceAttempts) {
+          setMessage(`ドライバUI終了後の保存確認中... (${inactiveAttempts}/${inactiveGraceAttempts})`);
+          await waitFn(intervalMs);
+          attempt += 1;
+          continue;
+        }
+
+        setPolling(false);
+        setMessage('ドライバUIが保存前に閉じられたため、取込を中止しました。必要なら再度開いてください。');
+        return;
+      }
+
+      inactiveAttempts = 0;
+
+      setMessage(`ドライバUIの完了待機中... (${attempt}秒経過)`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'ドライバUI結果の取込に失敗しました';
       setMessage(message);
@@ -74,11 +95,7 @@ export async function monitorDriverUiImport({
     }
 
     await waitFn(intervalMs);
-  }
-
-  if (isTokenValid(token)) {
-    setPolling(false);
-    setMessage('ドライバUI完了待機がタイムアウトしました。完了後に再度編集操作を実行してください。');
+    attempt += 1;
   }
 }
 

@@ -8,7 +8,10 @@ import { wait } from './helpers';
 export type DriverUiPollingControllerDeps = {
   setPolling: (polling: boolean) => void;
   setMessage: (message: string) => void;
-  checkReady: (outputJsonPath: string) => Promise<boolean>;
+  checkReady: (
+    outputJsonPath: string,
+    sessionId: string,
+  ) => Promise<{ ready: boolean; process_active: boolean }>;
   importResult: (req: {
     session_id: string;
     driver_id?: string | null;

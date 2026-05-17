@@ -16,6 +16,7 @@
     onTagDetailEdit,
     onTagDetailDelete,
     onTagDetailClose,
+    onDriverEdit,
     onDriverDelete,
     onDriverDone,
   }: {
@@ -30,6 +31,7 @@
     onTagDetailEdit: (tag: TagDto) => void;
     onTagDetailDelete: (tag: TagDto) => void | Promise<void>;
     onTagDetailClose: () => void;
+    onDriverEdit: (driverId: string) => void;
     onDriverDelete: (driverId: string) => void | Promise<void>;
     onDriverDone: () => void | Promise<void>;
   } = $props();
@@ -57,6 +59,7 @@
         <DriverDetailPanel
           driver={selectedDriver}
           mode="detail"
+          onRequestEdit={onDriverEdit}
           onRequestDelete={onDriverDelete}
           onDone={onDriverDone}
         />

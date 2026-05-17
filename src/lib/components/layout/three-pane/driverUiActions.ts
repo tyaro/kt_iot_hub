@@ -249,3 +249,17 @@ export function runRequestNewTagForDriverFlow(
   }
   openManualTagEditor(driverId, 'new');
 }
+
+export function runRequestEditDriverFlow(
+  driverId: string,
+  canUseDriverUi: (driverId: string) => boolean,
+  openDriverUi: (driverId: string, actionLabel: '編集') => void,
+  notify: (message: string) => void,
+): void {
+  if (canUseDriverUi(driverId)) {
+    openDriverUi(driverId, '編集');
+    return;
+  }
+
+  notify(`接続先「${driverId}」の外部ドライバUIが見つからないため、編集を開けません。`);
+}

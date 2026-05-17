@@ -147,10 +147,22 @@ async fn clear_last_error(state: &tauri::State<'_, AppState>) {
 
 async fn read_runtime_status(state: &tauri::State<'_, AppState>) -> RuntimeStatusDto {
     let runtime_status = state.runtime_status.read().await.clone();
+    let grpc_running = if runtime_status.grpc_running {
+        true
+    } else if state.grpc_shutdown_tx.read().await.is_some() {
+        true
+    } else {
+        tokio::net::TcpStream::connect(GRPC_ADDR).await.is_ok()
+    };
+
+    if grpc_running && !runtime_status.grpc_running {
+        state.runtime_status.write().await.grpc_running = true;
+    }
+
     RuntimeStatusDto {
         drivers_running: runtime_status.drivers_running,
         publishers_running: runtime_status.publishers_running,
-        grpc_running: runtime_status.grpc_running,
+        grpc_running,
         last_error: runtime_status.last_error,
     }
 }

@@ -6,12 +6,14 @@
     driver?: DriverDto | null;
     mode?: 'detail' | 'new';
     onDone?: () => void;
+    onRequestEdit?: (driverId: string) => void;
     onRequestDelete?: (driverId: string) => void;
   }
   let {
     driver = null,
     mode = 'detail',
     onDone = () => {},
+    onRequestEdit = () => {},
     onRequestDelete = () => {},
   }: Props = $props();
 
@@ -29,8 +31,6 @@
   let saving = $state(false);
   let message = $state('');
   let errorMsg = $state('');
-  let isEditing = $state(false);
-
   $effect(() => {
     if (driver) {
       form = {
@@ -43,7 +43,6 @@
         username: driver.username,
         password: '',
       };
-      isEditing = false;
       message = '';
       errorMsg = '';
     }
@@ -61,7 +60,6 @@
         username: '',
         password: '',
       };
-      isEditing = true;
       message = '';
       errorMsg = '';
     }
@@ -87,6 +85,11 @@
     if (!driver) return;
     onRequestDelete(driver.id);
   }
+
+  function requestEdit() {
+    if (!driver) return;
+    onRequestEdit(driver.id);
+  }
 </script>
 
 {#if mode === 'new' || driver}
@@ -96,14 +99,12 @@
       {#if mode === 'detail' && driver}
         <div class="panel-actions">
           <button class="btn-link danger" onclick={requestDelete}>削除</button>
-          <button class="btn-link" onclick={() => (isEditing = !isEditing)}>
-            {isEditing ? '編集キャンセル' : '編集'}
-          </button>
+          <button class="btn-link" onclick={requestEdit}>編集</button>
         </div>
       {/if}
     </div>
 
-    {#if mode === 'detail' && !isEditing}
+    {#if mode === 'detail'}
       <!-- 詳細表示モード -->
       <dl class="detail-list">
         <dt>ID</dt><dd class="mono">{driver?.id}</dd>
@@ -124,7 +125,7 @@
       <div class="form">
         <label>
           ID
-          <input bind:value={form.id} placeholder="postgres-main" disabled={mode === 'detail'} />
+          <input bind:value={form.id} placeholder="postgres-main" />
         </label>
         <label>
           種別

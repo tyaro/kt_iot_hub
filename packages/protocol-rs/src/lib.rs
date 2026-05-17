@@ -91,7 +91,12 @@ pub struct DriverUiLaunchDriver {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DriverUiLaunchData {
+    #[serde(default)]
     pub scan_groups: Vec<DriverUiLaunchScanGroup>,
+    #[serde(default)]
+    pub existing_driver_ids: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub driver_settings: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

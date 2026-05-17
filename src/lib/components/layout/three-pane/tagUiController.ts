@@ -2,6 +2,7 @@ import type { LaunchDriverUiResponse, TagDto } from '$lib/ipc';
 import {
   ensureDriversLoaded,
   runOpenDriverUiForTypeFlow,
+  runRequestEditDriverFlow,
   runRequestEditTagFlow,
   runRequestNewTagForDriverFlow,
 } from './driverUiActions';
@@ -31,6 +32,7 @@ export type CreateTagUiControllerDeps = {
 
 export type TagUiController = {
   requestEditTag: (tag: TagDto) => void;
+  requestEditDriver: (driverId: string) => void;
   requestNewTagForDriver: (driverId: string) => void;
   newTag: () => Promise<void>;
   newDriver: () => Promise<void>;
@@ -61,6 +63,17 @@ export function createTagUiController(deps: CreateTagUiControllerDeps): TagUiCon
       (nextDriverId, mode) => {
         deps.openManualTagEditor(nextDriverId, mode);
       },
+    );
+  }
+
+  function requestEditDriver(driverId: string) {
+    runRequestEditDriverFlow(
+      driverId,
+      deps.canUseDriverUi,
+      (nextDriverId, actionLabel) => {
+        deps.openDriverUiForDriver(nextDriverId, actionLabel);
+      },
+      deps.notify,
     );
   }
 
@@ -110,6 +123,7 @@ export function createTagUiController(deps: CreateTagUiControllerDeps): TagUiCon
 
   return {
     requestEditTag,
+    requestEditDriver,
     requestNewTagForDriver,
     newTag,
     newDriver,

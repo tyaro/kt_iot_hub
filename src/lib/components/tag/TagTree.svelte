@@ -10,6 +10,7 @@
     selectedDriverId?: string | null;
     selectedScanGroupId?: string | null;
     onRequestNewTag?: (driverId: string) => void;
+    onRequestEditDriver?: (driverId: string) => void;
     onRequestDeleteDriver?: (driverId: string) => void;
     onRequestEditTag?: (tag: TagDto) => void;
     onRequestDeleteTag?: (tag: TagDto) => void;
@@ -22,6 +23,7 @@
     selectedDriverId = null,
     selectedScanGroupId = null,
     onRequestNewTag = () => {},
+    onRequestEditDriver = () => {},
     onRequestDeleteDriver = () => {},
     onRequestEditTag = () => {},
     onRequestDeleteTag = () => {},
@@ -152,6 +154,11 @@
 
   function requestDeleteDriver(driverId: string) {
     onRequestDeleteDriver(driverId);
+    closeContextMenu();
+  }
+
+  function requestEditDriver(driverId: string) {
+    onRequestEditDriver(driverId);
     closeContextMenu();
   }
 
@@ -308,7 +315,7 @@
       <button class="context-item" onclick={() => requestNewTag(contextMenu.driverId!)}>
         タグ追加
       </button>
-      <button class="context-item" onclick={() => requestNewTag(contextMenu.driverId!)}>
+      <button class="context-item" onclick={() => requestEditDriver(contextMenu.driverId!)}>
         全タグ編集
       </button>
       <button class="context-item danger" onclick={() => requestDeleteDriver(contextMenu.driverId!)}>

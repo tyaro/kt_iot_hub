@@ -54,7 +54,10 @@ export type CreateThreePaneControllersDeps = {
     getDriverUiPolling: () => boolean;
     getDriverUiBaseDirSaved: () => string | null;
     getDriverUiAvailableByType: () => Record<string, boolean>;
-    checkDriverUiResultApi: (req: { output_json_path: string }) => Promise<{ ready: boolean }>;
+    checkDriverUiResultApi: (req: {
+      session_id?: string | null;
+      output_json_path: string;
+    }) => Promise<{ ready: boolean; process_active: boolean }>;
     importDriverUiResultApi: (req: {
       session_id: string;
       driver_id?: string | null;
@@ -98,9 +101,14 @@ export function createThreePaneControllers(deps: CreateThreePaneControllersDeps)
   const driverUiPollingController = createDriverUiPollingController({
     setPolling: driverUi.setDriverUiPolling,
     setMessage: driverUi.setTagActionMessage,
-    checkReady: async (outputJsonPath) => {
-      const check = await driverUi.checkDriverUiResultApi({ output_json_path: outputJsonPath });
-      return check.ready;
+    checkReady: async (
+      outputJsonPath: string,
+      sessionId: string,
+    ): Promise<{ ready: boolean; process_active: boolean }> => {
+      return driverUi.checkDriverUiResultApi({
+        session_id: sessionId,
+        output_json_path: outputJsonPath,
+      });
     },
     importResult: driverUi.importDriverUiResultApi,
     onImported: async (imported) => {

@@ -17,6 +17,7 @@
     onTagDetailEdit: (tag: TagDto) => void;
     onTagDetailDelete: (tag: TagDto) => Promise<void>;
     onTagDetailClose: () => void;
+    onDriverEdit: (driverId: string) => void;
     onDriverDelete: (driverId: string) => Promise<void>;
     onDriverDone: () => Promise<void>;
     driverPickerOpen: boolean;
@@ -44,6 +45,7 @@
     onTagDetailEdit,
     onTagDetailDelete,
     onTagDetailClose,
+    onDriverEdit,
     onDriverDelete,
     onDriverDone,
     driverPickerOpen,
@@ -72,6 +74,7 @@
   onTagDetailEdit={onTagDetailEdit}
   onTagDetailDelete={onTagDetailDelete}
   onTagDetailClose={onTagDetailClose}
+  onDriverEdit={onDriverEdit}
   onDriverDelete={onDriverDelete}
   onDriverDone={onDriverDone}
 />

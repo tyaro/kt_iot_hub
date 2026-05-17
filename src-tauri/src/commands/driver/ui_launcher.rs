@@ -14,6 +14,7 @@ use kt_driver_ui_protocol::{
     DriverUiLaunchSession, DriverUiLaunchTag,
 };
 use chrono::Utc;
+use tracing::warn;
 use uuid::Uuid;
 
 #[tauri::command]
@@ -87,7 +88,8 @@ pub async fn launch_driver_ui(
         let mut sessions = state.active_driver_ui_sessions.write().await;
         if let Some(existing_driver_id) = driver_id.as_ref() {
             if sessions.values().any(|session| {
-                session.target_driver_id.as_ref() == Some(existing_driver_id)
+                session.process_active
+                    && session.target_driver_id.as_ref() == Some(existing_driver_id)
             }) {
                 return Err(ErrorResponse {
                     error: format!("Driver UI is already active for driver {}", existing_driver_id),
@@ -100,6 +102,7 @@ pub async fn launch_driver_ui(
             crate::app_state::DriverUiSessionState {
                 target_driver_id: driver_id.clone(),
                 driver_type: driver_type.clone(),
+                process_active: true,
             },
         );
     }
@@ -161,7 +164,7 @@ pub async fn launch_driver_ui(
     }
 
     let state_for_spawn = state.clone();
-    command.spawn().map_err(|e| {
+    let mut child = command.spawn().map_err(|e| {
         let session_id_clone = session_id.clone();
         tauri::async_runtime::block_on(async move {
             let mut sessions = state_for_spawn.active_driver_ui_sessions.write().await;
@@ -177,6 +180,27 @@ pub async fn launch_driver_ui(
             code: "PROCESS_LAUNCH_FAILED".to_string(),
         }
     })?;
+
+    let app_state_for_wait = state.inner().clone();
+    let session_id_for_wait = session_id.clone();
+    std::thread::spawn(move || {
+        let wait_result = child.wait();
+        let session_id_for_log = session_id_for_wait.clone();
+
+        tauri::async_runtime::block_on(async move {
+            let mut sessions = app_state_for_wait.active_driver_ui_sessions.write().await;
+            if let Some(session) = sessions.get_mut(&session_id_for_wait) {
+                session.process_active = false;
+            }
+        });
+
+        if let Err(error) = wait_result {
+            warn!(
+                "driver ui process wait failed: session_id={}, error={}",
+                session_id_for_log, error
+            );
+        }
+    });
 
     Ok(LaunchDriverUiResponse {
         session_id,
@@ -196,6 +220,22 @@ async fn build_driver_ui_launch_context(
 ) -> Result<DriverUiLaunchContext, ErrorResponse> {
     let scan_groups = state.scan_groups.read().await.clone();
     let tags = state.registry.list_all().await;
+    let driver_configs = state.driver_configs.read().await.clone();
+
+    let existing_driver_ids: Vec<String> = driver_configs
+        .iter()
+        .filter(|cfg| cfg.driver_type == driver_type)
+        .map(|cfg| cfg.id.clone())
+        .collect();
+
+    let driver_settings = driver_id
+        .as_ref()
+        .and_then(|target_driver_id| {
+            driver_configs
+                .iter()
+                .find(|cfg| cfg.id == *target_driver_id)
+                .map(|cfg| cfg.settings.clone())
+        });
 
     // ドライバ配下のタグを scanGroupId でグループ化
     let tags_by_scan_group: std::collections::HashMap<String, Vec<_>> = tags
@@ -277,6 +317,8 @@ async fn build_driver_ui_launch_context(
         },
         context: DriverUiLaunchData {
             scan_groups: filtered_scan_groups,
+            existing_driver_ids,
+            driver_settings,
         },
     })
 }
@@ -304,6 +346,7 @@ pub async fn check_driver_ui_available(
 
 #[tauri::command]
 pub async fn check_driver_ui_result(
+    state: tauri::State<'_, AppState>,
     req: CheckDriverUiResultRequest,
 ) -> Result<CheckDriverUiResultResponse, ErrorResponse> {
     if req.output_json_path.trim().is_empty() {
@@ -313,7 +356,18 @@ pub async fn check_driver_ui_result(
         });
     }
 
+    let process_active = if let Some(session_id) = req.session_id.as_ref() {
+        let sessions = state.active_driver_ui_sessions.read().await;
+        sessions
+            .get(session_id)
+            .map(|session| session.process_active)
+            .unwrap_or(false)
+    } else {
+        false
+    };
+
     Ok(CheckDriverUiResultResponse {
         ready: std::path::Path::new(&req.output_json_path).exists(),
+        process_active,
     })
 }

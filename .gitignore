@@ -4,6 +4,8 @@
 # Common ignores
 node_modules/
 dist/
+!apps/postgres/ui/dist/
+!apps/postgres/ui/dist/**
 target/
 .DS_Store
 /*.log

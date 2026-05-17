@@ -15,11 +15,27 @@ export interface LaunchDriverUiResponse {
 }
 
 export interface CheckDriverUiResultRequest {
+  session_id?: string | null;
   output_json_path: string;
 }
 
 export interface CheckDriverUiResultResponse {
   ready: boolean;
+  process_active: boolean;
+}
+
+type CheckDriverUiResultResponseRaw = {
+  ready: boolean;
+  processActive: boolean;
+};
+
+function normalizeCheckDriverUiResult(
+  raw: CheckDriverUiResultResponseRaw,
+): CheckDriverUiResultResponse {
+  return {
+    ready: raw.ready,
+    process_active: raw.processActive,
+  };
 }
 
 export interface ImportDriverUiResultRequest {
@@ -43,6 +59,30 @@ export interface DriverUiLaunchContextDto {
   inputJsonPath?: string | null;
   outputJsonPath?: string | null;
   requestId?: string | null;
+  editingTagId?: string | null;
+  context?: {
+    scanGroups?: Array<{
+      id: string;
+      driver: string;
+      scanRateMs: number;
+      schema?: string | null;
+      table?: string | null;
+      timestampColumn?: string | null;
+      node?: string | null;
+      tags?: Array<{
+        id: string;
+        name: string;
+        dataType: string;
+        driverId: string;
+        scanGroupId: string;
+        enabled: boolean;
+        driverSpec: Record<string, unknown>;
+        metadata?: Record<string, unknown> | null;
+      }>;
+    }>;
+    existingDriverIds?: string[];
+    driverSettings?: Record<string, unknown> | null;
+  } | null;
 }
 
 export interface SaveDriverUiOutputRequest {
@@ -59,6 +99,7 @@ export async function launchDriverUi(req: LaunchDriverUiRequest): Promise<Launch
       driverId: req.driver_id ?? null,
       driverType: req.driver_type ?? null,
       driverUiBaseDir: req.driver_ui_base_dir ?? null,
+      editingTagId: req.editing_tag_id ?? null,
     },
   });
 }
@@ -69,11 +110,13 @@ export async function launchDriverUi(req: LaunchDriverUiRequest): Promise<Launch
 export async function checkDriverUiResult(
   req: CheckDriverUiResultRequest,
 ): Promise<CheckDriverUiResultResponse> {
-  return invoke('check_driver_ui_result', {
+  const raw = await invoke<CheckDriverUiResultResponseRaw>('check_driver_ui_result', {
     req: {
+      sessionId: req.session_id ?? null,
       outputJsonPath: req.output_json_path,
     },
   });
+  return normalizeCheckDriverUiResult(raw);
 }
 
 /**

@@ -60,6 +60,10 @@ pub struct DriverUiLaunchContextDto {
     pub input_json_path: Option<String>,
     pub output_json_path: Option<String>,
     pub request_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub editing_tag_id: Option<String>,
 }
 
 /// ドライバUI 出力 JSON 保存リクエスト DTO

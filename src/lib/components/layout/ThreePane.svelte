@@ -303,6 +303,7 @@
     onSelectDriver={selectionController.onDriverSelect}
     onSelectScanGroup={selectionController.onScanGroupSelect}
     onRequestNewTag={tagUiController.requestNewTagForDriver}
+    onRequestEditDriver={tagUiController.requestEditDriver}
     onRequestDeleteDriver={deletionController.requestDeleteDriver}
     onRequestEditTag={tagUiController.requestEditTag}
     onRequestDeleteTag={deletionController.requestDeleteTag}
@@ -324,6 +325,7 @@
     onTagDetailEdit={tagUiController.requestEditTag}
     onTagDetailDelete={deletionController.requestDeleteTag}
     onTagDetailClose={selectionController.onTagDetailClose}
+    onDriverEdit={tagUiController.requestEditDriver}
     onDriverDelete={deletionController.requestDeleteDriver}
     onDriverDone={deletionController.onDriverDetailDone}
     {driverPickerOpen}

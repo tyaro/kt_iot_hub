@@ -93,6 +93,7 @@ pub struct LaunchDriverUiResponse {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CheckDriverUiResultRequest {
+    pub session_id: Option<String>,
     pub output_json_path: String,
 }
 
@@ -101,6 +102,7 @@ pub struct CheckDriverUiResultRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CheckDriverUiResultResponse {
     pub ready: bool,
+    pub process_active: bool,
 }
 
 /// ドライバUI結果取り込みリクエスト DTO

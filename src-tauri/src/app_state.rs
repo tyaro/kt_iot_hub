@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 pub struct DriverUiSessionState {
     pub target_driver_id: Option<String>,
     pub driver_type: String,
+    pub process_active: bool,
 }
 
 #[derive(Clone, Debug, Default)]
