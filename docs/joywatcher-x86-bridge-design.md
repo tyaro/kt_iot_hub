@@ -148,6 +148,8 @@ kt_iot_hub.exe
 - IPC は `stdin` / `stdout` の JSON Lines で疎通確認済み
 - `resolveTags` / `read` はまだ mock 応答である
 - 現在の開発環境で `cargo run -p joywatcher-bridge-x86 -- --mode dll` を実行すると `os error 193` で失敗し、x86 DLL を x64 プロセスへロードできないことを確認した
+- `cargo build -p joywatcher-bridge-x86 --target i686-pc-windows-msvc` は成功し、x86 ビルド済み EXE では `--mode dll` の起動が成功する
+- x86 ビルド済み EXE で `connect` / `disconnect` を送ると、`active_connections: 1 -> 0` の構造化応答が返ることを確認した
 
 ### 理由
 
@@ -253,6 +255,11 @@ driver-ui/joywatcher/
 - `joywatcher-bridge-x86.exe` は 32bit ターゲット専用ビルドを別途用意する
 - x86 ビルドは CI で無理に通さず、当面はローカル / 専用ジョブ扱いでよい
 
+### 開発時のビルド補助
+
+- `scripts/build-dev-joywatcher-bridge-x86.ps1` を追加済み
+- このスクリプトは `i686-pc-windows-msvc` で `joywatcher-bridge-x86` をビルドし、`driver-ui/joywatcher/joywatcher-bridge-x86.exe` へ配置する
+
 ## エラー処理方針
 
 ### ブリッジ側
@@ -301,7 +308,7 @@ driver-ui/joywatcher/
 
 ## 次の最小タスク
 
-1. `joywatcher-bridge-x86` を x86 ターゲットでビルド・起動できるようにする
-2. `driver-joywatcher` から `joywatcher-bridge-x86` を起動する導線を作る
-3. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
-4. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える
+1. `driver-joywatcher` から x86 ビルド済み `joywatcher-bridge-x86` を起動する導線を作る
+2. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
+3. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える
+4. bridge の `resolveTags` / `read` を mock から実装へ置き換える

@@ -24,6 +24,7 @@
 - `docs/joywatcher-x86-bridge-design.md` を追加し、x86 ブリッジ方式の責務分担・IPC・配置案を整理した
 - `apps/joywatcher/bridge-x86` を追加し、JSON Lines ベースの `joywatcher-bridge-x86` mock 実装を作成した
 - `apps/joywatcher/bridge-x86/src/dll_api.rs` を追加し、`LoadLibraryW` / `GetProcAddress` による DLL ローダを実装した
+- `scripts/build-dev-joywatcher-bridge-x86.ps1` を追加し、x86 bridge の開発用ビルド / 配置を自動化した
 
 ## まだ未完了のこと
 
@@ -57,6 +58,7 @@
 - `apps/joywatcher/bridge-x86/src/mock_api.rs`
 - `apps/joywatcher/bridge-x86/src/service.rs`
 - `apps/joywatcher/bridge-x86/src/dll_api.rs`
+- `scripts/build-dev-joywatcher-bridge-x86.ps1`
 - `docs/joywatcher-x86-bridge-design.md`
 - `docs/joywatcher-session-handoff.md`
 
@@ -72,6 +74,7 @@
 - [ ] タグ値を 1 件以上送信できる
 - [x] `joywatcher-bridge-x86` が起動し、標準入出力 JSON Lines で応答する
 - [x] `joywatcher-bridge-x86 --mode dll` で DLL ローダが動作し、現環境では `os error 193` により x86 / x64 不一致が明示される
+- [x] `cargo build -p joywatcher-bridge-x86 --target i686-pc-windows-msvc` が成功し、x86 ビルド済み EXE の `--mode dll` で `ping` / `connect` / `disconnect` が構造化応答を返す
 
 ## 未確認 / 要確認
 
@@ -94,18 +97,20 @@
 - `参考/JoyWaApi/BC/Project2.dll` は `JoyWApi.h` の API 本体ではなく、サンプル/ラッパ DLL の可能性が高い
 - `apps/joywatcher/bridge-x86` は現時点で mock 実装。`ping` / `connect` / `disconnect` / `forceDisconnect` / `resolveTags` / `read` を JSON Lines で返す
 - `apps/joywatcher/bridge-x86/src/dll_api.rs` で DLL ローダは追加済み。ただし現在の開発ビルドは x64 のため、x86 DLL ロード時に `os error 193` となる
+- `i686-pc-windows-msvc` ターゲットを追加済みで、x86 ビルド済み `joywatcher-bridge-x86.exe --mode dll` は起動できる
+- x86 ビルド済み bridge では `connect` / `disconnect` が少なくともクラッシュせず構造化応答を返す
 
 ## 次セッションで最初に見るファイル
 
 1. `apps/joywatcher/bridge-x86/src/dll_api.rs`
-2. `apps/joywatcher/bridge-x86/src/main.rs`
+2. `scripts/build-dev-joywatcher-bridge-x86.ps1`
 3. `apps/joywatcher/driver/src/joywatcher_ffi.rs`
 
 ## 次の最小タスク
 
-1. `joywatcher-bridge-x86` を x86 ターゲットでビルド・起動できるようにする
-2. `driver-joywatcher` からブリッジ子プロセスを起動する
-3. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える
+1. `driver-joywatcher` からブリッジ子プロセスを起動する
+2. `JWGetTagIDS2` / `JWRead` を実 DLL 呼び出しへ差し替える
+3. `ConnectNet` / `DisconnectNet` の呼出規約差分を実装上で吸収する
 
 ## 完了条件の見込み
 
@@ -121,6 +126,7 @@
 - 影響クレート: `cargo test -p driver_ui_joywatcher`
 - 影響クレート: `cargo test -p driver-joywatcher`
 - 影響クレート: `cargo test -p joywatcher-bridge-x86`
+- 追加確認: `cargo build -p joywatcher-bridge-x86 --target i686-pc-windows-msvc`
 - 追加確認: `cargo build --manifest-path apps/joywatcher/ui/Cargo.toml`
 - 追加確認: `cargo build --manifest-path apps/joywatcher/driver/Cargo.toml`
 
