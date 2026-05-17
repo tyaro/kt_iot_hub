@@ -128,6 +128,7 @@
 - bridge ログが stdout に混ざると runtime 側の JSON 読取が壊れるため、bridge は stderr へログ出力し、runtime 側も JSON 行のみ採用するよう修正済み
 - JoyWatcher の数値 tagId は本体タグ ID と別物なので、保存時は `driverSpec.nativeTagId` として分離する方針
 - 登録UI から単一タグの `nativeTagId` を解決する Tauri コマンド `resolve_joywatcher_tag` を追加済み
+- 登録UI から vendor の `TagSel2` ダイアログを開き、選択済みタグパスを一覧で受け取る `browse_joywatcher_tags` を追加済み
 - bridge の `connect` は `user_id` / `password` を保持し、`JWRead` 呼び出し時に再利用する実装へ更新済み
 - `driver-joywatcher` は driver definition の `driver_spec_json` から `nativeTagId` を抜き出して gRPC 送信値へ変換する
 - `driver-joywatcher` は `scan_group.scan_rate_ms` ごとに read を回し続ける継続ポーリング実装へ更新済み
@@ -143,7 +144,7 @@
 
 ## 次の最小タスク
 
-1. 登録UI の `resolve_joywatcher_tag` を実機で手動確認する
+1. 登録UI の `JoyWatcher タグ参照` と `resolve_joywatcher_tag` を実機で手動確認する
 2. `ConnectNet` / `DisconnectNet` の呼出規約差分を実機で確定する
 3. DAO ハンドル調査が必要になった場合は、Rust ではなく x86 / MFC C++ shim を別途切る
 4. 必要なら bridge 再起動時の再定義取得 / 再接続戦略を調整する

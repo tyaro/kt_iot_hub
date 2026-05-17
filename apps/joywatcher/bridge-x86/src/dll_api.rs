@@ -21,6 +21,7 @@ type JwGetTagIds2Fn = unsafe extern "C" fn(
     kata_offs: i32,
     len_offs: i32,
 ) -> i32;
+type TagSel2Fn = unsafe extern "C" fn(ed: *mut i8) -> i32;
 type JwReadFn = unsafe extern "C" fn(
     uid: i32,
     password: *const i8,
@@ -29,6 +30,7 @@ type JwReadFn = unsafe extern "C" fn(
 ) -> i32;
 
 const TAG_NAME_SLOT_SIZE: usize = 256;
+const TAGSEL2_BUFFER_SIZE: usize = 64 * 1024;
 
 pub struct JoyWatcherDllApi {
     _library: LibraryHandle,
@@ -37,6 +39,7 @@ pub struct JoyWatcherDllApi {
     disconnect_net_fn: DisconnectNetFn,
     disconnect_net_force_fn: DisconnectNetForceFn,
     jw_get_tag_ids2_fn: JwGetTagIds2Fn,
+    tag_sel2_fn: TagSel2Fn,
     jw_read_fn: JwReadFn,
     read_user_id: i32,
     read_password: String,
@@ -53,6 +56,7 @@ impl JoyWatcherDllApi {
             library.load_symbol::<DisconnectNetForceFn>("DisconnectNetForce")?
         };
         let jw_get_tag_ids2_fn = unsafe { library.load_symbol::<JwGetTagIds2Fn>("JWGetTagIDS2")? };
+        let tag_sel2_fn = unsafe { library.load_symbol::<TagSel2Fn>("TagSel2")? };
         let jw_read_fn = unsafe { library.load_symbol::<JwReadFn>("JWRead")? };
 
         Ok(Self {
@@ -62,6 +66,7 @@ impl JoyWatcherDllApi {
             disconnect_net_fn,
             disconnect_net_force_fn,
             jw_get_tag_ids2_fn,
+            tag_sel2_fn,
             jw_read_fn,
             read_user_id: 0,
             read_password: String::new(),
@@ -129,6 +134,14 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
                 tag_id,
             })
             .collect())
+    }
+
+    fn browse_tags(&mut self) -> Result<Vec<String>> {
+        let mut buffer = vec![0u8; TAGSEL2_BUFFER_SIZE];
+        let result = unsafe { (self.tag_sel2_fn)(buffer.as_mut_ptr().cast::<i8>()) };
+        ensure_bool_like_success("TagSel2", result)?;
+
+        parse_tagsel2_buffer(&buffer)
     }
 
     fn read_tags(&self, tag_ids: &[i32]) -> Result<Vec<ReadValuePayload>> {
@@ -252,6 +265,18 @@ fn ensure_bool_like_success(function_name: &str, result: i32) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn parse_tagsel2_buffer(buffer: &[u8]) -> Result<Vec<String>> {
+    let end = buffer.iter().position(|byte| *byte == 0).unwrap_or(buffer.len());
+    let text = String::from_utf8_lossy(&buffer[..end]).to_string();
+
+    Ok(text
+        .split(['\r', '\n'])
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .map(ToOwned::to_owned)
+        .collect())
 }
 
 fn resolve_dll_path(explicit_path: Option<PathBuf>) -> Result<PathBuf> {
@@ -485,5 +510,16 @@ mod tests {
             MockValue::String(message) => assert!(message.contains("error dtype")),
             other => panic!("expected error string payload, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn parse_tagsel2_buffer_splits_crlf_lines() {
+        let buffer = b"Line1/Tank/Level\r\nLine1/Tank/Temp\r\n\0extra";
+        let items = parse_tagsel2_buffer(buffer).unwrap();
+
+        assert_eq!(
+            items,
+            vec!["Line1/Tank/Level".to_string(), "Line1/Tank/Temp".to_string()]
+        );
     }
 }

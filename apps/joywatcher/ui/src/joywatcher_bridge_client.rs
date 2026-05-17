@@ -17,6 +17,13 @@ pub fn resolve_single_tag(
     bridge.resolve_tag(tag_path)
 }
 
+pub fn browse_tags(endpoint: &str, user_id: i32, password: &str) -> Result<Vec<String>, String> {
+    let mut bridge = JoyWatcherUiBridgeClient::start()?;
+    bridge.ping()?;
+    bridge.connect(endpoint, user_id, password)?;
+    bridge.browse_tags()
+}
+
 struct JoyWatcherUiBridgeClient {
     child: Child,
     stdin: ChildStdin,
@@ -107,6 +114,17 @@ impl JoyWatcherUiBridgeClient {
             .ok_or_else(|| format!("tagId not found in bridge response: {response}"))
     }
 
+    fn browse_tags(&mut self) -> Result<Vec<String>, String> {
+        let response = self.send_request(r#"{"type":"browseTags"}"#)?;
+
+        if !response.contains(r#""type":"browsedTags""#) {
+            return Err(describe_bridge_response("browseTags", &response));
+        }
+
+        extract_string_array_field(&response, r#""items":["#)
+            .ok_or_else(|| format!("items not found in bridge response: {response}"))
+    }
+
     fn send_request(&mut self, request: &str) -> Result<String, String> {
         writeln!(self.stdin, "{request}")
             .map_err(|e| format!("failed to write bridge request: {e}"))?;
@@ -165,6 +183,23 @@ fn extract_string_field(text: &str, key: &str) -> Option<String> {
     let value = text[start..].strip_prefix('"').unwrap_or(&text[start..]);
     let end = value.find('"')?;
     Some(value[..end].replace("\\\"", "\"").replace("\\\\", "\\"))
+}
+
+fn extract_string_array_field(text: &str, key: &str) -> Option<Vec<String>> {
+    let start = text.find(key)? + key.len();
+    let end = text[start..].find(']')? + start;
+    let body = &text[start..end];
+
+    if body.is_empty() {
+        return Some(Vec::new());
+    }
+
+    Some(
+        body.split("\",\"")
+            .map(|item| item.trim_matches('"').replace("\\\"", "\"").replace("\\\\", "\\"))
+            .filter(|item| !item.is_empty())
+            .collect(),
+    )
 }
 
 fn escape_json(value: &str) -> String {
@@ -330,6 +365,18 @@ mod tests {
         assert_eq!(
             describe_bridge_response("resolveTags", response),
             "bridge resolveTags failed: resolve failed"
+        );
+    }
+
+    #[test]
+    fn extract_string_array_field_reads_items() {
+        let response = r#"{"type":"browsedTags","items":["Line1/Tank/Level","Line1/Tank/Temp"]}"#;
+        assert_eq!(
+            extract_string_array_field(response, r#""items":["#),
+            Some(vec![
+                "Line1/Tank/Level".to_string(),
+                "Line1/Tank/Temp".to_string()
+            ])
         );
     }
 }

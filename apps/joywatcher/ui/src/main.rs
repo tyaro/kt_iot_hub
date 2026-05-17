@@ -31,10 +31,21 @@ fn resolve_joywatcher_tag(
     joywatcher_bridge_client::resolve_single_tag(&endpoint, userId, &password, tag_path)
 }
 
+#[allow(non_snake_case)]
+#[tauri::command]
+fn browse_joywatcher_tags(
+    endpoint: String,
+    userId: i32,
+    password: String,
+) -> Result<Vec<String>, String> {
+    joywatcher_bridge_client::browse_tags(&endpoint, userId, &password)
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             close_driver_ui_window,
+            browse_joywatcher_tags,
             resolve_joywatcher_tag,
             bridge::get_driver_ui_launch_context,
             bridge::save_driver_ui_output,

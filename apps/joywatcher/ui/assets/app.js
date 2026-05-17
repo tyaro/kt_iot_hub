@@ -10,6 +10,7 @@ let editingTagIndex = -1
 let currentStep = 1
 let isEditMode = false
 let existingDriverIds = []
+let browsedTags = []
 
 const el = (id) => browserWindow.document.getElementById(id)
 
@@ -98,6 +99,11 @@ function activeGroup() {
 
 function totalTagCount() {
   return scanGroups.reduce((sum, group) => sum + group.tags.length, 0)
+}
+
+function deriveNameFromTagPath(tagPath) {
+  const parts = String(tagPath || '').split('/').filter(Boolean)
+  return parts[parts.length - 1] || tagPath
 }
 
 function setStep(step) {
@@ -296,6 +302,42 @@ function renderTags() {
   })
 }
 
+function renderBrowsedTags() {
+  const list = el('browsedTagsList')
+  el('browsedTagsBadge').textContent = `${browsedTags.length}件`
+  list.innerHTML = ''
+
+  if (browsedTags.length === 0) {
+    list.innerHTML = '<div class="list-item"><p class="muted">まだ参照結果がありません。</p></div>'
+    return
+  }
+
+  browsedTags.forEach((tagPath) => {
+    const item = browserWindow.document.createElement('div')
+    item.className = 'list-item'
+    item.innerHTML = `
+      <div class="list-head">
+        <h3>${deriveNameFromTagPath(tagPath)}</h3>
+        <span class="badge neutral">選択候補</span>
+      </div>
+      <div class="item-meta">
+        <span>${tagPath}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="btn secondary pick-browsed-tag">このタグを使う</button>
+      </div>
+    `
+    item.querySelector('.pick-browsed-tag').addEventListener('click', () => {
+      el('tagPath').value = tagPath
+      if (!el('tagName').value.trim()) {
+        el('tagName').value = deriveNameFromTagPath(tagPath)
+      }
+      el('msgOk').textContent = `タグパスを反映しました: ${tagPath}`
+    })
+    list.appendChild(item)
+  })
+}
+
 function validateConnection() {
   if (!el('driverId').value.trim()) {
     throw new Error('接続先IDを入力してください')
@@ -320,6 +362,31 @@ async function resolveTagId() {
 
   el('tagNativeId').value = String(nativeTagId)
   el('msgOk').textContent = `Tag ID を解決しました: ${nativeTagId}`
+}
+
+async function browseTags() {
+  validateConnection()
+
+  const settings = connectionSettings()
+  const items = await invoke('browse_joywatcher_tags', {
+    endpoint: settings.endpoint,
+    userId: settings.user_id,
+    password: settings.password
+  })
+
+  browsedTags = Array.isArray(items) ? items : []
+  renderBrowsedTags()
+
+  if (browsedTags.length === 1) {
+    el('tagPath').value = browsedTags[0]
+    if (!el('tagName').value.trim()) {
+      el('tagName').value = deriveNameFromTagPath(browsedTags[0])
+    }
+  }
+
+  el('msgOk').textContent = browsedTags.length > 0
+    ? `${browsedTags.length} 件のタグ候補を取得しました`
+    : 'タグ参照結果は空でした'
 }
 
 function upsertGroup() {
@@ -533,6 +600,7 @@ async function init() {
     updateModeUi()
     renderGroups()
     renderTags()
+    renderBrowsedTags()
     refreshSummary()
     if (scanGroups.length > 0) {
       selectGroup(0)
@@ -575,6 +643,14 @@ el('btnResolveTag').addEventListener('click', async () => {
   clearMessages()
   try {
     await resolveTagId()
+  } catch (error) {
+    el('msgErr').textContent = formatError(error)
+  }
+})
+el('btnBrowseTags').addEventListener('click', async () => {
+  clearMessages()
+  try {
+    await browseTags()
   } catch (error) {
     el('msgErr').textContent = formatError(error)
   }

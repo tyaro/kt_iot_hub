@@ -358,13 +358,14 @@ driver-ui/joywatcher/
 - `driver-joywatcher` からの bridge 起動と `ping` / `read` 実装、`nativeTagId` ベースの値読取導線を追加済み
 - 登録UI の保存 JSON は `driverSpec.nativeTagId` を保持できる形へ更新済み
 - UI から bridge を使って単一タグの `resolveTags` を呼ぶ導線は追加済み
+- UI から bridge を使って vendor の `TagSel2` ダイアログを開き、選択したタグパス一覧を取得する導線を追加済み
 - `JWRead` の実 DLL 化と gRPC 送信への最小統合は追加済み
 - scan group ごとの継続ポーリングと `driver-ui/joywatcher/` への dev 配置スクリプトは追加済み
 - 残タスクは UI の実機手動確認、`ConnectNet` / `DisconnectNet` 呼出規約の実機確定
 
 ## 次の最小タスク
 
-1. 登録UI の `resolve_joywatcher_tag` を実機で手動確認し、妥当な `nativeTagId` が返るか確認する
+1. 登録UI の `JoyWatcher タグ参照` と `resolve_joywatcher_tag` を実機で手動確認し、タグパス一覧取得と `nativeTagId` 解決が通るか確認する
 2. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
 3. 必要なら bridge 再起動時の再接続戦略を調整する
 4. UI 実機確認後に接続設定まわりのバリデーション文言を調整する

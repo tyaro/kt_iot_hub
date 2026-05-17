@@ -27,6 +27,14 @@ impl MockJoyWatcherApi {
             .collect()
     }
 
+    pub fn sample_browsed_tags(&self) -> Vec<String> {
+        vec![
+            "Line1/Tank/Level".to_string(),
+            "Line1/Tank/Temperature".to_string(),
+            "Line1/Pump/Run".to_string(),
+        ]
+    }
+
     pub fn read_tags(&self, tag_ids: &[i32]) -> Vec<ReadValuePayload> {
         tag_ids
             .iter()
@@ -60,6 +68,10 @@ impl JoyWatcherBridgeApi for MockJoyWatcherApi {
         Ok(self.resolve_tags(tags))
     }
 
+    fn browse_tags(&mut self) -> Result<Vec<String>> {
+        Ok(self.sample_browsed_tags())
+    }
+
     fn read_tags(&self, tag_ids: &[i32]) -> Result<Vec<ReadValuePayload>> {
         Ok(self.read_tags(tag_ids))
     }
@@ -87,5 +99,14 @@ mod tests {
 
         assert_eq!(values.len(), 2);
         assert_eq!(values[0].quality, "good");
+    }
+
+    #[test]
+    fn browse_tags_returns_sample_paths() {
+        let api = MockJoyWatcherApi::default();
+        let items = api.sample_browsed_tags();
+
+        assert!(!items.is_empty());
+        assert!(items.iter().any(|item| item.contains("Level")));
     }
 }

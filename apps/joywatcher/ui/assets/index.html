@@ -143,10 +143,16 @@
               </label>
             </div>
             <div class="actions">
+              <button id="btnBrowseTags" type="button" class="btn secondary">JoyWatcher タグ参照</button>
               <button id="btnResolveTag" type="button" class="btn secondary">Tag ID を解決</button>
               <button id="btnSaveTag" type="button" class="btn secondary">タグ追加 / 更新</button>
               <button id="btnResetTag" type="button" class="btn ghost">入力クリア</button>
             </div>
+            <div class="panel-head">
+              <h3>参照結果</h3>
+              <span id="browsedTagsBadge" class="badge neutral">0件</span>
+            </div>
+            <div id="browsedTagsList" class="list-box"></div>
             <div id="tagsList" class="list-box"></div>
           </div>
         </article>
@@ -154,7 +160,7 @@
         <aside class="summary-panel">
           <h2>段階メモ</h2>
           <ul class="note-list">
-            <li>将来ここに DLL 接続テスト / `JWGetTagIDS2` によるタグID解決を追加する予定です。</li>
+            <li>`JoyWatcher タグ参照` は vendor の `TagSel2` ダイアログを開き、選択済みタグパスを UI に戻します。</li>
             <li>今は手動入力でも `driver` / `scanGroups` / `tags` 相当の JSON を返却でき、必要なら JoyWatcher 側の数値 Tag ID も保持できます。</li>
             <li>x86 DLL の可能性が高いため、まずは UI と runtime の導線だけを検証対象にします。</li>
           </ul>

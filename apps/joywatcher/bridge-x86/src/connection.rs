@@ -22,6 +22,13 @@ pub trait JoyWatcherBridgeApi {
         ))
     }
 
+    fn browse_tags(&mut self) -> Result<Vec<String>> {
+        Err(anyhow!(
+            "BrowseTags is not implemented for {} mode",
+            self.mode()
+        ))
+    }
+
     fn read_tags(&self, _tag_ids: &[i32]) -> Result<Vec<ReadValuePayload>> {
         Err(anyhow!(
             "Read is not implemented for {} mode",
@@ -49,6 +56,10 @@ impl<T: JoyWatcherBridgeApi + ?Sized> JoyWatcherBridgeApi for Box<T> {
 
     fn resolve_tags(&mut self, tags: &[String]) -> Result<Vec<ResolvedTag>> {
         (**self).resolve_tags(tags)
+    }
+
+    fn browse_tags(&mut self) -> Result<Vec<String>> {
+        (**self).browse_tags()
     }
 
     fn read_tags(&self, tag_ids: &[i32]) -> Result<Vec<ReadValuePayload>> {

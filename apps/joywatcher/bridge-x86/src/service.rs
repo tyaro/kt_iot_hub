@@ -53,6 +53,11 @@ impl JoyWatcherBridgeService {
                 let items = self.connections.api_mut().resolve_tags(&tags)?;
                 Ok(BridgeResponse::ResolvedTags { items })
             }
+            BridgeRequest::BrowseTags => {
+                self.connections.ensure_connected()?;
+                let items = self.connections.api_mut().browse_tags()?;
+                Ok(BridgeResponse::BrowsedTags { items })
+            }
             BridgeRequest::Read {
                 request_id,
                 tag_ids,
@@ -112,6 +117,23 @@ mod tests {
                 assert_eq!(values.len(), 1);
             }
             other => panic!("expected read result, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn connect_then_browse_returns_items() {
+        let mut service = JoyWatcherBridgeService::new(Box::new(MockJoyWatcherApi::default()));
+        service.handle_request(BridgeRequest::Connect {
+            endpoint: None,
+            user_id: None,
+            password: None,
+        });
+
+        let response = service.handle_request(BridgeRequest::BrowseTags);
+
+        match response {
+            BridgeResponse::BrowsedTags { items } => assert!(!items.is_empty()),
+            other => panic!("expected browsed tags result, got {other:?}"),
         }
     }
 }

@@ -17,6 +17,8 @@ pub enum BridgeRequest {
     ForceDisconnect,
     #[serde(rename = "resolveTags")]
     ResolveTags { tags: Vec<String> },
+    #[serde(rename = "browseTags")]
+    BrowseTags,
     #[serde(rename = "read")]
     Read { request_id: String, tag_ids: Vec<i32> },
 }
@@ -35,6 +37,8 @@ pub enum BridgeResponse {
     Disconnected { active_connections: usize },
     #[serde(rename = "resolvedTags")]
     ResolvedTags { items: Vec<ResolvedTag> },
+    #[serde(rename = "browsedTags")]
+    BrowsedTags { items: Vec<String> },
     #[serde(rename = "readResult")]
     ReadResult {
         request_id: String,
