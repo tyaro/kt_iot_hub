@@ -12,11 +12,11 @@
         <div>
           <div class="eyebrow" id="modeBadge">新規登録</div>
           <h1 id="pageTitle">JoyWatcher 登録UI</h1>
-          <p id="pageDesc">接続先設定 → 手動タグ構成 → 確認して保存 の順で最小雛形を作成します。</p>
+          <p id="pageDesc">接続先設定 → TagSel2 でタグ選択 → 確認して保存 の順で登録を進めます。</p>
         </div>
         <div class="hero-note warning">
-          <strong>DLL解析フェーズ</strong>
-          <span>現段階では JoyWatcher DLL を呼ばず、手動定義入力と本体連携の骨組みだけを提供します。</span>
+          <strong>DLL + x86 bridge 運用</strong>
+          <span>タグ選択は `TagSel2`、Tag ID 解決は `JWGetTagIDS2`、値取得は `JWRead` を使う前提です。</span>
         </div>
       </header>
 
@@ -161,8 +161,8 @@
           <h2>段階メモ</h2>
           <ul class="note-list">
             <li>`JoyWatcher タグ参照` は vendor の `TagSel2` ダイアログを開き、選択済みタグパスを UI に戻します。</li>
-            <li>今は手動入力でも `driver` / `scanGroups` / `tags` 相当の JSON を返却でき、必要なら JoyWatcher 側の数値 Tag ID も保持できます。</li>
-            <li>x86 DLL の可能性が高いため、まずは UI と runtime の導線だけを検証対象にします。</li>
+            <li>必要に応じて手動入力もできますが、基本は `TagSel2` → `JWGetTagIDS2` の順で確定します。</li>
+            <li>JoyWatcher DLL は x86 前提のため、登録 UI / runtime とも x86 bridge 経由で扱います。</li>
           </ul>
           <div class="actions between">
             <button id="btnStep2Prev" type="button" class="btn ghost">戻る</button>

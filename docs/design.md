@@ -11,6 +11,7 @@
 | [`ui-registration.md`](./ui-registration.md) | 3ペイン UI、ドライバ別タグ登録 UI、PostgreSQL 登録フロー |
 | [`driver-development.md`](./driver-development.md) | ドライバUI / 通信ドライバの作成手順、UI/UX 基準、実装チェックリスト |
 | [`driver-implementation-flow.md`](./driver-implementation-flow.md) | 新しい DriverType を追加するときの1ページ実装チェックフロー |
+| [`joywatcher-investigation.md`](./joywatcher-investigation.md) | JoyWatcher の DLL / OCX / JDF / CHM 調査結果と、`TagSel2` 採用判断 |
 | [`joywatcher-x86-bridge-design.md`](./joywatcher-x86-bridge-design.md) | JoyWatcher DLL を x86 ブリッジ経由で扱うための設計メモ |
 | [`decisions.md`](./decisions.md) | 方針決定事項、実現可能性レビュー |
 | [`config-spec.md`](./config-spec.md) | TOML 設定ファイル仕様、`driver_spec`、`scan_group` |

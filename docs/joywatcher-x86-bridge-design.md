@@ -3,6 +3,8 @@
 > 対象: `driver_type = joywatcher`
 > 目的: 32bit 前提の可能性が高い JoyWatcher DLL を、本体 Rust ランタイムから安全に利用するための中継方式を定義する。
 
+補足: 2026-05-17 の調査サマリと採用判断は [`joywatcher-investigation.md`](./joywatcher-investigation.md) を正本とする。本メモは bridge 構成の設計に集中する。
+
 ## 背景
 
 現時点で確認できている事実:
@@ -25,6 +27,8 @@
 ## 結論
 
 JoyWatcher は **x86 専用ブリッジプロセス** を別途用意し、`driver-joywatcher` 本体とは IPC で接続する構成を第一候補とする。
+
+タグ選択の正規ルートは **DLL の `TagSel2`** とし、タグ解決は `JWGetTagIDS2`、値取得は `JWRead` を使う。
 
 ### 採用理由
 

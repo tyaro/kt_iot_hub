@@ -412,6 +412,7 @@ impl LibraryHandle {
 
         Ok(std::mem::transmute_copy(&address))
     }
+
 }
 
 #[cfg(windows)]
@@ -452,6 +453,7 @@ impl LibraryHandle {
     unsafe fn load_symbol<T: Copy>(&self, _symbol_name: &str) -> Result<T> {
         Err(anyhow!("JoyWatcher DLL loading is only supported on Windows"))
     }
+
 }
 
 #[cfg(test)]
@@ -522,4 +524,5 @@ mod tests {
             vec!["Line1/Tank/Level".to_string(), "Line1/Tank/Temp".to_string()]
         );
     }
+
 }
