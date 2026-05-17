@@ -347,8 +347,8 @@
     {driverUiBaseDirSaved}
     {settingsMessage}
     onNavigateTags={() => selectPage('tags')}
-    onStartServers={() => runtimeController.runAction(() => startRuntimeServices({ driver_ui_base_dir: driverUiBaseDirSaved }), 'バックグラウンドサービスを起動しました。', 'サービス起動に失敗しました')}
-    onStopServers={() => runtimeController.runAction(stopRuntimeServices, 'バックグラウンドサービスを停止しました。', 'サービス停止に失敗しました')}
+    onStartServers={() => runtimeController.runAction(() => startRuntimeServices({ driver_ui_base_dir: driverUiBaseDirSaved }), 'ドライバ / MQTT を開始しました。', 'ドライバ / MQTT の開始に失敗しました')}
+    onStopServers={() => runtimeController.runAction(stopRuntimeServices, 'ドライバ / MQTT を停止しました。', 'ドライバ / MQTT の停止に失敗しました')}
     onNewDriver={tagUiController.newDriver}
     onSelectTag={selectionController.onTagSelect}
     onSelectDriver={selectionController.onDriverSelect}

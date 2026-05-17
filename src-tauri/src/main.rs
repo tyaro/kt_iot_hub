@@ -8,6 +8,7 @@ mod core;
 mod drivers;
 mod grpc;
 mod publishers;
+mod subscribers;
 
 use app_state::AppState;
 use config::AppConfig;
@@ -50,6 +51,14 @@ fn main() {
             commands::driver::ui_launcher::check_driver_ui_available,
             commands::driver::ui_launcher::check_driver_ui_result,
             commands::driver::import::import_driver_ui_result,
+            commands::publisher::crud::list_publishers,
+            commands::publisher::crud::save_publisher,
+            commands::subscriber::monitor::list_mqtt_monitor_publishers,
+            commands::subscriber::monitor::get_mqtt_monitor_status,
+            commands::subscriber::monitor::list_mqtt_monitor_messages,
+            commands::subscriber::monitor::clear_mqtt_monitor_messages,
+            commands::subscriber::monitor::start_mqtt_monitor,
+            commands::subscriber::monitor::stop_mqtt_monitor,
             kt_driver_ui_host::bridge::get_driver_ui_launch_context,
             kt_driver_ui_host::bridge::save_driver_ui_output,
             kt_driver_ui_host::postgres::postgres_test_connection,
@@ -117,12 +126,22 @@ fn main() {
             app.manage(app_state.clone());
 
             if !is_driver_ui_process() {
-                let grpc_state = app_state.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = commands::runtime::start_grpc_server(&grpc_state).await {
-                        tracing::error!("Failed to initialize gRPC server: {}", e.error);
+                tauri::async_runtime::block_on(async {
+                    commands::runtime::start_grpc_server(&app_state)
+                        .await
+                        .map_err(|e| std::io::Error::other(e.error.clone()))?;
+
+                    if let Err(e) = commands::runtime::auto_start_runtime_services(&app_state).await {
+                        tracing::error!("Failed to auto start runtime services: {}", e.error);
+                        app_state.runtime_status.write().await.last_error = Some(format!(
+                            "Auto start failed: {}",
+                            e.error
+                        ));
                     }
-                });
+
+                    Ok::<(), std::io::Error>(())
+                })
+                .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })?;
             } else {
                 info!("Driver UI mode detected: skip gRPC startup");
             }
@@ -167,6 +186,13 @@ async fn graceful_shutdown(app_handle: tauri::AppHandle) {
             }
         }
         state.runtime_status.write().await.publishers_running = false;
+
+        {
+            let mut monitor = state.mqtt_monitor.lock().await;
+            if let Err(e) = monitor.stop(state.mqtt_monitor_status.clone()).await {
+                tracing::warn!("Failed to stop MQTT monitor cleanly: {}", e);
+            }
+        }
 
         {
             let mut drivers = state.drivers.write().await;

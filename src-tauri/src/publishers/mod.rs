@@ -55,6 +55,11 @@ impl PublisherManager {
         self.publishers.insert(id, publisher);
     }
 
+    /// パブリッシャを登録解除する
+    pub fn unregister(&mut self, publisher_id: &str) -> Option<Box<dyn Publisher>> {
+        self.publishers.remove(publisher_id)
+    }
+
     /// パブリッシャを起動
     pub async fn start_publisher(
         &mut self,

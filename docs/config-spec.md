@@ -199,7 +199,7 @@ endpoint = "localhost"
 [[publisher]]
 id = "mqtt-main"
 publisher_type = "mqtt"
-enabled = true
+enabled = false
 broker = "localhost"
 port = 1883
 username = ""
@@ -207,16 +207,20 @@ password = ""
 client_id = "kt_iot_hub"
 qos = 1
 retain = false
-topic_prefix = "plant"
+topic = "plant"
 ```
 
 ### MQTT パブリッシャ設定補足
 
+- `enabled`: アプリ起動時にこの MQTT パブリッシャを自動開始するか。`true` の場合、起動時にドライバと MQTT 配信を開始する
 - `qos`: 0 / 1 / 2
 - `retain`: retain フラグ（省略時 `false`）
-- `topic_prefix`: MQTT トピックの接頭辞（省略時 `plant`）
-- 実際の publish topic は `<topic_prefix>/<tag.id>`
-- payload には `tagId`, `tagName`, `value`, `quality`, `timestamp` を含める
+- `topic`: MQTT トピックのベースパス（省略時は空文字）
+- 実際の publish topic は `<topic>/<driver_id>/tags/<scan_group_id>/<tag_name>`
+- 例: `plant/postgresql/tags/bte1w/w0400`
+- `topic` が空文字の場合は `<driver_id>/tags/<scan_group_id>/<tag_name>`
+- payload はタグ値そのもののスカラー値を publish する
+- ダッシュボードの開始ボタンでは `enabled` の状態に関わらず、設定済みのドライバ / パブリッシャを起動する
 
 ## 設計ルール
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import DashboardContent from './DashboardContent.svelte';
+  import PublishersContent from './PublishersContent.svelte';
   import TagsContent from './TagsContent.svelte';
   import SettingsContent from './SettingsContent.svelte';
   import PlaceholderContent from './PlaceholderContent.svelte';
@@ -108,10 +109,7 @@
     />
 
   {:else if currentPage === 'publishers'}
-    <PlaceholderContent
-      title="パブリッシャ管理"
-      message="パブリッシャ管理画面は今後実装予定です。"
-    />
+    <PublishersContent />
 
   {:else if currentPage === 'logs'}
     <PlaceholderContent

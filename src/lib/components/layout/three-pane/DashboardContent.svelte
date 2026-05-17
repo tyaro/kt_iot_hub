@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DashboardMqttMonitor from './DashboardMqttMonitor.svelte';
   import type { RuntimeStatusDto } from '$lib/ipc';
 
   let {
@@ -47,7 +48,7 @@
     </div>
     <div class="card runtime-card">
       <span class="card-icon">🧩</span>
-      <h3>サービス状態</h3>
+      <h3>ドライバ / MQTT 状態</h3>
       <p
         class="runtime-badge"
         class:running={runtimeStatus.drivers_running || runtimeStatus.publishers_running}
@@ -58,7 +59,7 @@
       </p>
       <ul class="runtime-list">
         <li>Drivers: {runtimeStatus.drivers_running ? 'ON' : 'OFF'}</li>
-        <li>Publishers: {runtimeStatus.publishers_running ? 'ON' : 'OFF'}</li>
+        <li>MQTT: {runtimeStatus.publishers_running ? 'ON' : 'OFF'}</li>
       </ul>
     </div>
   </div>
@@ -75,16 +76,18 @@
       onclick={onStartServers}
       disabled={runtimeBusy || runtimeStatus.drivers_running || runtimeStatus.publishers_running}
     >
-      {runtimeBusy ? '実行中...' : 'サーバ起動'}
+      {runtimeBusy ? '実行中...' : 'ドライバ / MQTT 開始'}
     </button>
     <button
       class="btn-outline danger"
       onclick={onStopServers}
       disabled={runtimeBusy || (!runtimeStatus.drivers_running && !runtimeStatus.publishers_running)}
     >
-      サーバ停止
+      ドライバ / MQTT 停止
     </button>
   </div>
+
+  <DashboardMqttMonitor />
 </div>
 
 <style>

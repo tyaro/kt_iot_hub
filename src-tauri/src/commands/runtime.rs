@@ -8,7 +8,7 @@ const GRPC_ADDR: &str = grpc::tag_registration::DEFAULT_GRPC_ADDR;
 pub async fn get_runtime_status(
     state: tauri::State<'_, AppState>,
 ) -> Result<RuntimeStatusDto, ErrorResponse> {
-    Ok(read_runtime_status(&state).await)
+    Ok(read_runtime_status(state.inner()).await)
 }
 
 #[tauri::command]
@@ -16,36 +16,58 @@ pub async fn start_runtime_services(
     state: tauri::State<'_, AppState>,
     req: Option<StartRuntimeServicesRequest>,
 ) -> Result<RuntimeStatusDto, ErrorResponse> {
-    clear_last_error(&state).await;
+    clear_last_error(state.inner()).await;
     let driver_ui_base_dir = req.and_then(|req| normalize_optional_string(req.driver_ui_base_dir));
 
     if let Some(driver_ui_base_dir) = driver_ui_base_dir.clone() {
         *state.driver_ui_base_dir.write().await = Some(driver_ui_base_dir);
     }
 
-    if let Err(e) = start_drivers(&state, driver_ui_base_dir.as_deref()).await {
+    if let Err(e) = start_drivers(state.inner(), driver_ui_base_dir.as_deref()).await {
         return Err(e);
     }
-    if let Err(e) = start_publishers(&state).await {
-        let _ = stop_drivers(&state).await;
+    if let Err(e) = start_publishers(state.inner(), false).await {
+        let _ = stop_drivers(state.inner()).await;
         return Err(e);
     }
-    Ok(read_runtime_status(&state).await)
+    Ok(read_runtime_status(state.inner()).await)
 }
 
 #[tauri::command]
 pub async fn stop_runtime_services(
     state: tauri::State<'_, AppState>,
 ) -> Result<RuntimeStatusDto, ErrorResponse> {
-    stop_publishers(&state).await?;
-    stop_drivers(&state).await?;
-    Ok(read_runtime_status(&state).await)
+    stop_publishers(state.inner()).await?;
+    stop_drivers(state.inner()).await?;
+    Ok(read_runtime_status(state.inner()).await)
 }
 
-async fn start_drivers(
-    state: &tauri::State<'_, AppState>,
-    driver_ui_base_dir: Option<&str>,
-) -> Result<(), ErrorResponse> {
+pub async fn auto_start_runtime_services(state: &AppState) -> Result<(), ErrorResponse> {
+    let should_auto_start = state
+        .publisher_configs
+        .read()
+        .await
+        .iter()
+        .any(|cfg| cfg.enabled.unwrap_or(false));
+
+    if !should_auto_start {
+        return Ok(());
+    }
+
+    clear_last_error(state).await;
+
+    if let Err(e) = start_drivers(state, None).await {
+        return Err(e);
+    }
+    if let Err(e) = start_publishers(state, true).await {
+        let _ = stop_drivers(state).await;
+        return Err(e);
+    }
+
+    Ok(())
+}
+
+async fn start_drivers(state: &AppState, driver_ui_base_dir: Option<&str>) -> Result<(), ErrorResponse> {
     let drivers: Vec<(String, String)> = state
         .driver_configs
         .read()
@@ -55,6 +77,7 @@ async fn start_drivers(
         .map(|cfg| (cfg.id.clone(), cfg.driver_type.clone()))
         .collect();
 
+    let has_drivers = !drivers.is_empty();
     let mut manager = state.drivers.write().await;
     for (driver_id, driver_type) in drivers {
         manager
@@ -63,27 +86,28 @@ async fn start_drivers(
             .map_err(ErrorResponse::from)?;
     }
 
-    state.runtime_status.write().await.drivers_running = true;
+    state.runtime_status.write().await.drivers_running = has_drivers && !manager.running_driver_ids().is_empty();
     Ok(())
 }
 
-async fn stop_drivers(state: &tauri::State<'_, AppState>) -> Result<(), ErrorResponse> {
+async fn stop_drivers(state: &AppState) -> Result<(), ErrorResponse> {
     let mut manager = state.drivers.write().await;
     manager.stop_all().await.map_err(ErrorResponse::from)?;
     state.runtime_status.write().await.drivers_running = false;
     Ok(())
 }
 
-async fn start_publishers(state: &tauri::State<'_, AppState>) -> Result<(), ErrorResponse> {
+async fn start_publishers(state: &AppState, startup_only: bool) -> Result<(), ErrorResponse> {
     let publisher_ids: Vec<String> = state
         .publisher_configs
         .read()
         .await
         .iter()
-        .filter(|cfg| cfg.enabled.unwrap_or(true))
+        .filter(|cfg| !startup_only || cfg.enabled.unwrap_or(false))
         .map(|cfg| cfg.id.clone())
         .collect();
 
+    let has_publishers = !publisher_ids.is_empty();
     let mut manager = state.publishers.write().await;
     for publisher_id in publisher_ids {
         manager
@@ -92,11 +116,11 @@ async fn start_publishers(state: &tauri::State<'_, AppState>) -> Result<(), Erro
             .map_err(ErrorResponse::from)?;
     }
 
-    state.runtime_status.write().await.publishers_running = true;
+    state.runtime_status.write().await.publishers_running = has_publishers;
     Ok(())
 }
 
-async fn stop_publishers(state: &tauri::State<'_, AppState>) -> Result<(), ErrorResponse> {
+async fn stop_publishers(state: &AppState) -> Result<(), ErrorResponse> {
     let mut manager = state.publishers.write().await;
     manager.stop_all().await.map_err(ErrorResponse::from)?;
     state.runtime_status.write().await.publishers_running = false;
@@ -151,7 +175,7 @@ pub async fn start_grpc_server(state: &AppState) -> Result<(), ErrorResponse> {
     Ok(())
 }
 
-async fn clear_last_error(state: &tauri::State<'_, AppState>) {
+async fn clear_last_error(state: &AppState) {
     state.runtime_status.write().await.last_error = None;
 }
 
@@ -166,7 +190,7 @@ fn normalize_optional_string(value: Option<String>) -> Option<String> {
     })
 }
 
-async fn read_runtime_status(state: &tauri::State<'_, AppState>) -> RuntimeStatusDto {
+async fn read_runtime_status(state: &AppState) -> RuntimeStatusDto {
     let runtime_status = state.runtime_status.read().await.clone();
     let grpc_running = if runtime_status.grpc_running {
         true
