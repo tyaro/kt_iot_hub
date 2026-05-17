@@ -32,13 +32,6 @@ export function notify(message: string): void {
   }
 }
 
-export function confirmAction(message: string): boolean {
-  if (typeof globalThis.confirm === 'function') {
-    return globalThis.confirm(message);
-  }
-  return true;
-}
-
 export function extractErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) {
     return error.message;

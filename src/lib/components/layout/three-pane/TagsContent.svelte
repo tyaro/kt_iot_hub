@@ -9,7 +9,6 @@
     selectedDriverId,
     selectedScanGroupId,
     onNewDriver,
-    onNewTag,
     onSelectTag,
     onSelectDriver,
     onSelectScanGroup,
@@ -25,7 +24,6 @@
     selectedDriverId: string | null;
     selectedScanGroupId: string | null;
     onNewDriver: () => void | Promise<void>;
-    onNewTag: () => void | Promise<void>;
     onSelectTag: (tag: TagDto | null) => void;
     onSelectDriver: (driver: DriverDto | null) => void;
     onSelectScanGroup: (scanGroup: ScanGroupDto | null) => void;
@@ -41,8 +39,7 @@
   <div class="content-header">
     <h2>タグ管理</h2>
     <div class="header-actions">
-      <button class="btn-outline" onclick={onNewDriver} disabled={driverUiPolling}>＋ 新規ドライバ</button>
-      <button class="btn-primary" onclick={onNewTag} disabled={driverUiPolling}>＋ 新規タグ</button>
+      <button class="btn-primary" onclick={onNewDriver} disabled={driverUiPolling}>＋ 接続先</button>
     </div>
   </div>
   {#if tagActionMessage}
@@ -120,17 +117,4 @@
     background-color: #2471a3;
   }
 
-  .btn-outline {
-    background: #fff;
-    color: #2e86c1;
-    border: 1px solid #2e86c1;
-    padding: 7px 14px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
-  }
-
-  .btn-outline:hover {
-    background: #ebf5fb;
-  }
 </style>

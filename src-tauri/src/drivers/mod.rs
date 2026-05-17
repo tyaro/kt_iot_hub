@@ -4,13 +4,14 @@
 
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use tokio::process::Child;
 use tracing::{error, info, warn};
 
 /// ドライバ種別からプロセス実行ファイル名を決定する
-/// 例: "postgres" → "driver-postgres" (.exe は OS が補完)
+/// 例: "postgres" → "driver-postgres.exe" (Windows)
 fn executable_name(driver_type: &str) -> String {
-    format!("driver-{}", driver_type)
+    format!("driver-{}{}", driver_type, std::env::consts::EXE_SUFFIX)
 }
 
 /// ドライバプロセスマネージャー
@@ -32,14 +33,27 @@ impl DriverProcessManager {
     /// 指定ドライバのプロセスを起動する
     /// executable は本体と同じディレクトリから解決する
     /// 開発時は DRIVER_BIN_DIR 環境変数で上書き可能
-    pub async fn start_driver(&mut self, driver_id: &str, driver_type: &str) -> Result<()> {
+    pub async fn start_driver(
+        &mut self,
+        driver_id: &str,
+        driver_type: &str,
+        driver_ui_base_dir: Option<&str>,
+    ) -> Result<()> {
         if self.processes.contains_key(driver_id) {
             warn!("Driver process already running: {}", driver_id);
             return Ok(());
         }
 
         let exe_name = executable_name(driver_type);
-        let exe_path = self.resolve_exe_path(&exe_name);
+        let exe_path = self
+            .resolve_exe_path(driver_type, &exe_name, driver_ui_base_dir)
+            .ok_or_else(|| {
+            anyhow!(
+                "Driver executable not found for type '{}'. Looked for '{}' near the configured driver-ui base path, DRIVER_BIN_DIR, and the app directory. Build/install the runtime driver beside the registration UI (for dev, use `npm run driver-runtime:dev`).",
+                driver_type,
+                exe_name
+            )
+        })?;
 
         info!(
             "Starting driver process: id={} exe={}",
@@ -104,16 +118,126 @@ impl DriverProcessManager {
     }
 
     /// executable のパスを解決する
-    /// 優先順位: DRIVER_BIN_DIR 環境変数 > 本体と同じディレクトリ
-    fn resolve_exe_path(&self, exe_name: &str) -> std::path::PathBuf {
+    /// 優先順位: driver-uiベースパス同居配置 > DRIVER_BIN_DIR > 本体と同じディレクトリ > 実行名そのまま
+    fn resolve_exe_path(
+        &self,
+        driver_type: &str,
+        exe_name: &str,
+        driver_ui_base_dir: Option<&str>,
+    ) -> Option<PathBuf> {
+        for candidate in colocated_runtime_candidates(driver_type, exe_name, driver_ui_base_dir) {
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+
         if let Ok(bin_dir) = std::env::var("DRIVER_BIN_DIR") {
-            return std::path::PathBuf::from(bin_dir).join(exe_name);
+            let candidate = PathBuf::from(bin_dir).join(exe_name);
+            if candidate.exists() {
+                return Some(candidate);
+            }
         }
         if let Ok(exe) = std::env::current_exe() {
             if let Some(dir) = exe.parent() {
-                return dir.join(exe_name);
+                let candidate = dir.join(exe_name);
+                if candidate.exists() {
+                    return Some(candidate);
+                }
             }
         }
-        std::path::PathBuf::from(exe_name)
+
+        Some(PathBuf::from(exe_name))
+    }
+}
+
+fn colocated_runtime_candidates(
+    driver_type: &str,
+    exe_name: &str,
+    driver_ui_base_dir: Option<&str>,
+) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    for root in app_root_candidates(driver_ui_base_dir) {
+        candidates.push(root.join("driver-ui").join(driver_type).join(exe_name));
+        candidates.push(root.join(driver_type).join(exe_name));
+    }
+
+    let mut unique = Vec::new();
+    for candidate in candidates {
+        if !unique.contains(&candidate) {
+            unique.push(candidate);
+        }
+    }
+
+    unique
+}
+
+fn app_root_candidates(driver_ui_base_dir: Option<&str>) -> Vec<PathBuf> {
+    let mut roots = Vec::<PathBuf>::new();
+
+    if let Some(base_dir) = driver_ui_base_dir {
+        let trimmed = base_dir.trim();
+        if !trimmed.is_empty() {
+            roots.push(PathBuf::from(trimmed));
+        }
+    }
+
+    if let Ok(current_dir) = std::env::current_dir() {
+        let mut cursor = Some(current_dir.as_path());
+        while let Some(path) = cursor {
+            roots.push(path.to_path_buf());
+            cursor = path.parent();
+        }
+    }
+
+    if let Ok(current_exe) = std::env::current_exe() {
+        if let Some(exe_dir) = current_exe.parent() {
+            let mut cursor = Some(exe_dir);
+            while let Some(path) = cursor {
+                roots.push(path.to_path_buf());
+                cursor = path.parent();
+            }
+        }
+    }
+
+    let mut unique = Vec::<PathBuf>::new();
+    for root in roots {
+        if !unique.contains(&root) {
+            unique.push(root);
+        }
+    }
+    unique
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn colocated_candidates_support_repo_root_base() {
+        let candidates = colocated_runtime_candidates(
+            "postgres",
+            "driver-postgres.exe",
+            Some(r"D:\develop\kt_iot_hub"),
+        );
+
+        assert_eq!(
+            candidates[0],
+            PathBuf::from(r"D:\develop\kt_iot_hub").join("driver-ui").join("postgres").join("driver-postgres.exe")
+        );
+    }
+
+    #[test]
+    fn colocated_candidates_support_driver_ui_root_base() {
+        let candidates = colocated_runtime_candidates(
+            "postgres",
+            "driver-postgres.exe",
+            Some(r"D:\develop\kt_iot_hub\driver-ui"),
+        );
+
+        assert_eq!(
+            candidates[1],
+            PathBuf::from(r"D:\develop\kt_iot_hub\driver-ui").join("postgres").join("driver-postgres.exe")
+        );
     }
 }

@@ -1,4 +1,4 @@
-use super::dto::{ErrorResponse, RuntimeStatusDto};
+use super::dto::{ErrorResponse, RuntimeStatusDto, StartRuntimeServicesRequest};
 use crate::app_state::AppState;
 use crate::grpc;
 
@@ -14,9 +14,16 @@ pub async fn get_runtime_status(
 #[tauri::command]
 pub async fn start_runtime_services(
     state: tauri::State<'_, AppState>,
+    req: Option<StartRuntimeServicesRequest>,
 ) -> Result<RuntimeStatusDto, ErrorResponse> {
     clear_last_error(&state).await;
-    if let Err(e) = start_drivers(&state).await {
+    let driver_ui_base_dir = req.and_then(|req| normalize_optional_string(req.driver_ui_base_dir));
+
+    if let Some(driver_ui_base_dir) = driver_ui_base_dir.clone() {
+        *state.driver_ui_base_dir.write().await = Some(driver_ui_base_dir);
+    }
+
+    if let Err(e) = start_drivers(&state, driver_ui_base_dir.as_deref()).await {
         return Err(e);
     }
     if let Err(e) = start_publishers(&state).await {
@@ -35,7 +42,10 @@ pub async fn stop_runtime_services(
     Ok(read_runtime_status(&state).await)
 }
 
-async fn start_drivers(state: &tauri::State<'_, AppState>) -> Result<(), ErrorResponse> {
+async fn start_drivers(
+    state: &tauri::State<'_, AppState>,
+    driver_ui_base_dir: Option<&str>,
+) -> Result<(), ErrorResponse> {
     let drivers: Vec<(String, String)> = state
         .driver_configs
         .read()
@@ -48,7 +58,7 @@ async fn start_drivers(state: &tauri::State<'_, AppState>) -> Result<(), ErrorRe
     let mut manager = state.drivers.write().await;
     for (driver_id, driver_type) in drivers {
         manager
-            .start_driver(&driver_id, &driver_type)
+            .start_driver(&driver_id, &driver_type, driver_ui_base_dir)
             .await
             .map_err(ErrorResponse::from)?;
     }
@@ -143,6 +153,17 @@ pub async fn start_grpc_server(state: &AppState) -> Result<(), ErrorResponse> {
 
 async fn clear_last_error(state: &tauri::State<'_, AppState>) {
     state.runtime_status.write().await.last_error = None;
+}
+
+fn normalize_optional_string(value: Option<String>) -> Option<String> {
+    value.and_then(|v| {
+        let trimmed = v.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
 }
 
 async fn read_runtime_status(state: &tauri::State<'_, AppState>) -> RuntimeStatusDto {

@@ -9,7 +9,7 @@ import { DRIVER_UI_IMPORT_BUSY_MESSAGE } from './helpers';
 export type DeleteTagFlowDeps = {
   tag: TagDto;
   deletingTag: boolean;
-  confirmAction: (message: string) => boolean;
+  confirmAction: (message: string) => Promise<boolean>;
   setDeletingTag: (value: boolean) => void;
   deleteTagApi: (tagId: string) => Promise<void>;
   reloadTags: () => Promise<void>;
@@ -36,7 +36,7 @@ export async function runDeleteTagFlow({
   if (deletingTag) {
     return;
   }
-  if (!confirmAction(`タグ「${tag.id}」を削除しますか？`)) {
+  if (!(await confirmAction(`タグ「${tag.id}」を削除しますか？`))) {
     return;
   }
 
@@ -61,7 +61,7 @@ export type DeleteDriverFlowDeps = {
   driverId: string;
   driverUiPolling: boolean;
   setMessage: (message: string) => void;
-  confirmAction: (message: string) => boolean;
+  confirmAction: (message: string) => Promise<boolean>;
   deleteDriverApi: (driverId: string) => Promise<void>;
   reloadDrivers: () => Promise<void>;
   reloadScanGroups: () => Promise<void>;
@@ -99,7 +99,7 @@ export async function runDeleteDriverFlow({
     return;
   }
 
-  if (!confirmAction(`接続先「${driverId}」を削除しますか？\n配下のScanグループとタグも削除されます。`)) {
+  if (!(await confirmAction(`接続先「${driverId}」を削除しますか？\n配下のScanグループとタグも削除されます。`))) {
     return;
   }
 

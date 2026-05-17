@@ -162,6 +162,12 @@
     closeContextMenu();
   }
 
+  function handleDriverDoubleClick(event: MouseEvent, driver: DriverDto) {
+    event.preventDefault();
+    selectDriver(driver);
+    requestEditDriver(driver.id);
+  }
+
   function requestEditTag(tag: TagDto) {
     onRequestEditTag(tag);
     closeContextMenu();
@@ -230,7 +236,9 @@
             class="tree-label tree-label-btn driver-label"
             class:selected={selectedDriverId === driverId}
             onclick={() => selectDriver(driver)}
+            ondblclick={(event) => handleDriverDoubleClick(event, driver)}
             oncontextmenu={(event) => openDriverContextMenu(event, driverId)}
+            title="クリックで選択 / ダブルクリックで接続先設定を編集"
           >
               🧩 {resolveDriverLabel(driverId)}
           </button>

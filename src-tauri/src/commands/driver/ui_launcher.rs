@@ -26,6 +26,10 @@ pub async fn launch_driver_ui(
     let requested_driver_type = normalize_optional_string(req.driver_type);
     let requested_driver_ui_base_dir = normalize_optional_string(req.driver_ui_base_dir);
 
+    if let Some(driver_ui_base_dir) = requested_driver_ui_base_dir.clone() {
+        *state.driver_ui_base_dir.write().await = Some(driver_ui_base_dir);
+    }
+
     if requested_driver_id.is_none() && requested_driver_type.is_none() {
         return Err(ErrorResponse {
             error: "driver_id or driver_type is required".to_string(),
@@ -183,14 +187,20 @@ pub async fn launch_driver_ui(
 
     let app_state_for_wait = state.inner().clone();
     let session_id_for_wait = session_id.clone();
+    let output_json_path_for_wait = output_json_path.clone();
     std::thread::spawn(move || {
         let wait_result = child.wait();
         let session_id_for_log = session_id_for_wait.clone();
+        let output_exists = std::path::Path::new(&output_json_path_for_wait).exists();
 
         tauri::async_runtime::block_on(async move {
             let mut sessions = app_state_for_wait.active_driver_ui_sessions.write().await;
-            if let Some(session) = sessions.get_mut(&session_id_for_wait) {
-                session.process_active = false;
+            if output_exists {
+                if let Some(session) = sessions.get_mut(&session_id_for_wait) {
+                    session.process_active = false;
+                }
+            } else {
+                sessions.remove(&session_id_for_wait);
             }
         });
 

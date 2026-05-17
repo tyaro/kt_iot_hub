@@ -19,7 +19,7 @@ export type CreateThreePaneControllersDeps = {
   common: {
     notify: (message: string) => void;
     extractErrorMessage: (error: unknown, fallback: string) => string;
-    confirmAction: (message: string) => boolean;
+    confirmAction: (message: string) => Promise<boolean>;
   };
   data: {
     getDrivers: () => DriverDto[];

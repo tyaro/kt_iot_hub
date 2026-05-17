@@ -34,6 +34,7 @@ pub struct AppState {
         std::sync::Arc<tokio::sync::RwLock<HashMap<String, DriverUiSessionState>>>,
     /// 重複取込防止用 session_id 集合
     pub imported_driver_ui_sessions: std::sync::Arc<tokio::sync::RwLock<HashSet<String>>>,
+    pub driver_ui_base_dir: std::sync::Arc<tokio::sync::RwLock<Option<String>>>,
     pub grpc_shutdown_tx:
         std::sync::Arc<tokio::sync::RwLock<Option<tokio::sync::oneshot::Sender<()>>>>,
     pub runtime_status: std::sync::Arc<tokio::sync::RwLock<RuntimeStatusState>>,
@@ -59,6 +60,7 @@ impl AppState {
             scan_groups: std::sync::Arc::new(tokio::sync::RwLock::new(scan_groups)),
             active_driver_ui_sessions: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             imported_driver_ui_sessions: std::sync::Arc::new(tokio::sync::RwLock::new(HashSet::new())),
+            driver_ui_base_dir: std::sync::Arc::new(tokio::sync::RwLock::new(None)),
             grpc_shutdown_tx: std::sync::Arc::new(tokio::sync::RwLock::new(None)),
             runtime_status: std::sync::Arc::new(tokio::sync::RwLock::new(RuntimeStatusState::default())),
         }

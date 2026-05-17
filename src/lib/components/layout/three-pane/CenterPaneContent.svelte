@@ -26,7 +26,6 @@
     onStartServers: () => Promise<void>;
     onStopServers: () => Promise<void>;
     onNewDriver: () => Promise<void>;
-    onNewTag: () => Promise<void>;
     onSelectTag: (tag: TagDto | null) => void;
     onSelectDriver: (driver: DriverDto | null) => void;
     onSelectScanGroup: (scanGroup: ScanGroupDto | null) => void;
@@ -61,7 +60,6 @@
     onStartServers,
     onStopServers,
     onNewDriver,
-    onNewTag,
     onSelectTag,
     onSelectDriver,
     onSelectScanGroup,
@@ -99,7 +97,6 @@
       {selectedDriverId}
       {selectedScanGroupId}
       onNewDriver={onNewDriver}
-      onNewTag={onNewTag}
       onSelectTag={onSelectTag}
       onSelectDriver={onSelectDriver}
       onSelectScanGroup={onSelectScanGroup}

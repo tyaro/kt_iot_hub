@@ -15,6 +15,7 @@ export interface DriverDto extends DriverCoreFields {
 }
 
 export interface SaveDriverRequest extends DriverCoreFields {
+  original_id?: string | null;
   password: string;
 }
 

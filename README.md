@@ -44,16 +44,43 @@
 - gRPC は登録UI・ドライバIPCで継続利用するため、ランタイム停止では止めません。
 - gRPC 停止は本体終了時（graceful shutdown）のみ行います。
 
-## ドライバUI実行ファイルの配置
+## ドライバ実行ファイルの配置
 
-ドライバUIは本体アプリ配下の `driver-ui/<driver_type>/` に配置します。
+登録UI と通信ランタイムは、同じ `driver-ui/<driver_type>/` 配下に置くことを推奨します。
 
-- 既定ファイル名: `registration-ui.exe`（Windows）
+- 既定ファイル名:
+  - `registration-ui.exe`（登録UI, Windows）
+  - `driver-<type>.exe`（通信ランタイム, Windows）
 - 配置スクリプト:
-  - `npm run driver-ui:dev`（`apps/driver-ui-postgres` をビルドして配置）
+  - `npm run driver-ui:dev`（`apps/postgres/ui` をビルドして配置）
+  - `npm run driver-runtime:dev`（`apps/postgres/driver` をビルドして配置）
   - `npm run driver-ui:install -- -DriverType postgres -SourcePath C:/tools/postgres-tag-ui/postgres-tag-ui.exe`
+  - `npm run driver-runtime:install -- -DriverType postgres -SourcePath C:/tools/driver-postgres.exe`
 
-本体は `driver_type` を使って、上記既定配置を探索して起動します。
+設定画面の「ドライバ設置ベースパス」は、登録UI と通信ランタイムの両方に使われます。
+たとえば以下のどちらでも動作します。
+
+- `<app-dir>`
+  - `driver-ui/postgres/registration-ui.exe`
+  - `driver-ui/postgres/driver-postgres.exe`
+- `<app-dir>/driver-ui`
+  - `postgres/registration-ui.exe`
+  - `postgres/driver-postgres.exe`
+
+ここで `<app-dir>` は本体実行ファイル `kt_iot_hub.exe` が置かれているディレクトリです。
+たとえば本体が `<app-dir>/kt_iot_hub.exe` にある場合、`<app-dir>` を設定すると
+`driver-ui/<type>/registration-ui.exe` と `driver-ui/<type>/driver-<type>.exe` を探索します。
+
+本体は次の順にランタイム実行ファイルを探索します。
+
+1. 設定された driver-ui ベースパス配下の同居配置
+2. `DRIVER_BIN_DIR` 配下
+3. 本体実行ファイルと同じディレクトリ
+4. PATH 上で解決できる実行名
+
+PostgreSQL ランタイム本体の crate は `apps/postgres/driver` です。
+
+見つからない場合は、ランタイム開始時にエラーを返します。
 
 ## 補足
 

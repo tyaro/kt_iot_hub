@@ -9,6 +9,7 @@ pub(super) async fn sync_driver_runtime(
     config: &DriverConfig,
 ) -> Result<(), ErrorResponse> {
     let runtime_running = state.runtime_status.read().await.drivers_running;
+    let driver_ui_base_dir = state.driver_ui_base_dir.read().await.clone();
     let mut manager = state.drivers.write().await;
 
     if manager.is_running(&config.id) {
@@ -17,7 +18,7 @@ pub(super) async fn sync_driver_runtime(
 
     if runtime_running && config.enabled.unwrap_or(true) {
         manager
-            .start_driver(&config.id, &config.driver_type)
+            .start_driver(&config.id, &config.driver_type, driver_ui_base_dir.as_deref())
             .await
             .map_err(ErrorResponse::from)?;
     }

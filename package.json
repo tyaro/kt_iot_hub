@@ -13,6 +13,8 @@
     "tauri": "tauri",
     "tauri-dev": "tauri dev",
     "tauri-build": "tauri build",
+    "driver-runtime:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/install-driver-runtime.ps1",
+    "driver-runtime:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-dev-driver-runtime.ps1",
     "driver-ui:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/install-driver-ui.ps1",
     "driver-ui:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-dev-driver-ui.ps1"
   },

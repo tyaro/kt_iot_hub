@@ -72,7 +72,7 @@ export async function monitorDriverUiImport({
       if (!check.process_active) {
         inactiveAttempts += 1;
         if (inactiveAttempts <= inactiveGraceAttempts) {
-          setMessage(`ドライバUI終了後の保存確認中... (${inactiveAttempts}/${inactiveGraceAttempts})`);
+          setMessage('ドライバUI終了後の保存結果を確認しています...');
           await waitFn(intervalMs);
           attempt += 1;
           continue;
@@ -85,7 +85,7 @@ export async function monitorDriverUiImport({
 
       inactiveAttempts = 0;
 
-      setMessage(`ドライバUIの完了待機中... (${attempt}秒経過)`);
+      setMessage('ドライバUIを開いています。完了後はこの画面へ自動反映します。');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'ドライバUI結果の取込に失敗しました';
       setMessage(message);

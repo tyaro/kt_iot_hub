@@ -1,24 +1,23 @@
 <script lang="ts">
-  import { saveDriver, type DriverDto, type SaveDriverRequest } from '$lib/ipc/index';
-  import { reloadDrivers } from '$lib/stores/index';
+  import { listDrivers, saveDriver, type DriverDto, type SaveDriverRequest } from '$lib/ipc/index';
+  import { reloadDrivers, reloadScanGroups, reloadTags } from '$lib/stores/index';
 
   interface Props {
     driver?: DriverDto | null;
     mode?: 'detail' | 'new';
-    onDone?: () => void;
-    onRequestEdit?: (driverId: string) => void;
+    onDone?: (driverId?: string) => void | Promise<DriverDto | null>;
     onRequestDelete?: (driverId: string) => void;
   }
   let {
     driver = null,
     mode = 'detail',
     onDone = () => {},
-    onRequestEdit = () => {},
     onRequestDelete = () => {},
   }: Props = $props();
 
   let form = $state<SaveDriverRequest>({
     id: '',
+    original_id: null,
     driver_type: 'postgres',
     enabled: true,
     host: '127.0.0.1',
@@ -27,14 +26,18 @@
     username: '',
     password: '',
   });
+  let currentDriver = $state<DriverDto | null>(null);
+  let editing = $state(false);
 
   let saving = $state(false);
   let message = $state('');
   let errorMsg = $state('');
   $effect(() => {
     if (driver) {
+      currentDriver = driver;
       form = {
         id: driver.id,
+        original_id: driver.id,
         driver_type: driver.driver_type,
         enabled: driver.enabled,
         host: driver.host,
@@ -43,6 +46,7 @@
         username: driver.username,
         password: '',
       };
+      editing = false;
       message = '';
       errorMsg = '';
     }
@@ -50,8 +54,10 @@
 
   $effect(() => {
     if (mode === 'new') {
+      currentDriver = null;
       form = {
         id: '',
+        original_id: null,
         driver_type: 'postgres',
         enabled: true,
         host: '127.0.0.1',
@@ -60,6 +66,7 @@
         username: '',
         password: '',
       };
+      editing = true;
       message = '';
       errorMsg = '';
     }
@@ -71,9 +78,29 @@
     errorMsg = '';
     try {
       await saveDriver(form);
-      message = mode === 'new' ? 'ドライバを作成しました' : 'ドライバ設定を保存しました';
       await reloadDrivers();
-      if (mode === 'new') onDone();
+      await reloadScanGroups();
+      await reloadTags();
+
+      const driverId = form.id.trim();
+      const refreshedDrivers = await listDrivers();
+      const refreshedDriver = refreshedDrivers.find((item) => item.id === driverId) ?? null;
+
+      currentDriver = refreshedDriver;
+      form = {
+        id: refreshedDriver?.id ?? driverId,
+        original_id: refreshedDriver?.id ?? driverId,
+        driver_type: refreshedDriver?.driver_type ?? form.driver_type,
+        enabled: refreshedDriver?.enabled ?? form.enabled,
+        host: refreshedDriver?.host ?? form.host,
+        port: refreshedDriver?.port ?? form.port,
+        database: refreshedDriver?.database ?? form.database,
+        username: refreshedDriver?.username ?? form.username,
+        password: '',
+      };
+      editing = false;
+      message = mode === 'new' ? 'ドライバを作成しました' : 'ドライバ設定を保存しました';
+      await onDone(form.id.trim());
     } catch (e) {
       errorMsg = e instanceof Error ? e.message : '保存に失敗しました';
     } finally {
@@ -82,41 +109,84 @@
   }
 
   function requestDelete() {
-    if (!driver) return;
-    onRequestDelete(driver.id);
+    const target = currentDriver ?? driver;
+    if (!target) return;
+    onRequestDelete(target.id);
   }
 
   function requestEdit() {
-    if (!driver) return;
-    onRequestEdit(driver.id);
+    const target = currentDriver ?? driver;
+    if (!target) return;
+    form = {
+      id: target.id,
+      original_id: target.id,
+      driver_type: target.driver_type,
+      enabled: target.enabled,
+      host: target.host,
+      port: target.port,
+      database: target.database,
+      username: target.username,
+      password: '',
+    };
+    message = '';
+    errorMsg = '';
+    editing = true;
+  }
+
+  function cancelEdit() {
+    if (mode === 'new') {
+      return;
+    }
+
+    const target = currentDriver ?? driver;
+    if (!target) {
+      editing = false;
+      return;
+    }
+
+    form = {
+      id: target.id,
+      original_id: target.id,
+      driver_type: target.driver_type,
+      enabled: target.enabled,
+      host: target.host,
+      port: target.port,
+      database: target.database,
+      username: target.username,
+      password: '',
+    };
+    message = '';
+    errorMsg = '';
+    editing = false;
   }
 </script>
 
-{#if mode === 'new' || driver}
+{#if mode === 'new' || currentDriver || driver}
   <div class="driver-detail">
     <div class="panel-header">
-      <h3>{mode === 'new' ? '新規ドライバ' : driver?.id}</h3>
-      {#if mode === 'detail' && driver}
+      <h3>{mode === 'new' ? '新規ドライバ' : (currentDriver?.id ?? driver?.id)}</h3>
+      {#if mode === 'detail' && !editing && (currentDriver || driver)}
         <div class="panel-actions">
-          <button class="btn-link danger" onclick={requestDelete}>削除</button>
           <button class="btn-link" onclick={requestEdit}>編集</button>
+          <span class="action-separator" aria-hidden="true"></span>
+          <button class="btn-link danger" onclick={requestDelete}>削除</button>
         </div>
       {/if}
     </div>
 
-    {#if mode === 'detail'}
+    {#if mode === 'detail' && !editing}
       <!-- 詳細表示モード -->
       <dl class="detail-list">
-        <dt>ID</dt><dd class="mono">{driver?.id}</dd>
-        <dt>種別</dt><dd><span class="badge">{driver?.driver_type}</span></dd>
-        <dt>Host</dt><dd class="mono">{driver?.host}</dd>
-        <dt>Port</dt><dd class="mono">{driver?.port}</dd>
-        <dt>Database</dt><dd class="mono">{driver?.database}</dd>
-        <dt>Username</dt><dd class="mono">{driver?.username}</dd>
+        <dt>ID</dt><dd class="mono">{currentDriver?.id ?? driver?.id}</dd>
+        <dt>種別</dt><dd><span class="badge">{currentDriver?.driver_type ?? driver?.driver_type}</span></dd>
+        <dt>Host</dt><dd class="mono">{currentDriver?.host ?? driver?.host}</dd>
+        <dt>Port</dt><dd class="mono">{currentDriver?.port ?? driver?.port}</dd>
+        <dt>Database</dt><dd class="mono">{currentDriver?.database ?? driver?.database}</dd>
+        <dt>Username</dt><dd class="mono">{currentDriver?.username ?? driver?.username}</dd>
         <dt>状態</dt>
         <dd>
-          <span class="status" class:enabled={driver?.enabled}>
-            {driver?.enabled ? '有効' : '無効'}
+          <span class="status" class:enabled={currentDriver?.enabled ?? driver?.enabled}>
+            {(currentDriver?.enabled ?? driver?.enabled) ? '有効' : '無効'}
           </span>
         </dd>
       </dl>
@@ -127,9 +197,12 @@
           ID
           <input bind:value={form.id} placeholder="postgres-main" />
         </label>
+        {#if mode !== 'new'}
+          <p class="hint">接続先IDを変更すると、配下の Scan グループとタグ参照もまとめて更新します。</p>
+        {/if}
         <label>
           種別
-          <select bind:value={form.driver_type}>
+          <select bind:value={form.driver_type} disabled={mode !== 'new'}>
             <option value="postgres">postgres</option>
           </select>
         </label>
@@ -158,14 +231,17 @@
           有効
         </label>
 
-        <button class="btn-primary" onclick={save} disabled={saving || !form.id.trim()}>
-          {saving ? '保存中...' : mode === 'new' ? '作成' : '更新'}
-        </button>
+        <div class="form-actions">
+          <button class="btn-primary" onclick={save} disabled={saving || !form.id.trim()}>
+            {saving ? '保存中...' : mode === 'new' ? '作成' : '更新'}
+          </button>
+          {#if mode !== 'new'}
+            <button class="btn-secondary" onclick={cancelEdit} disabled={saving}>キャンセル</button>
+          {/if}
+        </div>
 
         {#if message}<p class="ok">{message}</p>{/if}
         {#if errorMsg}<p class="error">{errorMsg}</p>{/if}
-
-
       </div>
     {/if}
   </div>
@@ -202,7 +278,14 @@
   .panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
+  }
+
+  .action-separator {
+    width: 1px;
+    height: 18px;
+    background: #d7dee8;
+    flex: 0 0 auto;
   }
 
   .detail-list {
@@ -255,6 +338,13 @@
     gap: 10px;
   }
 
+  .hint {
+    margin: -2px 0 0;
+    font-size: 0.78rem;
+    color: #64748b;
+    line-height: 1.45;
+  }
+
   label {
     display: grid;
     gap: 4px;
@@ -284,6 +374,12 @@
     gap: 8px;
   }
 
+  .form-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
   .btn-primary {
     background: #3498db;
     color: #fff;
@@ -294,7 +390,22 @@
     font-size: 0.85rem;
   }
 
+  .btn-secondary {
+    background: #fff;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    padding: 7px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
   .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }

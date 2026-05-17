@@ -70,6 +70,7 @@ pub struct LaunchDriverUiRequest {
 #[serde(crate = "serde")]
 pub struct SaveDriverRequest {
     pub id: String,
+    pub original_id: Option<String>,
     pub driver_type: String,
     pub enabled: bool,
     pub host: String,
@@ -132,6 +133,13 @@ pub struct RuntimeStatusDto {
     pub publishers_running: bool,
     pub grpc_running: bool,
     pub last_error: Option<String>,
+}
+
+/// ランタイム起動リクエスト DTO
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartRuntimeServicesRequest {
+    pub driver_ui_base_dir: Option<String>,
 }
 
 /// `ErrorResponse` は本体とドライバUI 双方で利用する共通エラー型。

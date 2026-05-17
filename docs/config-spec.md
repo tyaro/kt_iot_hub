@@ -207,7 +207,16 @@ password = ""
 client_id = "kt_iot_hub"
 qos = 1
 retain = false
+topic_prefix = "plant"
 ```
+
+### MQTT パブリッシャ設定補足
+
+- `qos`: 0 / 1 / 2
+- `retain`: retain フラグ（省略時 `false`）
+- `topic_prefix`: MQTT トピックの接頭辞（省略時 `plant`）
+- 実際の publish topic は `<topic_prefix>/<tag.id>`
+- payload には `tagId`, `tagName`, `value`, `quality`, `timestamp` を含める
 
 ## 設計ルール
 

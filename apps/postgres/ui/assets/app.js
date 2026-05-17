@@ -8,6 +8,7 @@ let existingDriverIds = [];
 let currentStep = 1;
 let activeTableKey = '';
 let isEditMode = false;
+let selectedTimestampField = '';
 const selectedFields = new Set();
 
 const el = (id) => document.getElementById(id);
@@ -171,8 +172,22 @@ function renderTables() {
   const tablesHint = el('tablesHint');
   const filter = el('tableSearch').value.trim().toLowerCase();
   const filteredTables = tables.filter((table) => {
-    const key = `${table.schema}.${table.name}`.toLowerCase();
-    return !filter || key.includes(filter);
+    const key = tableKey(table);
+    const group = findGroupByKey(key);
+    const scanRate = group ? `${group.scanRateMs} ms` : '-';
+    const timestamp = group?.timestampColumn || '-';
+    const tagCount = group ? String(group.selectedFields.length) : '0';
+    const status = activeTableKey === key ? '選択' : group ? '済' : '未';
+    const searchable = [
+      table.name,
+      table.schema,
+      `${table.schema}.${table.name}`,
+      scanRate,
+      timestamp,
+      tagCount,
+      status
+    ].join(' ').toLowerCase();
+    return !filter || searchable.includes(filter);
   });
 
   tablesList.innerHTML = '';
@@ -202,9 +217,9 @@ function renderTables() {
     item.innerHTML = `
       <button type="button" class="table-item-trigger table-cell table-name">${table.name}</button>
       <button type="button" class="table-item-trigger table-cell table-muted">${table.schema}</button>
-      <button type="button" class="table-item-trigger table-cell">${scanRate}</button>
+      <button type="button" class="table-item-trigger table-cell table-period">${scanRate}</button>
       <button type="button" class="table-item-trigger table-cell table-muted">${timestamp}</button>
-      <button type="button" class="table-item-trigger table-cell">${tagCount}</button>
+      <button type="button" class="table-item-trigger table-cell table-count">${tagCount}</button>
       <div class="table-item-actions">
         <span class="badge ${activeTableKey === key ? 'active' : group ? 'success' : 'neutral'}">${activeTableKey === key ? '選択' : group ? '済' : '未'}</span>
         ${group ? `
@@ -231,11 +246,11 @@ function renderTables() {
         scanGroups = scanGroups.filter((entry) => entry.key !== group.key);
         if (activeTableKey === group.key) {
           selectedFields.clear();
+          selectedTimestampField = '';
           columns = [];
           activeTableKey = key;
           el('groupName').value = groupIdForTable(table);
           el('groupRate').value = '1000';
-          renderTimestampOptions();
           renderColumns();
         }
         renderTables();
@@ -247,59 +262,30 @@ function renderTables() {
   }
 }
 
-function renderTimestampOptions(selectedValue = '') {
-  const timestampSelect = el('timestampSelect');
-  timestampSelect.innerHTML = '<option value="">時系列フィールドを選択</option>';
-
-  for (const column of columns) {
-    const option = document.createElement('option');
-    option.value = column.name;
-    option.textContent = `${column.name} (${column.dataType})`;
-    timestampSelect.appendChild(option);
-  }
-
-  timestampSelect.disabled = columns.length === 0;
-  if (selectedValue && columns.some((column) => column.name === selectedValue)) {
-    timestampSelect.value = selectedValue;
-  }
-}
-
 function renderColumns() {
   const fieldList = el('fieldList');
   const fieldHint = el('fieldHint');
   const fieldActions = el('fieldActions');
   const fieldCountText = el('fieldCountText');
   const fieldSearch = el('fieldSearch');
-  const timestampColumn = el('timestampSelect').value;
-  const selectableColumns = columns.filter((column) => column.name !== timestampColumn);
   const fieldFilter = fieldSearch.value.trim().toLowerCase();
-  const filteredColumns = selectableColumns.filter((column) => {
+  const filteredColumns = columns.filter((column) => {
     const value = `${column.name} ${column.dataType || ''}`.toLowerCase();
     return !fieldFilter || value.includes(fieldFilter);
   });
 
+  if (selectedTimestampField && selectedFields.has(selectedTimestampField)) {
+    selectedFields.delete(selectedTimestampField);
+  }
+
   fieldList.innerHTML = '';
   fieldActions.innerHTML = '';
-  fieldCountText.textContent = `${selectableColumns.length}件`;
+  fieldCountText.textContent = `${columns.length}件 / タグ ${selectedFields.size}件`;
 
   if (columns.length === 0) {
-    fieldHint.textContent = 'テーブル選択後に、時系列フィールドを除いたフィールドが表示されます。';
+    fieldHint.textContent = 'テーブル選択後に、フィールド一覧が表示されます。';
     fieldHint.style.display = 'block';
-    fieldCountText.textContent = '0件';
-    return;
-  }
-
-  if (!timestampColumn) {
-    fieldHint.textContent = '時系列フィールドを選択すると、タグ化対象フィールドを選べます。';
-    fieldHint.style.display = 'block';
-    fieldCountText.textContent = '0件';
-    return;
-  }
-
-  if (selectableColumns.length === 0) {
-    fieldHint.textContent = '時系列フィールド以外に選択可能なフィールドがありません。';
-    fieldHint.style.display = 'block';
-    fieldCountText.textContent = '0件';
+    fieldCountText.textContent = '0件 / タグ 0件';
     return;
   }
 
@@ -309,7 +295,9 @@ function renderColumns() {
   selectAllButton.textContent = '全選択';
   selectAllButton.addEventListener('click', () => {
     for (const column of filteredColumns) {
-      selectedFields.add(column.name);
+      if (column.name !== selectedTimestampField) {
+        selectedFields.add(column.name);
+      }
     }
     renderColumns();
     refreshSummary();
@@ -320,7 +308,9 @@ function renderColumns() {
   clearAllButton.className = 'btn ghost';
   clearAllButton.textContent = '全解除';
   clearAllButton.addEventListener('click', () => {
-    selectedFields.clear();
+    for (const column of filteredColumns) {
+      selectedFields.delete(column.name);
+    }
     renderColumns();
     refreshSummary();
   });
@@ -339,18 +329,38 @@ function renderColumns() {
 
   for (const column of filteredColumns) {
     const li = document.createElement('li');
-    li.className = 'item';
-    li.innerHTML = `<label class="item"><input type="checkbox" /> <span>${column.name}</span> <small>${column.dataType}</small></label>`;
-    const checkbox = li.querySelector('input');
-    checkbox.checked = selectedFields.has(column.name);
-    checkbox.addEventListener('change', () => {
-      if (checkbox.checked) {
-        selectedFields.add(column.name);
-      } else {
-        selectedFields.delete(column.name);
-      }
+    const isTimestamp = selectedTimestampField === column.name;
+    li.className = 'field-row';
+    li.innerHTML = `
+      <span class="field-row-name" title="${column.name}">${column.name}</span>
+      <span class="field-row-type" title="${column.dataType || ''}">${column.dataType || '-'}</span>
+      <label class="field-row-check radio-check" aria-label="${column.name} を時系列列にする"><input type="radio" name="timestampField" class="timestamp-check" ${isTimestamp ? 'checked' : ''} /></label>
+      ${isTimestamp
+        ? '<span class="field-row-tag-disabled">除外</span>'
+        : `<label class="field-row-check" aria-label="${column.name} をタグ化する"><input type="checkbox" class="tag-check" ${selectedFields.has(column.name) ? 'checked' : ''} /></label>`}
+    `;
+
+    const timestampCheck = li.querySelector('.timestamp-check');
+    timestampCheck.addEventListener('change', () => {
+      selectedTimestampField = column.name;
+      selectedFields.delete(column.name);
+      renderColumns();
       refreshSummary();
     });
+
+    const tagCheck = li.querySelector('.tag-check');
+    if (tagCheck) {
+      tagCheck.addEventListener('change', () => {
+        if (tagCheck.checked) {
+          selectedFields.add(column.name);
+        } else {
+          selectedFields.delete(column.name);
+        }
+        renderColumns();
+        refreshSummary();
+      });
+    }
+
     fieldList.appendChild(li);
   }
 }
@@ -368,9 +378,6 @@ function refreshSummary() {
     ? `${tables.length}件のテーブルを取得済みです。`
     : 'テーブル取得後にグループ設定へ進めます。';
   el('summary').innerHTML = `
-    <div class="summary-card compact-mode">
-      <span class="badge ${isEditMode ? 'active' : 'neutral'}">${isEditMode ? '編集' : '新規'}</span>
-    </div>
     <div class="summary-card">
       <span class="summary-card-label">接続先ID</span>
       <span class="summary-card-value">${el('driverId').value || '-'}</span>
@@ -393,7 +400,7 @@ function refreshSummary() {
     </div>
     <div class="summary-card">
       <span class="summary-card-label">編集中</span>
-      <span class="summary-card-value">${currentTable ? `${currentTable.schema}.${currentTable.name}` : (el('timestampSelect').value || '-')}</span>
+      <span class="summary-card-value">${currentTable ? `${currentTable.schema}.${currentTable.name}` : (selectedTimestampField || '-')}</span>
     </div>
   `;
 }
@@ -441,6 +448,11 @@ function renderReview() {
   const reviewGroups = el('reviewGroups');
   reviewGroups.innerHTML = '';
 
+  if (scanGroups.length === 0) {
+    reviewGroups.innerHTML = '<div class="empty-state muted">登録対象グループはまだありません。接続先設定のみ保存することもできます。</div>';
+    return;
+  }
+
   for (const group of scanGroups) {
     const card = document.createElement('div');
     card.className = 'group-card';
@@ -464,29 +476,21 @@ function renderReview() {
 
 function validateConnectionInputs() {
   if (!el('driverId').value.trim()) throw new Error('接続先IDを入力してください');
-  if (!el('host').value.trim()) throw new Error('ホストを入力してください');
-  if (!el('database').value.trim()) throw new Error('データベース名を入力してください');
-  if (!el('username').value.trim()) throw new Error('ユーザー名を入力してください');
 }
 
 async function goToStep2() {
   validateConnectionInputs();
 
-  if (tables.length === 0) {
-    await loadTables();
-  }
+  const canLoadTables = Boolean(el('host').value.trim() && el('database').value.trim() && el('username').value.trim());
 
-  if (tables.length === 0) {
-    throw new Error('テーブル一覧を取得できていません。接続設定を確認してください');
+  if (canLoadTables && tables.length === 0) {
+    await loadTables();
   }
 
   setStep(2);
 }
 
 function goToStep3() {
-  if (scanGroups.length === 0) {
-    throw new Error('グループを1つ以上追加してください');
-  }
   setStep(3);
 }
 
@@ -506,8 +510,8 @@ async function closeWindowSafely() {
 
 async function loadColumnsForSelectedTable(table, existingGroup = null) {
   columns = [];
+  selectedTimestampField = '';
   selectedFields.clear();
-  renderTimestampOptions();
   renderColumns();
 
   const groupName = el('groupName');
@@ -526,11 +530,12 @@ async function loadColumnsForSelectedTable(table, existingGroup = null) {
       req: { conn: conn(), schema: table.schema, table: table.name }
     });
 
-    const guessedTimestamp = existingGroup?.timestampColumn || guessTimestampColumn(columns);
-    renderTimestampOptions(guessedTimestamp);
+    selectedTimestampField = existingGroup?.timestampColumn || guessTimestampColumn(columns);
 
     for (const fieldName of existingGroup?.selectedFields || []) {
-      selectedFields.add(fieldName);
+      if (fieldName !== selectedTimestampField) {
+        selectedFields.add(fieldName);
+      }
     }
 
     renderColumns();
@@ -555,9 +560,9 @@ async function loadTables() {
   clearMessages();
   tables = [];
   columns = [];
+  selectedTimestampField = '';
   selectedFields.clear();
   renderColumns();
-  renderTimestampOptions();
 
   try {
     tables = await invoke('postgres_list_tables', { conn: conn() });
@@ -579,7 +584,7 @@ async function loadTables() {
 function saveCurrentGroup() {
   clearMessages();
   const table = selectedTable();
-  const timestampColumn = el('timestampSelect').value.trim();
+  const timestampColumn = selectedTimestampField.trim();
   const scanRateMs = Number(el('groupRate').value || 1000);
 
   if (!table) {
@@ -631,9 +636,6 @@ function buildPayload() {
   const driverId = el('driverId').value.trim();
   if (!driverId) {
     throw new Error('接続先IDを入力してください');
-  }
-  if (scanGroups.length === 0) {
-    throw new Error('グループを1つ以上追加してください');
   }
 
   const groups = scanGroups.map((group) => {
@@ -740,15 +742,6 @@ el('btnTest').addEventListener('click', async () => {
 
 el('btnTables').addEventListener('click', async () => {
   await loadTables();
-});
-
-el('timestampSelect').addEventListener('change', () => {
-  const timestampColumn = el('timestampSelect').value;
-  if (timestampColumn) {
-    selectedFields.delete(timestampColumn);
-  }
-  renderColumns();
-  refreshSummary();
 });
 
 el('btnSaveGroup').addEventListener('click', () => {

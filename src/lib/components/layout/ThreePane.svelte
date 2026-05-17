@@ -18,7 +18,6 @@
   import { createThreePaneControllers } from './three-pane/controllerFactory';
   import {
     DRIVER_UI_IMPORT_BUSY_MESSAGE,
-    confirmAction,
     extractErrorMessage,
     loadDriverUiBaseDirFromStorage,
     normalizeDriverUiBaseDir,
@@ -73,6 +72,27 @@
     await reloadTags();
   }
 
+  async function handleDriverSaved(driverId?: string): Promise<DriverDto | null> {
+    await reloadTagManagementData();
+
+    if (!driverId) {
+      selectedDriver = null;
+      return null;
+    }
+
+    const refreshedDriver = $driversStore.items.find((item: DriverDto) => item.id === driverId) ?? null;
+    selectedDriver = refreshedDriver;
+
+    if (selectedTag?.driver_id !== driverId) {
+      selectedTag = null;
+    }
+    if (selectedScanGroup?.driver_id !== driverId) {
+      selectedScanGroup = null;
+    }
+
+    return refreshedDriver;
+  }
+
   let selectedTag = $state<TagDto | null>(null);
   let selectedScanGroup = $state<ScanGroupDto | null>(null);
   let tagActionMessage = $state('');
@@ -93,6 +113,35 @@
 
   let selectedDriver = $state<DriverDto | null>(null);
   let driverUiAvailableByType = $state<Record<string, boolean>>({});
+  let confirmDialogOpen = $state(false);
+  let confirmDialogTitle = $state('確認');
+  let confirmDialogMessage = $state('');
+  let confirmDialogConfirmLabel = $state('実行する');
+  let confirmDialogCancelLabel = $state('キャンセル');
+  let confirmDialogResolver: ((result: boolean) => void) | null = null;
+
+  function closeConfirmDialog(result: boolean) {
+    confirmDialogOpen = false;
+    const resolve = confirmDialogResolver;
+    confirmDialogResolver = null;
+    resolve?.(result);
+  }
+
+  async function confirmAction(message: string): Promise<boolean> {
+    if (confirmDialogResolver) {
+      confirmDialogResolver(false);
+    }
+
+    confirmDialogTitle = '削除の確認';
+    confirmDialogMessage = message;
+    confirmDialogConfirmLabel = '削除する';
+    confirmDialogCancelLabel = 'キャンセル';
+    confirmDialogOpen = true;
+
+    return await new Promise<boolean>((resolve) => {
+      confirmDialogResolver = resolve;
+    });
+  }
 
   const {
     driverUiPollingController,
@@ -223,6 +272,9 @@
     if (!isPageId(pageId)) {
       return;
     }
+    if (confirmDialogOpen) {
+      closeConfirmDialog(false);
+    }
     currentPage = pageId;
     driverUiPollingController.cancel();
     selectionController.update((state) => {
@@ -295,10 +347,9 @@
     {driverUiBaseDirSaved}
     {settingsMessage}
     onNavigateTags={() => selectPage('tags')}
-    onStartServers={() => runtimeController.runAction(startRuntimeServices, 'バックグラウンドサービスを起動しました。', 'サービス起動に失敗しました')}
+    onStartServers={() => runtimeController.runAction(() => startRuntimeServices({ driver_ui_base_dir: driverUiBaseDirSaved }), 'バックグラウンドサービスを起動しました。', 'サービス起動に失敗しました')}
     onStopServers={() => runtimeController.runAction(stopRuntimeServices, 'バックグラウンドサービスを停止しました。', 'サービス停止に失敗しました')}
     onNewDriver={tagUiController.newDriver}
-    onNewTag={tagUiController.newTag}
     onSelectTag={selectionController.onTagSelect}
     onSelectDriver={selectionController.onDriverSelect}
     onSelectScanGroup={selectionController.onScanGroupSelect}
@@ -325,9 +376,8 @@
     onTagDetailEdit={tagUiController.requestEditTag}
     onTagDetailDelete={deletionController.requestDeleteTag}
     onTagDetailClose={selectionController.onTagDetailClose}
-    onDriverEdit={tagUiController.requestEditDriver}
     onDriverDelete={deletionController.requestDeleteDriver}
-    onDriverDone={deletionController.onDriverDetailDone}
+    onDriverDone={handleDriverSaved}
     {driverPickerOpen}
     drivers={$driversStore.items}
     driversLoading={$driversStore.loading}
@@ -339,6 +389,13 @@
     onSelectDriver={tagUiController.onDriverPicked}
     onCloseDriverTypePicker={tagUiController.closeDriverTypePicker}
     onSelectDriverType={tagUiController.onDriverTypePicked}
+    {confirmDialogOpen}
+    confirmDialogTitle={confirmDialogTitle}
+    confirmDialogMessage={confirmDialogMessage}
+    confirmDialogConfirmLabel={confirmDialogConfirmLabel}
+    confirmDialogCancelLabel={confirmDialogCancelLabel}
+    onConfirmDialogConfirm={() => closeConfirmDialog(true)}
+    onConfirmDialogCancel={() => closeConfirmDialog(false)}
   />
 </div>
 

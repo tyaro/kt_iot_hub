@@ -17,9 +17,8 @@
     onTagDetailEdit: (tag: TagDto) => void;
     onTagDetailDelete: (tag: TagDto) => Promise<void>;
     onTagDetailClose: () => void;
-    onDriverEdit: (driverId: string) => void;
     onDriverDelete: (driverId: string) => Promise<void>;
-    onDriverDone: () => Promise<void>;
+    onDriverDone: (driverId?: string) => Promise<DriverDto | null>;
     driverPickerOpen: boolean;
     drivers: DriverDto[];
     driversLoading: boolean;
@@ -31,6 +30,13 @@
     onSelectDriver: (driverId: string) => void;
     onCloseDriverTypePicker: () => void;
     onSelectDriverType: (driverType: string) => Promise<void>;
+    confirmDialogOpen: boolean;
+    confirmDialogTitle: string;
+    confirmDialogMessage: string;
+    confirmDialogConfirmLabel: string;
+    confirmDialogCancelLabel: string;
+    onConfirmDialogConfirm: () => void;
+    onConfirmDialogCancel: () => void;
   };
 
   let {
@@ -45,7 +51,6 @@
     onTagDetailEdit,
     onTagDetailDelete,
     onTagDetailClose,
-    onDriverEdit,
     onDriverDelete,
     onDriverDone,
     driverPickerOpen,
@@ -59,6 +64,13 @@
     onSelectDriver,
     onCloseDriverTypePicker,
     onSelectDriverType,
+    confirmDialogOpen,
+    confirmDialogTitle,
+    confirmDialogMessage,
+    confirmDialogConfirmLabel,
+    confirmDialogCancelLabel,
+    onConfirmDialogConfirm,
+    onConfirmDialogCancel,
   }: Props = $props();
 </script>
 
@@ -74,7 +86,6 @@
   onTagDetailEdit={onTagDetailEdit}
   onTagDetailDelete={onTagDetailDelete}
   onTagDetailClose={onTagDetailClose}
-  onDriverEdit={onDriverEdit}
   onDriverDelete={onDriverDelete}
   onDriverDone={onDriverDone}
 />
@@ -91,4 +102,11 @@
   onSelectDriver={onSelectDriver}
   onCloseDriverTypePicker={onCloseDriverTypePicker}
   onSelectDriverType={onSelectDriverType}
+  confirmDialogOpen={confirmDialogOpen}
+  confirmDialogTitle={confirmDialogTitle}
+  confirmDialogMessage={confirmDialogMessage}
+  confirmDialogConfirmLabel={confirmDialogConfirmLabel}
+  confirmDialogCancelLabel={confirmDialogCancelLabel}
+  onConfirmDialogConfirm={onConfirmDialogConfirm}
+  onConfirmDialogCancel={onConfirmDialogCancel}
 />

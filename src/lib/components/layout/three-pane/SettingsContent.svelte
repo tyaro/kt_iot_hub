@@ -21,18 +21,21 @@
 <div class="content">
   <h2>設定</h2>
   <div class="settings-card">
-    <h3>ドライバUI実行ファイル配置</h3>
+    <h3>ドライバ実行ファイル配置</h3>
     <p class="settings-help">
-      例: <code>D:\develop\kt_iot_hub</code> または <code>D:\develop\kt_iot_hub\driver-ui</code>
+      登録UI と通信ドライバを同じ場所に置く前提です。本体実行ファイル基準の例: <code>&lt;app-dir&gt;</code> または <code>&lt;app-dir&gt;\driver-ui</code>
     </p>
     <label>
-      ドライバUI設置ベースパス
+      ドライバ設置ベースパス
       <input
         value={driverUiBaseDirInput}
         oninput={(event) => onDriverUiBaseDirInput((event.currentTarget as HTMLInputElement).value)}
-        placeholder="未指定時は自動探索（driver-ui/&lt;type&gt;/registration-ui.exe）"
+        placeholder="未指定時は自動探索（driver-ui/&lt;type&gt;/registration-ui.exe / driver-&lt;type&gt;.exe）"
       />
     </label>
+    <p class="settings-help">
+      例: 本体が <code>&lt;app-dir&gt;\kt_iot_hub.exe</code> の場合、<code>&lt;app-dir&gt;</code> を指定すると <code>driver-ui\postgres\registration-ui.exe</code> と <code>driver-ui\postgres\driver-postgres.exe</code> を探索します。
+    </p>
     <div class="settings-actions">
       <button class="btn-outline" onclick={onPickDriverUiBaseDir}>フォルダ選択...</button>
       <button class="btn-primary" onclick={onSaveDriverUiBaseDir}>保存</button>

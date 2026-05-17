@@ -1,5 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 
+export interface StartRuntimeServicesRequest {
+  driver_ui_base_dir?: string | null;
+}
+
 export interface RuntimeStatusDto {
   drivers_running: boolean;
   publishers_running: boolean;
@@ -34,8 +38,16 @@ export async function getRuntimeStatus(): Promise<RuntimeStatusDto> {
 /**
  * バックグラウンドサービスを起動する
  */
-export async function startRuntimeServices(): Promise<RuntimeStatusDto> {
-  const raw = await invoke<RuntimeStatusDtoRaw>('start_runtime_services');
+export async function startRuntimeServices(
+  req?: StartRuntimeServicesRequest,
+): Promise<RuntimeStatusDto> {
+  const raw = await invoke<RuntimeStatusDtoRaw>('start_runtime_services', {
+    req: req
+      ? {
+          driverUiBaseDir: req.driver_ui_base_dir ?? null,
+        }
+      : null,
+  });
   return normalizeRuntimeStatus(raw);
 }
 
