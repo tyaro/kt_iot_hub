@@ -19,11 +19,21 @@
 
 - `src-tauri/` : 本体アプリ
 - `packages/protocol-rs/` : 本体/ドライバUI間の共有プロトコル定義（Rust）
-- `apps/driver-ui-postgres/` : PostgreSQL 用ドライバUI（別アプリ）
+- `apps/postgres/ui/` : PostgreSQL 用ドライバ登録UI（別アプリ）
+- `apps/postgres/driver/` : PostgreSQL 通信ランタイム（別プロセス）
 
-> 現在は段階移行のため、`apps/driver-ui-postgres` は最小実装です。
+> 現在は段階移行のため、`apps/postgres/ui` は最小実装です。
 > まずは「本体と別物の実行ファイルとして起動できること」を優先し、
 > 本格UIは次フェーズで実装します。
+
+## ランタイム制御ポリシー（重要）
+
+- gRPC サーバーは本体の基盤機能として常時稼働します。
+- 「サーバ起動/停止」操作の対象は以下のみです。
+  - ドライバ通信ランタイム（`DriverProcessManager` 管理）
+  - MQTT パブリッシャ（`PublisherManager`）
+- gRPC は登録UI・ドライバIPCで継続利用するため、ランタイム停止では止めません。
+- gRPC 停止は本体終了時（graceful shutdown）のみ行います。
 
 ## ドライバUI実行ファイルの配置
 
