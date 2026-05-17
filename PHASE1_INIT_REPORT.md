@@ -71,17 +71,11 @@ Tauri v2 ベースの kt_iot_hub プロジェクト初期化が正常に完了�
 
 ### 3. 設定ファイル
 
-✅ [tags.toml](config/tags.toml)
+✅ `config/*.toml` ローカル永続化対応
 
-- 3 つのサンプルタグ定義 (temperature, pressure, system_status)
-
-✅ [drivers.toml](config/drivers.toml)
-
-- PostgreSQL ドライバ例
-
-✅ [publishers.toml](config/publishers.toml)
-
-- MQTT パブリッシャ例
+- `config/tags.toml` / `config/drivers.toml` / `config/publishers.toml` を読み込み対象として実装
+- 現在はローカル永続化ファイルとして扱い、Git 管理対象外とする
+- 形式例は `docs/config-spec.md` を参照
 
 ✅ [tauri.conf.json](src-tauri/tauri.conf.json)
 

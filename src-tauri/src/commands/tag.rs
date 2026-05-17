@@ -197,6 +197,10 @@ fn write_tags_toml_atomic(
     tags: &[TagConfig],
 ) -> Result<(), ErrorResponse> {
     let config_dir = resolve_config_dir();
+    std::fs::create_dir_all(&config_dir).map_err(|e| ErrorResponse {
+        error: format!("Failed to create config directory: {}", e),
+        code: "IO_ERROR".to_string(),
+    })?;
     let tags_path = config_dir.join("tags.toml");
     let tmp_path = config_dir.join("tags.toml.tmp");
 

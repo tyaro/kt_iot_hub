@@ -6,6 +6,8 @@ node_modules/
 dist/
 !apps/postgres/ui/assets/
 !apps/postgres/ui/assets/**
+config/*
+!config/.gitkeep
 target/
 .DS_Store
 /*.log

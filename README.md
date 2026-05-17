@@ -13,7 +13,7 @@
 
 - フロントエンド: Svelte 5 + Vite
 - バックエンド: Rust（Tauri v2）
-- 設定: `config/*.toml`
+- 設定: `config/*.toml`（ローカル永続化用。Git 管理対象外）
 
 ## Monorepo 構成（段階移行中）
 
