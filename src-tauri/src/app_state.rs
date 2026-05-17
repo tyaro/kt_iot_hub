@@ -24,6 +24,7 @@ pub struct RuntimeStatusState {
 pub struct MqttMonitorStatusState {
     pub connected: bool,
     pub subscribing: bool,
+    pub include_sys: bool,
     pub publisher_id: Option<String>,
     pub broker: String,
     pub port: u16,

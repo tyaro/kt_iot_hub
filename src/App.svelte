@@ -1,5 +1,11 @@
 <script lang="ts">
+  import MqttMonitorWindow from './lib/components/mqtt-monitor/MqttMonitorWindow.svelte';
   import ThreePane from './lib/components/layout/ThreePane.svelte';
+
+  const currentView =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('view')
+      : null;
 </script>
 
 <svelte:head>
@@ -8,7 +14,11 @@
 </svelte:head>
 
 <main class="app-shell">
-  <ThreePane />
+  {#if currentView === 'mqtt-monitor'}
+    <MqttMonitorWindow />
+  {:else}
+    <ThreePane />
+  {/if}
 </main>
 
 <style>

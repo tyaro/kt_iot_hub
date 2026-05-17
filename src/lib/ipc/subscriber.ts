@@ -10,6 +10,7 @@ export interface MqttMonitorPublisherDto {
 export interface MqttMonitorStatusDto {
   connected: boolean;
   subscribing: boolean;
+  include_sys: boolean;
   publisher_id: string | null;
   broker: string;
   port: number;
@@ -30,11 +31,13 @@ export interface MqttMonitorMessageDto {
 export interface StartMqttMonitorRequest {
   publisher_id: string;
   topic_filter: string;
+  include_sys: boolean;
 }
 
 type MqttMonitorStatusDtoRaw = {
   connected: boolean;
   subscribing: boolean;
+  includeSys: boolean;
   publisherId?: string | null;
   broker: string;
   port: number;
@@ -48,6 +51,7 @@ function normalizeStatus(raw: MqttMonitorStatusDtoRaw): MqttMonitorStatusDto {
   return {
     connected: raw.connected,
     subscribing: raw.subscribing,
+    include_sys: raw.includeSys,
     publisher_id: raw.publisherId ?? null,
     broker: raw.broker,
     port: raw.port,
@@ -60,6 +64,10 @@ function normalizeStatus(raw: MqttMonitorStatusDtoRaw): MqttMonitorStatusDto {
 
 export async function listMqttMonitorPublishers(): Promise<MqttMonitorPublisherDto[]> {
   return invoke('list_mqtt_monitor_publishers');
+}
+
+export async function openMqttMonitorWindow(): Promise<void> {
+  return invoke('open_mqtt_monitor_window');
 }
 
 export async function getMqttMonitorStatus(): Promise<MqttMonitorStatusDto> {
@@ -82,6 +90,7 @@ export async function startMqttMonitor(
     req: {
       publisherId: req.publisher_id,
       topicFilter: req.topic_filter,
+      includeSys: req.include_sys,
     },
   });
   return normalizeStatus(raw);

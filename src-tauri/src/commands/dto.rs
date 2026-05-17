@@ -1,8 +1,8 @@
 // データ転送オブジェクト (DTO)
 // UI と Rust バックエンド間の型安全な IPC
 
-use serde::{Deserialize, Serialize};
 use crate::app_state::{MqttMonitorMessageState, MqttMonitorStatusState};
+use serde::{Deserialize, Serialize};
 
 /// タグレスポンス DTO
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -86,6 +86,7 @@ pub struct MqttMonitorPublisherDto {
 pub struct MqttMonitorStatusDto {
     pub connected: bool,
     pub subscribing: bool,
+    pub include_sys: bool,
     pub publisher_id: Option<String>,
     pub broker: String,
     pub port: u16,
@@ -110,6 +111,7 @@ pub struct MqttMonitorMessageDto {
 pub struct StartMqttMonitorRequest {
     pub publisher_id: String,
     pub topic_filter: String,
+    pub include_sys: bool,
 }
 
 /// ドライバUI起動リクエスト DTO
@@ -221,6 +223,7 @@ impl From<MqttMonitorStatusState> for MqttMonitorStatusDto {
         Self {
             connected: value.connected,
             subscribing: value.subscribing,
+            include_sys: value.include_sys,
             publisher_id: value.publisher_id,
             broker: value.broker,
             port: value.port,

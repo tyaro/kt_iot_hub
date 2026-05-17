@@ -20,6 +20,7 @@ pub struct MqttMonitorStartOptions {
     pub username: String,
     pub password: String,
     pub topic_filter: String,
+    pub include_sys: bool,
 }
 
 impl MqttMonitor {
@@ -47,6 +48,7 @@ impl MqttMonitor {
             let mut state = status.write().await;
             state.connected = false;
             state.subscribing = true;
+            state.include_sys = options.include_sys;
             state.publisher_id = Some(options.publisher_id.clone());
             state.broker = options.broker.clone();
             state.port = options.port;
@@ -70,6 +72,9 @@ impl MqttMonitor {
         client
             .subscribe(options.topic_filter.clone(), QoS::AtMostOnce)
             .await?;
+        if options.include_sys && options.topic_filter != "$SYS/#" {
+            client.subscribe("$SYS/#", QoS::AtMostOnce).await?;
+        }
 
         let (stop_tx, mut stop_rx) = oneshot::channel();
         let status_handle = status.clone();

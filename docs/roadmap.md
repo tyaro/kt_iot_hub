@@ -68,7 +68,7 @@
 | インポート・エクスポート | CSV/TOML ファイル選択、一括読込、export | 2-3日 |
 | バリデーション表示 | テーブルセル内のエラー表示 | 2-3日 |
 | PostgreSQL 登録ツール PoC | テーブル/カラム探索、タグ候補生成 | 4-6日 |
-| MQTT モニタ UI | ダッシュボードから展開する subscribe モニタ、受信一覧、topic filter | 3-4日 |
+| MQTT モニタ UI | ダッシュボードから開く専用ウィンドウ、topic ツリー、`$SYS` 表示、topic filter | 3-4日 |
 
 ### Mosquitto インストーラ統合
 

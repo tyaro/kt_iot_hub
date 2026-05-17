@@ -1,5 +1,4 @@
 <script lang="ts">
-  import DashboardMqttMonitor from './DashboardMqttMonitor.svelte';
   import type { RuntimeStatusDto } from '$lib/ipc';
 
   let {
@@ -10,6 +9,7 @@
     runtimeBusy,
     dashboardMessage,
     onNavigateTags,
+    onOpenMqttMonitor,
     onStartServers,
     onStopServers,
   }: {
@@ -20,6 +20,7 @@
     runtimeBusy: boolean;
     dashboardMessage: string;
     onNavigateTags: () => void;
+    onOpenMqttMonitor: () => void;
     onStartServers: () => void;
     onStopServers: () => void;
   } = $props();
@@ -71,6 +72,7 @@
   {/if}
   <div class="quicklinks">
     <button class="btn-outline" onclick={onNavigateTags}>タグを管理</button>
+    <button class="btn-outline" onclick={onOpenMqttMonitor}>MQTT モニタを開く</button>
     <button
       class="btn-primary"
       onclick={onStartServers}
@@ -86,8 +88,6 @@
       ドライバ / MQTT 停止
     </button>
   </div>
-
-  <DashboardMqttMonitor />
 </div>
 
 <style>

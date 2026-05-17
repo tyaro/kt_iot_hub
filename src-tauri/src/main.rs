@@ -53,6 +53,7 @@ fn main() {
             commands::driver::import::import_driver_ui_result,
             commands::publisher::crud::list_publishers,
             commands::publisher::crud::save_publisher,
+            commands::subscriber::monitor::open_mqtt_monitor_window,
             commands::subscriber::monitor::list_mqtt_monitor_publishers,
             commands::subscriber::monitor::get_mqtt_monitor_status,
             commands::subscriber::monitor::list_mqtt_monitor_messages,

@@ -24,6 +24,7 @@
     driverUiBaseDirSaved: string | null;
     settingsMessage: string;
     onNavigateTags: () => void;
+    onOpenMqttMonitor: () => void;
     onStartServers: () => Promise<void>;
     onStopServers: () => Promise<void>;
     onNewDriver: () => Promise<void>;
@@ -58,6 +59,7 @@
     driverUiBaseDirSaved,
     settingsMessage,
     onNavigateTags,
+    onOpenMqttMonitor,
     onStartServers,
     onStopServers,
     onNewDriver,
@@ -86,6 +88,7 @@
       {runtimeBusy}
       {dashboardMessage}
       {onNavigateTags}
+      {onOpenMqttMonitor}
       onStartServers={onStartServers}
       onStopServers={onStopServers}
     />

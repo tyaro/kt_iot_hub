@@ -16,7 +16,7 @@
 - MQTT Subscriber は **本体の基本機能** として実装する
 - ただし責務は Publisher と分離し、`subscribers/` モジュールを新設する
 - 監視対象は Tag Bus ではなく **MQTT ブローカー** とする
-- UI 導線は `ログ` ページではなく **ダッシュボードから展開するモニタパネル** を採用する
+- UI 導線は `ログ` ページではなく **ダッシュボードから起動する専用モニタウィンドウ** を採用する
 
 ## 別プロセスにしない理由
 
@@ -24,7 +24,7 @@
 そのため以下の利点が大きい。
 
 - 既存の publisher 設定（broker / port / username / password / topic）を再利用できる
-- ダッシュボードの runtime 状態と同じ画面で確認できる
+- ダッシュボードから短手数で起動できる
 - 「配信設定」と「実際に broker に出た内容」を並べて確認できる
 - 外部ツール導入なしで現場確認できる
 
@@ -37,11 +37,12 @@
 
 - 1 つの MQTT モニタセッションを本体内で管理する
 - 選択した publisher 設定を初期値として broker へ subscribe する
-- topic filter を指定できる（例: `plant/#`）
-- 受信メッセージの最新 N 件を表示する
-- 表示項目は timestamp / topic / payload / retain / qos とする
+- topic filter を指定できる（例: `plant/#`, `$SYS/#`, `#`）
+- ブローカー全体の状態確認のため `$SYS` を表示できる
+- 受信メッセージを topic ツリーで閲覧できる
+- topic ノード選択時に最新 payload を確認できる
 - 接続開始 / 停止 / クリアを提供する
-- ダッシュボードから展開表示できる
+- ダッシュボードから専用ウィンドウを開ける
 
 ### 初期スコープ外
 
@@ -56,23 +57,39 @@
 
 ### 導線
 
-ダッシュボードの「ドライバ / MQTT 状態」カード付近に、MQTT モニタの展開ボタンを配置する。
+ダッシュボードの「ドライバ / MQTT 状態」カード付近に、MQTT モニタ起動ボタンを配置する。
 
 例:
 
 - `MQTT モニタを開く`
-- 展開時はダッシュボード内の下部パネルとして表示
+- クリック時に専用ウィンドウを開く
 
-### パネル構成
+### ウィンドウ構成
 
-#### 上部操作行
+MQTT Explorer に近い 2 カラム構成を採用する。
+
+#### 左ペイン
+
+- topic ツリー
+- ルートに broker 名
+- `$SYS` ノード
+- publisher topic 配下（例: `plant`）
+
+#### 右ペイン
+
+- 選択 topic の最新 payload
+- 最終受信時刻
+- retain / qos
+- 必要なら簡易履歴（直近 N 件）
+
+### 上部操作行
 
 - publisher 選択
 - topic filter 入力
 - 接続開始ボタン
 - 停止ボタン
 - クリアボタン
-- 自動スクロール ON/OFF
+- `$SYS` 表示 ON/OFF（既定 ON でも可）
 
 #### 状態表示
 
@@ -83,17 +100,21 @@
 - 最終受信時刻
 - 直近エラー
 
-#### メッセージ一覧
+#### topic ツリー表示
 
-列:
+- topic は `/` 区切りで階層化する
+- `$SYS` は通常 topic と分離せず、同一ツリーに表示する
+- 葉ノードでは最新 payload をノード横に簡易表示してよい
+- 直近更新 topic が分かるよう、最終更新時刻または更新ハイライトを持たせる
 
-- 受信時刻
-- topic
-- payload
-- qos
+#### 右詳細ペイン
+
+- 選択 topic
+- 最新 payload
+- 最終受信時刻
 - retain
-
-新着が下に追加されるシンプルなログビュー形式とする。
+- qos
+- 直近履歴
 
 ## バックエンド設計
 
@@ -124,6 +145,12 @@ src-tauri/src/
 - Tauri command を薄く提供する
 - UI 入力のバリデーション
 - AppState 上の monitor state へ橋渡しする
+
+### フロントウィンドウ
+
+- Tauri の追加ウィンドウとして `mqtt-monitor` を開く
+- 親はダッシュボードだが、監視処理自体は独立表示とする
+- 初期オプションとして publisher 選択値・topic filter 初期値を渡せる構成とする
 
 ## AppState 追加項目
 
@@ -164,6 +191,7 @@ pub struct MqttMonitorStatus {
 - `stop_mqtt_monitor`
 - `clear_mqtt_monitor_messages`
 - `list_mqtt_monitor_messages`
+- `open_mqtt_monitor_window`（必要なら）
 
 ### start リクエスト
 
@@ -180,6 +208,7 @@ pub struct MqttMonitorStatus {
 
 - status: 1〜2 秒間隔
 - messages: 1〜2 秒間隔
+- ツリー構築はメッセージ一覧からフロント側で行う
 
 理由:
 
@@ -202,6 +231,7 @@ topic filter は monitor 側で指定する。
 初期値は publisher の `topic` をもとに次のように生成する。
 
 - `topic = plant` → `plant/#`
+- `$SYS` 表示有効時は内部的に `$SYS/#` も購読対象へ含める
 - 空文字 → `#`
 
 ## エラー処理
@@ -213,7 +243,7 @@ topic filter は monitor 側で指定する。
 
 ## 性能と制限
 
-- メッセージ保持件数は初期 200 件
+- メッセージ保持件数は初期 500 件
 - payload は文字列化して保持する
 - 1 message あたりの payload 長さが大きすぎる場合は UI 側で折りたたむ
 - 受信が高頻度でも UI が固まらないよう、バックエンドはリングバッファで古い項目を破棄する
@@ -222,14 +252,16 @@ topic filter は monitor 側で指定する。
 
 1. Rust 側に subscriber モジュールと monitor state を追加
 2. monitor 用 Tauri command を追加
-3. ダッシュボードに展開パネルを追加
-4. publisher 選択・topic filter・受信一覧を実装
-5. `plant/#` で実 broker の表示確認を行う
+3. ダッシュボードにモニタ起動ボタンを追加
+4. 専用 MQTT モニタウィンドウを追加
+5. publisher 選択・topic filter・topic ツリー・詳細表示を実装
+6. `plant/#` と `$SYS/#` で実 broker の表示確認を行う
 
 ## 受け入れ条件
 
-- ダッシュボードから MQTT モニタを開ける
+- ダッシュボードから MQTT モニタ専用ウィンドウを開ける
 - publisher 設定を選んで monitor 開始できる
-- `plant/#` を購読すると実配信 topic が一覧に表示される
+- `plant/#` を購読すると実配信 topic がツリー表示される
+- `$SYS/#` を購読すると broker 状態 topic が表示される
 - 停止ボタンで monitor が停止する
 - ドライバ / MQTT runtime の停止と monitor 停止が競合せず動作する
