@@ -46,7 +46,7 @@
               <input id="endpoint" type="text" placeholder="localhost" />
             </label>
             <label>
-              <span>User ID</span>
+              <span>User ID (`user_id`)</span>
               <input id="userId" type="number" min="0" value="0" />
             </label>
             <label>
@@ -59,7 +59,7 @@
             <textarea id="notes" rows="3" placeholder="DLL解析メモ、接続先用途など"></textarea>
           </label>
           <p class="muted">
-            JoyWatcher サンプルでは `uid` / `password` を読書き API に渡しているため、現時点ではこの2項目を保持します。
+            設定保存時の正本キーは `endpoint` / `user_id` / `password` / `notes` としつつ、旧 `userId` も読めるよう互換を残します。
           </p>
           <div class="actions end">
             <button id="btnStep1Next" type="button" class="btn primary">次へ</button>

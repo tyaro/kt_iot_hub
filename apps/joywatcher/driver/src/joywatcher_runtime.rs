@@ -12,6 +12,9 @@ use crate::proto::{GetDriverDefinitionResponse, TagValueMessage};
 
 const BASE_TICK_MS: u64 = 100;
 const DEFAULT_SCAN_RATE_MS: u32 = 1_000;
+const CONNECTION_ENDPOINT_KEYS: &[&str] = &["endpoint", "host", "address"];
+const CONNECTION_USER_ID_KEYS: &[&str] = &["user_id", "userId", "uid"];
+const CONNECTION_PASSWORD_KEYS: &[&str] = &["password", "passwd"];
 
 #[derive(Debug, Clone)]
 pub struct RuntimeTag {
@@ -89,13 +92,13 @@ impl JoyWatcherPollPlan {
             .map(|connection| &connection.settings);
 
         let connection = BridgeConnectionSettings {
-            endpoint: settings.and_then(|map| get_setting(map, &["endpoint", "host", "address"])),
+            endpoint: settings.and_then(|map| get_setting(map, CONNECTION_ENDPOINT_KEYS)),
             user_id: settings
-                .and_then(|map| get_setting(map, &["userId", "user_id", "uid"]))
+                .and_then(|map| get_setting(map, CONNECTION_USER_ID_KEYS))
                 .and_then(|value| value.parse::<i32>().ok())
                 .unwrap_or_default(),
             password: settings
-                .and_then(|map| get_setting(map, &["password", "passwd"]))
+                .and_then(|map| get_setting(map, CONNECTION_PASSWORD_KEYS))
                 .unwrap_or_default(),
         };
 
@@ -257,9 +260,14 @@ mod tests {
 
     #[test]
     fn extracts_native_tag_id_from_camel_case_driver_spec() {
+        let mut settings = HashMap::new();
+        settings.insert("endpoint".to_string(), "localhost".to_string());
+        settings.insert("user_id".to_string(), "11".to_string());
+        settings.insert("password".to_string(), "pw".to_string());
+
         let definition = GetDriverDefinitionResponse {
             connection: Some(ConnectionSettings {
-                settings: HashMap::new(),
+                settings,
             }),
             scan_groups: vec![ScanGroupDef {
                 id: "g1".to_string(),
@@ -282,6 +290,41 @@ mod tests {
         let plan = JoyWatcherPollPlan::from_definition(&definition);
         assert_eq!(plan.groups.len(), 1);
         assert_eq!(plan.groups[0].unique_native_tag_ids(), vec![1234]);
+        assert_eq!(plan.connection.endpoint.as_deref(), Some("localhost"));
+        assert_eq!(plan.connection.user_id, 11);
+        assert_eq!(plan.connection.password, "pw");
+    }
+
+    #[test]
+    fn accepts_legacy_camel_case_user_id_key() {
+        let mut settings = HashMap::new();
+        settings.insert("endpoint".to_string(), "localhost".to_string());
+        settings.insert("userId".to_string(), "12".to_string());
+        settings.insert("password".to_string(), "pw2".to_string());
+
+        let definition = GetDriverDefinitionResponse {
+            connection: Some(ConnectionSettings { settings }),
+            scan_groups: vec![ScanGroupDef {
+                id: "g1".to_string(),
+                scan_rate_ms: 500,
+                schema: String::new(),
+                table: String::new(),
+                timestamp_column: String::new(),
+                node: String::new(),
+            }],
+            tags: vec![TagDef {
+                id: "tag-1".to_string(),
+                name: "Level".to_string(),
+                data_type: "f64".to_string(),
+                scan_group_id: "g1".to_string(),
+                driver_spec_json: "{\"nativeTagId\":1234}".to_string(),
+                enabled: true,
+            }],
+        };
+
+        let plan = JoyWatcherPollPlan::from_definition(&definition);
+        assert_eq!(plan.connection.user_id, 12);
+        assert_eq!(plan.connection.password, "pw2");
     }
 
     #[test]

@@ -197,7 +197,7 @@ kt_iot_hub.exe
 #### driver → bridge
 
 ```json
-{"type":"connect","endpoint":"localhost","userId":0,"password":""}
+{"type":"connect","endpoint":"localhost","user_id":0,"password":""}
 {"type":"resolveTags","tags":["Line1/Tank/Level","Line1/Tank/Temp"]}
 {"type":"read","requestId":"r1","tagIds":[101,102]}
 {"type":"disconnect"}
@@ -358,11 +358,11 @@ driver-ui/joywatcher/
 - UI から bridge を使って単一タグの `resolveTags` を呼ぶ導線は追加済み
 - `JWRead` の実 DLL 化と gRPC 送信への最小統合は追加済み
 - scan group ごとの継続ポーリングと `driver-ui/joywatcher/` への dev 配置スクリプトは追加済み
-- 残タスクは UI の実機手動確認、`ConnectNet` / `DisconnectNet` 呼出規約の実機確定、設定キー名の固定
+- 残タスクは UI の実機手動確認、`ConnectNet` / `DisconnectNet` 呼出規約の実機確定
 
 ## 次の最小タスク
 
 1. 登録UI の `resolve_joywatcher_tag` を実機で手動確認し、妥当な `nativeTagId` が返るか確認する
 2. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
-3. `endpoint` / `user_id` / `password` の設定キー名を UI / runtime / bridge 間で固定する
-4. 必要なら bridge 再起動時の再接続戦略を調整する
+3. 必要なら bridge 再起動時の再接続戦略を調整する
+4. UI 実機確認後に接続設定まわりのバリデーション文言を調整する

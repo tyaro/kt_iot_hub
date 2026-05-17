@@ -47,10 +47,16 @@ function normalizeId(value) {
 function connectionSettings() {
   return {
     endpoint: el('endpoint').value.trim(),
-    userId: Number(el('userId').value || 0),
+    user_id: Number(el('userId').value || 0),
     password: el('password').value,
     notes: el('notes').value.trim()
   }
+}
+
+function readConnectionSetting(settings, key, legacyKey, fallback = '') {
+  if (!settings || typeof settings !== 'object') return fallback
+  const value = settings[key] ?? settings[legacyKey]
+  return value ?? fallback
 }
 
 function generateDefaultDriverId() {
@@ -133,7 +139,7 @@ function refreshSummary() {
     </div>
     <div class="summary-card">
       <div class="summary-card-label">User ID</div>
-      <div class="summary-card-value">${settings.userId}</div>
+      <div class="summary-card-value">${settings.user_id}</div>
     </div>
     <div class="summary-card">
       <div class="summary-card-label">ScanGroup 数</div>
@@ -307,7 +313,7 @@ async function resolveTagId() {
   const settings = connectionSettings()
   const nativeTagId = await invoke('resolve_joywatcher_tag', {
     endpoint: settings.endpoint,
-    userId: settings.userId,
+    userId: settings.user_id,
     password: settings.password,
     tagPath
   })
@@ -409,7 +415,7 @@ function renderReview() {
     </div>
     <div class="review-card">
       <div class="summary-card-label">User ID</div>
-      <div class="summary-card-value">${settings.userId}</div>
+      <div class="summary-card-value">${settings.user_id}</div>
     </div>
   `
   el('reviewCounts').textContent = `ScanGroup ${scanGroups.length}件 / タグ ${totalTagCount()}件`
@@ -519,10 +525,10 @@ async function init() {
     scanGroups = restoreScanGroups(ctx.scanGroups)
 
     el('driverId').value = launchContext?.driverId || generateDefaultDriverId()
-    el('endpoint').value = settings.endpoint || 'localhost'
-    el('userId').value = String(settings.userId ?? 0)
-    el('password').value = settings.password || ''
-    el('notes').value = settings.notes || ''
+    el('endpoint').value = readConnectionSetting(settings, 'endpoint', 'host', 'localhost')
+    el('userId').value = String(readConnectionSetting(settings, 'user_id', 'userId', 0))
+    el('password').value = readConnectionSetting(settings, 'password', 'passwd', '')
+    el('notes').value = readConnectionSetting(settings, 'notes', 'memo', '')
 
     updateModeUi()
     renderGroups()

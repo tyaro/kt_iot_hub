@@ -42,7 +42,6 @@
 - `JoyWApi.h` をベースにした FFI 設計、または 32bit 別プロセスブリッジ方式の確定
 - 登録UI からの接続テスト / `JWGetTagIDS2` 実行 / `nativeTagId` 保存の実機確認
 - `ConnectNet` / `DisconnectNet` の呼出規約差分の実機確認
-- `endpoint` / `user_id` / `password` の設定キー名固定
 
 ## 変更ファイル
 
@@ -132,7 +131,8 @@
 - bridge の `connect` は `user_id` / `password` を保持し、`JWRead` 呼び出し時に再利用する実装へ更新済み
 - `driver-joywatcher` は driver definition の `driver_spec_json` から `nativeTagId` を抜き出して gRPC 送信値へ変換する
 - `driver-joywatcher` は `scan_group.scan_rate_ms` ごとに read を回し続ける継続ポーリング実装へ更新済み
-- ただし UI 上の実機手動確認、設定キー名の固定、呼出規約の実機確認はまだ未実施
+- UI 保存時の接続設定キーは `endpoint` / `user_id` / `password` / `notes` を正本とし、runtime は旧 `userId` も互換読込できるよう更新済み
+- ただし UI 上の実機手動確認と呼出規約の実機確認はまだ未実施
 
 ## 次セッションで最初に見るファイル
 
@@ -144,9 +144,8 @@
 
 1. 登録UI の `resolve_joywatcher_tag` を実機で手動確認する
 2. `ConnectNet` / `DisconnectNet` の呼出規約差分を実機で確定する
-3. `endpoint` / `user_id` / `password` の設定キー名を UI / runtime / bridge 間で固定する
-4. DAO ハンドル調査が必要になった場合は、Rust ではなく x86 / MFC C++ shim を別途切る
-5. 必要なら bridge 再起動時の再定義取得 / 再接続戦略を調整する
+3. DAO ハンドル調査が必要になった場合は、Rust ではなく x86 / MFC C++ shim を別途切る
+4. 必要なら bridge 再起動時の再定義取得 / 再接続戦略を調整する
 
 ## 完了条件の見込み
 

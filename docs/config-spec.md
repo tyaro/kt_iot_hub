@@ -192,6 +192,8 @@ id = "joywatcher-1"
 driver_type = "joywatcher"
 enabled = true
 endpoint = "localhost"
+user_id = 0
+password = ""
 ```
 
 ## `config/publishers.toml` 例
