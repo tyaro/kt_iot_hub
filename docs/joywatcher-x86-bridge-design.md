@@ -182,6 +182,8 @@ kt_iot_hub.exe
 - runtime 側は `driver-ui/joywatcher/joywatcher-bridge-x86.exe` → `target/i686-pc-windows-msvc/debug/joywatcher-bridge-x86.exe` の順で x86 bridge を優先探索する
 - bridge 側ログは stderr へ出し、runtime 側は stdout から JSON 行だけ読むようにしたため、`ping` / `connect` 応答がログ混線で壊れない
 - `driver-joywatcher` は `driverSpec.nativeTagId` を読んで bridge の `read` を呼び、結果を `StreamTagValues` 用 `TagValueMessage` へ変換する最小経路を実装済み
+- `driver-joywatcher` は `scan_group.scan_rate_ms` ごとにタグを束ね、継続ポーリングしながら gRPC ストリームへ値を流す実装へ更新済み
+- `scripts/build-dev-joywatcher-ui.ps1` / `scripts/build-dev-joywatcher-runtime.ps1` / `scripts/build-dev-joywatcher-suite.ps1` を追加し、`driver-ui/joywatcher/` へ UI / runtime / bridge を配置できるようにした
 
 ### 理由
 
@@ -298,6 +300,9 @@ driver-ui/joywatcher/
 
 - `scripts/build-dev-joywatcher-bridge-x86.ps1` を追加済み
 - このスクリプトは `i686-pc-windows-msvc` で `joywatcher-bridge-x86` をビルドし、`driver-ui/joywatcher/joywatcher-bridge-x86.exe` へ配置する
+- `scripts/build-dev-joywatcher-ui.ps1` は `driver_ui_joywatcher.exe` をビルドし、`driver-ui/joywatcher/registration-ui.exe` へ配置する
+- `scripts/build-dev-joywatcher-runtime.ps1` は `driver-joywatcher.exe` をビルドし、`driver-ui/joywatcher/driver-joywatcher.exe` へ配置する
+- `scripts/build-dev-joywatcher-suite.ps1` は UI / runtime / bridge をまとめてビルドし、`driver-ui/joywatcher/` 配下へ揃える
 
 ## エラー処理方針
 
@@ -352,11 +357,12 @@ driver-ui/joywatcher/
 - 登録UI の保存 JSON は `driverSpec.nativeTagId` を保持できる形へ更新済み
 - UI から bridge を使って単一タグの `resolveTags` を呼ぶ導線は追加済み
 - `JWRead` の実 DLL 化と gRPC 送信への最小統合は追加済み
-- 残タスクは UI の実機手動確認、scan rate に基づく継続ポーリング、`ConnectNet` / `DisconnectNet` 呼出規約の実機確定
+- scan group ごとの継続ポーリングと `driver-ui/joywatcher/` への dev 配置スクリプトは追加済み
+- 残タスクは UI の実機手動確認、`ConnectNet` / `DisconnectNet` 呼出規約の実機確定、設定キー名の固定
 
 ## 次の最小タスク
 
 1. 登録UI の `resolve_joywatcher_tag` を実機で手動確認し、妥当な `nativeTagId` が返るか確認する
-2. `driver-joywatcher` を scan group の `scan_rate_ms` に沿って継続ポーリングするよう整理する
-3. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
-4. `endpoint` / `user_id` / `password` の設定キー名を UI / runtime / bridge 間で固定する
+2. `ConnectNet` / `DisconnectNet` の呼出規約（`_cdecl` / `_stdcall`）を実機で確定する
+3. `endpoint` / `user_id` / `password` の設定キー名を UI / runtime / bridge 間で固定する
+4. 必要なら bridge 再起動時の再接続戦略を調整する

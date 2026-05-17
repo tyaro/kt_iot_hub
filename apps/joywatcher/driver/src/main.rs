@@ -14,7 +14,6 @@ use joywatcher_connection::JoyWatcherConnectionPlan;
 use joywatcher_ffi::observed_calling_conventions;
 use joywatcher_runtime::JoyWatcherPollPlan;
 use std::time::Duration;
-use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
 pub mod proto {
@@ -79,30 +78,7 @@ async fn run() -> Result<()> {
         warn!("{}", message);
     }
 
-    let mut bridge = match JoyWatcherBridgeProcess::start(&artifacts) {
-        Ok(mut bridge) => {
-            info!(
-                "JoyWatcher bridge started: mode={:?} exe={}",
-                bridge.mode(),
-                bridge.exe_path().display()
-            );
-
-            match bridge.ping() {
-                Ok(response) => info!("JoyWatcher bridge ping ok: {}", response),
-                Err(error) => warn!("JoyWatcher bridge ping failed: {}", error),
-            }
-
-            if matches!(bridge.mode(), BridgeMode::Dll) {
-                info!("JoyWatcher bridge connect will be deferred until driver settings are loaded");
-            }
-
-            Some(bridge)
-        }
-        Err(error) => {
-            warn!("JoyWatcher bridge start failed: {}", error);
-            None
-        }
-    };
+    let mut bridge = None;
 
     // JoyWatcher DLL 実装時の接続ライフサイクルメモ:
     // - `ConnectNet()` は複数回呼んでもよいが、呼んだ回数ぶん `DisconnectNet()` を実行する
@@ -155,44 +131,96 @@ async fn run() -> Result<()> {
             warn!("JoyWatcher definition has no tags yet");
         }
 
-        if let Some(bridge) = bridge.as_mut() {
+        let poll_plan = JoyWatcherPollPlan::from_definition(&definition);
+        if poll_plan.groups.is_empty() {
+            warn!("JoyWatcher definition has no scan groups with enabled nativeTagId tags");
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            continue;
+        }
+
+        ensure_bridge_started(&artifacts, &mut bridge);
+        let heartbeat_ok = match bridge.as_mut() {
+            Some(active_bridge) => match active_bridge.ping() {
+                Ok(response) => {
+                    info!("JoyWatcher bridge heartbeat ok: {}", response);
+                    true
+                }
+                Err(error) => {
+                    warn!("JoyWatcher bridge heartbeat failed: {}", error);
+                    false
+                }
+            },
+            None => false,
+        };
+        if !heartbeat_ok {
+            bridge = restart_bridge(&artifacts);
+        }
+
+        let Some(bridge) = bridge.as_mut() else {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            continue;
+        };
+
+        if !heartbeat_ok {
             match bridge.ping() {
-                Ok(response) => info!("JoyWatcher bridge heartbeat ok: {}", response),
-                Err(error) => warn!("JoyWatcher bridge heartbeat failed: {}", error),
-            }
-
-            let poll_plan = JoyWatcherPollPlan::from_definition(&definition);
-            if poll_plan.tags.is_empty() {
-                warn!("JoyWatcher definition has no enabled tags with nativeTagId");
-            } else if let Err(error) = bridge.ensure_connection(&poll_plan.connection) {
-                warn!("JoyWatcher bridge connect failed: {}", error);
-            } else {
-                let native_tag_ids = poll_plan.native_tag_ids();
-                match bridge.read_tags(&native_tag_ids) {
-                    Ok(values) => {
-                        let messages = poll_plan.build_messages(&values);
-                        if messages.is_empty() {
-                            warn!("JoyWatcher read returned no mapped messages");
-                        } else {
-                            let (tx, rx) = mpsc::channel(messages.len().max(1));
-                            for message in messages {
-                                if tx.send(message).await.is_err() {
-                                    warn!("JoyWatcher stream sender closed before enqueue");
-                                    break;
-                                }
-                            }
-                            drop(tx);
-
-                            if let Err(error) = client.stream_tag_values(rx).await {
-                                warn!("JoyWatcher stream_tag_values failed: {}", error);
-                            }
-                        }
-                    }
-                    Err(error) => warn!("JoyWatcher bridge read failed: {}", error),
+                Ok(response) => info!("JoyWatcher bridge restart ping ok: {}", response),
+                Err(error) => {
+                    warn!("JoyWatcher bridge restart ping failed: {}", error);
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                    continue;
                 }
             }
         }
 
+        let (tx, rx) = tokio::sync::mpsc::channel(1024);
+        let stream_task = tokio::spawn(async move { client.stream_tag_values(rx).await });
+
+        let poll_result = poll_plan.run(bridge, tx).await;
+        if let Err(error) = poll_result {
+            warn!("JoyWatcher poller loop ended with error: {}", error);
+        }
+
+        stream_task.abort();
+        let _ = stream_task.await;
+
         tokio::time::sleep(Duration::from_secs(2)).await;
+    }
+}
+
+fn ensure_bridge_started(
+    artifacts: &JoyWatcherArtifacts,
+    bridge: &mut Option<JoyWatcherBridgeProcess>,
+) {
+    if bridge.is_some() {
+        return;
+    }
+
+    *bridge = restart_bridge(artifacts);
+}
+
+fn restart_bridge(artifacts: &JoyWatcherArtifacts) -> Option<JoyWatcherBridgeProcess> {
+    match JoyWatcherBridgeProcess::start(artifacts) {
+        Ok(mut bridge) => {
+            info!(
+                "JoyWatcher bridge started: mode={:?} exe= {}",
+                bridge.mode(),
+                bridge.exe_path().display()
+            );
+
+            match bridge.ping() {
+                Ok(response) => info!("JoyWatcher bridge ping ok: {}", response),
+                Err(error) => warn!("JoyWatcher bridge ping failed: {}", error),
+            }
+
+            if matches!(bridge.mode(), BridgeMode::Dll) {
+                info!("JoyWatcher bridge connect will be deferred until driver settings are loaded");
+            }
+
+            Some(bridge)
+        }
+        Err(error) => {
+            warn!("JoyWatcher bridge start failed: {}", error);
+            None
+        }
     }
 }

@@ -33,14 +33,16 @@
 - `apps/joywatcher/bridge-x86/src/dll_api.rs` に `JWRead` 実装を追加し、dll モードの `read` が `TCOM_DATA1` を `bool | number | string` へ変換できるようにした
 - `apps/joywatcher/driver/src/joywatcher_runtime.rs` を追加し、`driverSpec.nativeTagId` を driver definition から拾って bridge の `read` 結果を `TagValueMessage` へ変換する最小ポーリング計画を実装した
 - `apps/joywatcher/driver/src/main.rs` / `joywatcher_bridge.rs` を更新し、bridge への接続設定保持・`read` 実行・gRPC 送信の最小導線を追加した
+- `apps/joywatcher/driver/src/joywatcher_runtime.rs` / `main.rs` を更新し、scan group の `scan_rate_ms` に基づく継続ポーリングへ切り替えた
+- `scripts/build-dev-joywatcher-ui.ps1` / `scripts/build-dev-joywatcher-runtime.ps1` / `scripts/build-dev-joywatcher-suite.ps1` を追加し、`driver-ui/joywatcher/` へ dev 成果物をまとめて配置できるようにした
 
 ## まだ未完了のこと
 
 - JoyWatcher DLL / LIB 実体の配置方針確認（`参考/JoyWaApi.dll` と `C:\Windows\SysWOW64\JoyWaApi.dll` は確認済み）
 - `JoyWApi.h` をベースにした FFI 設計、または 32bit 別プロセスブリッジ方式の確定
 - 登録UI からの接続テスト / `JWGetTagIDS2` 実行 / `nativeTagId` 保存の実機確認
-- scan group の `scan_rate_ms` に基づく継続ポーリング
 - `ConnectNet` / `DisconnectNet` の呼出規約差分の実機確認
+- `endpoint` / `user_id` / `password` の設定キー名固定
 
 ## 変更ファイル
 
@@ -69,6 +71,9 @@
 - `apps/joywatcher/bridge-x86/src/service.rs`
 - `apps/joywatcher/bridge-x86/src/dll_api.rs`
 - `scripts/build-dev-joywatcher-bridge-x86.ps1`
+- `scripts/build-dev-joywatcher-ui.ps1`
+- `scripts/build-dev-joywatcher-runtime.ps1`
+- `scripts/build-dev-joywatcher-suite.ps1`
 - `docs/joywatcher-x86-bridge-design.md`
 - `docs/joywatcher-session-handoff.md`
 
@@ -90,6 +95,10 @@
 - [x] `cargo test -p joywatcher-bridge-x86` が `JWRead` 実装追加後も成功する
 - [x] `cargo test --manifest-path apps/joywatcher/ui/Cargo.toml` が成功する
 - [x] `cargo test -p driver-joywatcher` が `read` / `nativeTagId` 連携追加後も成功する
+- [x] `cargo test -p driver-joywatcher` が scan rate ベースの継続ポーリング追加後も成功する
+- [x] `scripts/build-dev-joywatcher-runtime.ps1` が `driver-ui/joywatcher/driver-joywatcher.exe` を配置できる
+- [x] `scripts/build-dev-joywatcher-ui.ps1` が `driver-ui/joywatcher/registration-ui.exe` を配置できる
+- [x] `scripts/build-dev-joywatcher-suite.ps1` が UI / runtime / bridge をまとめて配置できる
 
 ## 未確認 / 要確認
 
@@ -122,21 +131,22 @@
 - 登録UI から単一タグの `nativeTagId` を解決する Tauri コマンド `resolve_joywatcher_tag` を追加済み
 - bridge の `connect` は `user_id` / `password` を保持し、`JWRead` 呼び出し時に再利用する実装へ更新済み
 - `driver-joywatcher` は driver definition の `driver_spec_json` から `nativeTagId` を抜き出して gRPC 送信値へ変換する
-- ただし UI 上の実機手動確認、scan rate ベースの継続ポーリング、設定キー名の固定はまだ未実施
+- `driver-joywatcher` は `scan_group.scan_rate_ms` ごとに read を回し続ける継続ポーリング実装へ更新済み
+- ただし UI 上の実機手動確認、設定キー名の固定、呼出規約の実機確認はまだ未実施
 
 ## 次セッションで最初に見るファイル
 
 1. `apps/joywatcher/driver/src/joywatcher_runtime.rs`
 2. `apps/joywatcher/driver/src/joywatcher_bridge.rs`
-3. `apps/joywatcher/bridge-x86/src/dll_api.rs`
+3. `scripts/build-dev-joywatcher-suite.ps1`
 
 ## 次の最小タスク
 
 1. 登録UI の `resolve_joywatcher_tag` を実機で手動確認する
-2. scan group の `scan_rate_ms` に基づく継続ポーリングを入れる
-3. `ConnectNet` / `DisconnectNet` の呼出規約差分を実機で確定する
+2. `ConnectNet` / `DisconnectNet` の呼出規約差分を実機で確定する
+3. `endpoint` / `user_id` / `password` の設定キー名を UI / runtime / bridge 間で固定する
 4. DAO ハンドル調査が必要になった場合は、Rust ではなく x86 / MFC C++ shim を別途切る
-5. `endpoint` / `user_id` / `password` の設定キー名を UI / runtime / bridge 間で固定する
+5. 必要なら bridge 再起動時の再定義取得 / 再接続戦略を調整する
 
 ## 完了条件の見込み
 
@@ -157,6 +167,9 @@
 - 追加確認: `$env:RUST_LOG='info'; .\target\debug\driver-joywatcher.exe -- --driver-id jw-test --driver-kind joywatcher --grpc-addr 127.0.0.1:59999`
 - 追加確認: `cargo build --manifest-path apps/joywatcher/ui/Cargo.toml`
 - 追加確認: `cargo build --manifest-path apps/joywatcher/driver/Cargo.toml`
+- 追加確認: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-dev-joywatcher-runtime.ps1`
+- 追加確認: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-dev-joywatcher-ui.ps1`
+- 追加確認: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-dev-joywatcher-suite.ps1`
 
 ## 補足
 

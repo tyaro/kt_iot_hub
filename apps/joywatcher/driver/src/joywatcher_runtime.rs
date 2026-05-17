@@ -1,8 +1,17 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::time::{Duration, Instant};
 
-use crate::joywatcher_bridge::{BridgeConnectionSettings, BridgeReadValue, BridgeValue};
+use anyhow::{anyhow, Result};
+use tokio::sync::mpsc;
+use tracing::{debug, warn};
+
+use crate::joywatcher_bridge::{
+    BridgeConnectionSettings, BridgeReadValue, BridgeValue, JoyWatcherBridgeProcess,
+};
 use crate::proto::{GetDriverDefinitionResponse, TagValueMessage};
-use tracing::warn;
+
+const BASE_TICK_MS: u64 = 100;
+const DEFAULT_SCAN_RATE_MS: u32 = 1_000;
 
 #[derive(Debug, Clone)]
 pub struct RuntimeTag {
@@ -11,54 +20,33 @@ pub struct RuntimeTag {
 }
 
 #[derive(Debug, Clone)]
-pub struct JoyWatcherPollPlan {
-    pub connection: BridgeConnectionSettings,
+pub struct PollGroup {
+    pub id: String,
+    pub scan_rate_ms: u32,
     pub tags: Vec<RuntimeTag>,
 }
 
-impl JoyWatcherPollPlan {
-    pub fn from_definition(definition: &GetDriverDefinitionResponse) -> Self {
-        let settings = definition
-            .connection
-            .as_ref()
-            .map(|connection| &connection.settings);
-
-        let connection = BridgeConnectionSettings {
-            endpoint: settings.and_then(|map| get_setting(map, &["endpoint", "host", "address"])),
-            user_id: settings
-                .and_then(|map| get_setting(map, &["userId", "user_id", "uid"]))
-                .and_then(|value| value.parse::<i32>().ok())
-                .unwrap_or_default(),
-            password: settings
-                .and_then(|map| get_setting(map, &["password", "passwd"]))
-                .unwrap_or_default(),
-        };
-
-        let mut tags = Vec::new();
-        for tag in &definition.tags {
-            if !tag.enabled {
-                continue;
-            }
-
-            let Some(native_tag_id) = extract_native_tag_id(&tag.driver_spec_json) else {
-                warn!("JoyWatcher tag {} has no nativeTagId; skipping", tag.id);
-                continue;
-            };
-
-            tags.push(RuntimeTag {
-                tag_id: tag.id.clone(),
-                native_tag_id,
-            });
+impl PollGroup {
+    fn effective_scan_rate_ms(&self) -> u32 {
+        if self.scan_rate_ms == 0 {
+            DEFAULT_SCAN_RATE_MS
+        } else {
+            self.scan_rate_ms
         }
-
-        Self { connection, tags }
     }
 
-    pub fn native_tag_ids(&self) -> Vec<i32> {
-        self.tags.iter().map(|tag| tag.native_tag_id).collect()
+    fn unique_native_tag_ids(&self) -> Vec<i32> {
+        let mut seen = HashSet::new();
+        let mut tag_ids = Vec::new();
+        for tag in &self.tags {
+            if seen.insert(tag.native_tag_id) {
+                tag_ids.push(tag.native_tag_id);
+            }
+        }
+        tag_ids
     }
 
-    pub fn build_messages(&self, values: &[BridgeReadValue]) -> Vec<TagValueMessage> {
+    fn build_messages(&self, values: &[BridgeReadValue]) -> Vec<TagValueMessage> {
         let mut tags_by_native_id = HashMap::<i32, Vec<&RuntimeTag>>::new();
         for tag in &self.tags {
             tags_by_native_id
@@ -84,6 +72,135 @@ impl JoyWatcherPollPlan {
         }
 
         messages
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct JoyWatcherPollPlan {
+    pub connection: BridgeConnectionSettings,
+    pub groups: Vec<PollGroup>,
+}
+
+impl JoyWatcherPollPlan {
+    pub fn from_definition(definition: &GetDriverDefinitionResponse) -> Self {
+        let settings = definition
+            .connection
+            .as_ref()
+            .map(|connection| &connection.settings);
+
+        let connection = BridgeConnectionSettings {
+            endpoint: settings.and_then(|map| get_setting(map, &["endpoint", "host", "address"])),
+            user_id: settings
+                .and_then(|map| get_setting(map, &["userId", "user_id", "uid"]))
+                .and_then(|value| value.parse::<i32>().ok())
+                .unwrap_or_default(),
+            password: settings
+                .and_then(|map| get_setting(map, &["password", "passwd"]))
+                .unwrap_or_default(),
+        };
+
+        let mut groups_by_id = HashMap::<String, PollGroup>::new();
+        for group in &definition.scan_groups {
+            if group.scan_rate_ms == 0 {
+                warn!(
+                    "JoyWatcher scan group {} has invalid scan_rate_ms=0; fallback to {}ms",
+                    group.id,
+                    DEFAULT_SCAN_RATE_MS
+                );
+            }
+            groups_by_id.insert(
+                group.id.clone(),
+                PollGroup {
+                    id: group.id.clone(),
+                    scan_rate_ms: group.scan_rate_ms,
+                    tags: Vec::new(),
+                },
+            );
+        }
+
+        for tag in &definition.tags {
+            if !tag.enabled {
+                continue;
+            }
+
+            let Some(native_tag_id) = extract_native_tag_id(&tag.driver_spec_json) else {
+                warn!("JoyWatcher tag {} has no nativeTagId; skipping", tag.id);
+                continue;
+            };
+
+            let Some(group) = groups_by_id.get_mut(&tag.scan_group_id) else {
+                warn!(
+                    "JoyWatcher tag {} references unknown scan group {}; skipping",
+                    tag.id,
+                    tag.scan_group_id
+                );
+                continue;
+            };
+
+            group.tags.push(RuntimeTag {
+                tag_id: tag.id.clone(),
+                native_tag_id,
+            });
+        }
+
+        let groups = groups_by_id
+            .into_values()
+            .filter_map(|group| {
+                if group.tags.is_empty() {
+                    debug!("JoyWatcher scan group {} has no enabled tags; skipping", group.id);
+                    return None;
+                }
+                Some(group)
+            })
+            .collect();
+
+        Self { connection, groups }
+    }
+
+    pub async fn run(
+        &self,
+        bridge: &mut JoyWatcherBridgeProcess,
+        tx: mpsc::Sender<TagValueMessage>,
+    ) -> Result<()> {
+        if self.groups.is_empty() {
+            return Err(anyhow!("JoyWatcher poll plan has no scan groups with enabled tags"));
+        }
+
+        bridge.ensure_connection(&self.connection)?;
+
+        let mut ticker = tokio::time::interval(Duration::from_millis(BASE_TICK_MS));
+        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        let mut last_polled = HashMap::<String, Instant>::new();
+
+        loop {
+            ticker.tick().await;
+            let now = Instant::now();
+
+            for group in &self.groups {
+                let scan_rate = Duration::from_millis(group.effective_scan_rate_ms() as u64);
+                let due = last_polled
+                    .get(&group.id)
+                    .map(|last| now.duration_since(*last) >= scan_rate)
+                    .unwrap_or(true);
+                if !due {
+                    continue;
+                }
+
+                last_polled.insert(group.id.clone(), now);
+                let values = bridge.read_tags(&group.unique_native_tag_ids())?;
+                let messages = group.build_messages(&values);
+                if messages.is_empty() {
+                    debug!("JoyWatcher scan group {} produced no mapped messages", group.id);
+                    continue;
+                }
+
+                for message in messages {
+                    if tx.send(message).await.is_err() {
+                        return Err(anyhow!("gRPC stream sender is closed"));
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -136,7 +253,7 @@ fn escape_json_string(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proto::{ConnectionSettings, TagDef};
+    use crate::proto::{ConnectionSettings, ScanGroupDef, TagDef};
 
     #[test]
     fn extracts_native_tag_id_from_camel_case_driver_spec() {
@@ -144,7 +261,14 @@ mod tests {
             connection: Some(ConnectionSettings {
                 settings: HashMap::new(),
             }),
-            scan_groups: Vec::new(),
+            scan_groups: vec![ScanGroupDef {
+                id: "g1".to_string(),
+                scan_rate_ms: 500,
+                schema: String::new(),
+                table: String::new(),
+                timestamp_column: String::new(),
+                node: String::new(),
+            }],
             tags: vec![TagDef {
                 id: "tag-1".to_string(),
                 name: "Level".to_string(),
@@ -156,20 +280,22 @@ mod tests {
         };
 
         let plan = JoyWatcherPollPlan::from_definition(&definition);
-        assert_eq!(plan.native_tag_ids(), vec![1234]);
+        assert_eq!(plan.groups.len(), 1);
+        assert_eq!(plan.groups[0].unique_native_tag_ids(), vec![1234]);
     }
 
     #[test]
     fn builds_messages_for_matching_native_tag_ids() {
-        let plan = JoyWatcherPollPlan {
-            connection: BridgeConnectionSettings::default(),
+        let group = PollGroup {
+            id: "g1".to_string(),
+            scan_rate_ms: 1000,
             tags: vec![RuntimeTag {
                 tag_id: "tag-1".to_string(),
                 native_tag_id: 77,
             }],
         };
 
-        let messages = plan.build_messages(&[BridgeReadValue {
+        let messages = group.build_messages(&[BridgeReadValue {
             native_tag_id: 77,
             quality: "good".to_string(),
             value: BridgeValue::Number(9.5),
@@ -179,5 +305,25 @@ mod tests {
         assert_eq!(messages[0].tag_id, "tag-1");
         assert_eq!(messages[0].value_json, "9.5");
         assert_eq!(messages[0].quality, "good");
+    }
+
+    #[test]
+    fn deduplicates_native_tag_ids_per_group() {
+        let group = PollGroup {
+            id: "g1".to_string(),
+            scan_rate_ms: 1000,
+            tags: vec![
+                RuntimeTag {
+                    tag_id: "tag-1".to_string(),
+                    native_tag_id: 77,
+                },
+                RuntimeTag {
+                    tag_id: "tag-2".to_string(),
+                    native_tag_id: 77,
+                },
+            ],
+        };
+
+        assert_eq!(group.unique_native_tag_ids(), vec![77]);
     }
 }
