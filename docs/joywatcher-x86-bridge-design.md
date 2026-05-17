@@ -75,6 +75,8 @@ JoyWatcher は **x86 専用ブリッジプロセス** を別途用意し、`driv
 - 両者のサイズは 118,853 bytes で一致する
 - 更新日時も一致している
 - PE Machine は `0x14C` で x86 DLL である
+- ヘルプ `ConnectNet.htm` には `CDaoDatabase * _cdecl ConnectNet(void);` という記述がある
+- 同梱ヘッダ群は `BOOL` / `long` を返す宣言になっており、`ConnectNet` の戻り値型は資料間で揺れている
 
 ### エクスポートで見えた主要関数
 
@@ -87,6 +89,29 @@ JoyWatcher は **x86 専用ブリッジプロセス** を別途用意し、`driv
 - `JWAsyncSelect2`
 
 少なくとも `ConnectNet` / `DisconnectNet` / `DisconnectNetForce` が DLL 実体に存在することは確認できた。
+
+## `ConnectNet` の DAO ハンドルに関するメモ
+
+`ConnectNet.htm` では戻り値が `CDaoDatabase*` とされているが、現時点では **これをタグ一覧取得の正規ルートとはみなさない**。
+
+### 根拠
+
+- ヘルプ本文は「接続可能なサーバ情報が入った DAO データベースハンドルを返す」と読め、タグ DB を返すとは断定できない
+- `JoyWApi.h` / `BC/JoyWApi.h` / `JoyWaApi.hpp` の宣言は `BOOL` / `long` で、`CDaoDatabase*` と整合しない
+- 同梱サンプル `DllApiSampleDlg.cpp` は `ConnectNet()` の戻り値を使わず、タグ名解決をすべて `JWGetTagIDS2()` で行っている
+- `JWGetTagIDS2.htm` / `JWWrite.htm` / `JWRead.htm` のサンプルも `ConnectNet()` の後に `JWGetTagIDS2()` を呼ぶ構成で、DAO 経由のタグ列挙例は見当たらない
+
+### 実務上の判断
+
+- `ConnectNet()` は「接続確立の前提を作る API」として扱う
+- タグ名 → JoyWatcher ネイティブ ID の解決は `JWGetTagIDS2()` を正規ルートとして扱う
+- 値読取は `JWRead()` を使う
+- `CDaoDatabase*` の中身を本当に調べるなら、Rust ではなく **x86 / MFC C++ の調査用 shim** を別途作るのが安全
+
+### いま採らない方針
+
+- x86 bridge から `CDaoDatabase*` を MFC オブジェクトとして直接触りに行く
+- DAO のテーブル構造が分からないまま、登録UIのタグ解決を `JWGetTagIDS2()` から外す
 
 ### 実務上の扱い
 
@@ -232,6 +257,7 @@ kt_iot_hub.exe
 - システム内の永続タグ識別子は従来どおり `tag.id`
 - JoyWatcher DLL が返す数値 ID は `driverSpec.nativeTagId` として別管理する
 - これにより本体タグ ID と JoyWatcher ネイティブ ID を混同しない
+- `ConnectNet` の戻り値に DAO ハンドル記述はあるが、登録UIのタグ解決は当面 `JWGetTagIDS2` を使う
 
 ## 値読取フロー
 

@@ -27,6 +27,7 @@
 - `scripts/build-dev-joywatcher-bridge-x86.ps1` を追加し、x86 bridge の開発用ビルド / 配置を自動化した
 - `apps/joywatcher/driver/src/joywatcher_bridge.rs` を追加し、runtime から x86 bridge を起動して `ping` / `connect` する最小統合を実装した
 - `apps/joywatcher/ui/assets/app.js` を更新し、保存 JSON が `driverSpec.nativeTagId` を保持できるようにした
+- `ConnectNet.htm` の `CDaoDatabase*` 記述と同梱サンプルを突き合わせ、DAO ハンドルはタグ解決の正規ルートとみなさず、当面は `JWGetTagIDS2` / `JWRead` を主経路とする方針を確認した
 
 ## まだ未完了のこと
 
@@ -94,6 +95,8 @@
 - ヘルプには「`ConnectNet` は複数回呼んでよいが、呼んだ回数ぶん `DisconnectNet` を実行する」とある
 - 念のため異常系の退避導線として `DisconnectNetForce` も FFI 対象に含める前提で進める
 - `JoyWApi.h` と `BC/JoyWApi.h` で `ConnectNet` / `DisconnectNet` の呼出規約表記に差がある（`_cdecl` と `_stdcall`）ため、実装時に実DLLの export を確認する必要がある
+- `ConnectNet.htm` には `CDaoDatabase*` 戻り値の記述があるが、ヘッダは `BOOL` / `long` を返しており資料間で揺れている
+- `ConnectNet` の DAO ハンドルは「接続可能サーバ情報の DB」と読める一方、タグ解決は同梱サンプルでも `JWGetTagIDS2` を使っている
 - `参考/JoyWaApi/BC/JoyWaApi.lib` は存在し、対応する `JoyWaApi.dll` 実体も `参考/JoyWaApi.dll` / `C:\Windows\SysWOW64\JoyWaApi.dll` で確認できた
 - `参考/JoyWaApi/BC/JoyWaApi.lib` は `__IMPORT_DESCRIPTOR_JoyWaApi` / `__NULL_IMPORT_DESCRIPTOR` / `__imp_` を含み、`JoyWaApi.dll` を参照する import lib とみてよい
 - `参考/JoyWaApi.dll` と `C:\Windows\SysWOW64\JoyWaApi.dll` は同サイズ・同更新日時で存在し、実 DLL は x86 (Machine `0x14C`) と確認できた
@@ -118,7 +121,8 @@
 1. 登録UI から x86 bridge を起動し、`JWGetTagIDS2` で `driverSpec.nativeTagId` を保存する
 2. `JWRead` を実 DLL 呼び出しへ差し替え、runtime が `nativeTagId` で読めるようにする
 3. `ConnectNet` / `DisconnectNet` の呼出規約差分を実装上で吸収する
-4. bridge の読取結果を `driver-joywatcher` から gRPC 送信へつなぐ
+4. DAO ハンドル調査が必要になった場合は、Rust ではなく x86 / MFC C++ shim を別途切る
+5. bridge の読取結果を `driver-joywatcher` から gRPC 送信へつなぐ
 
 ## 完了条件の見込み
 
