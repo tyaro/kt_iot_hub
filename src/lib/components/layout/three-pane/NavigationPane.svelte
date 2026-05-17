@@ -6,10 +6,12 @@
   };
 
   let {
+    grpcRunning,
     pages,
     currentPage,
     onSelect,
   }: {
+    grpcRunning: boolean;
     pages: Page[];
     currentPage: string;
     onSelect: (pageId: string) => void;
@@ -33,6 +35,13 @@
       </button>
     {/each}
   </nav>
+
+  <div class="status-footer">
+    <div class="status-label">gRPC (IPC)</div>
+    <div class="status-badge" class:running={grpcRunning}>
+      {grpcRunning ? 'ON' : 'OFF'}
+    </div>
+  </div>
 </div>
 
 <style>
@@ -67,6 +76,36 @@
 
   .nav-menu {
     flex: 1;
+  }
+
+  .status-footer {
+    border-top: 1px solid #253545;
+    padding: 12px 14px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: #182533;
+  }
+
+  .status-label {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    font-weight: 600;
+  }
+
+  .status-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #fecaca;
+    background: #7f1d1d;
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+
+  .status-badge.running {
+    color: #dcfce7;
+    background: #166534;
   }
 
   .nav-button {

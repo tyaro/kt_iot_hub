@@ -36,53 +36,55 @@
 </script>
 
 <div class="right-pane">
-  {#if currentPage === 'tags'}
-    {#if tagMode === 'new' || tagMode === 'edit'}
-      <TagEditorPanel
-        mode={tagMode}
-        tag={selectedTag}
-        driverId={editorDriverId}
-        onDone={onTagEditorDone}
-        onCancel={onTagEditorCancel}
-      />
-    {:else if selectedTag}
-      <TagDetailPanel
-        tag={selectedTag}
-        onRequestEdit={onTagDetailEdit}
-        onRequestDelete={onTagDetailDelete}
-        onRequestClose={onTagDetailClose}
-      />
-    {:else if selectedDriver}
-      <DriverDetailPanel
-        driver={selectedDriver}
-        mode="detail"
-        onRequestDelete={onDriverDelete}
-        onDone={onDriverDone}
-      />
-    {:else if selectedScanGroup}
-      <div class="info-panel">
-        <div class="panel-header compact">
-          <h3>{selectedScanGroup.id}</h3>
-          <span class="mode-label">ScanGroup</span>
+  <div class="right-content">
+    {#if currentPage === 'tags'}
+      {#if tagMode === 'new' || tagMode === 'edit'}
+        <TagEditorPanel
+          mode={tagMode}
+          tag={selectedTag}
+          driverId={editorDriverId}
+          onDone={onTagEditorDone}
+          onCancel={onTagEditorCancel}
+        />
+      {:else if selectedTag}
+        <TagDetailPanel
+          tag={selectedTag}
+          onRequestEdit={onTagDetailEdit}
+          onRequestDelete={onTagDetailDelete}
+          onRequestClose={onTagDetailClose}
+        />
+      {:else if selectedDriver}
+        <DriverDetailPanel
+          driver={selectedDriver}
+          mode="detail"
+          onRequestDelete={onDriverDelete}
+          onDone={onDriverDone}
+        />
+      {:else if selectedScanGroup}
+        <div class="info-panel">
+          <div class="panel-header compact">
+            <h3>{selectedScanGroup.id}</h3>
+            <span class="mode-label">ScanGroup</span>
+          </div>
+          <dl class="detail-list compact">
+            <dt>ドライバ</dt><dd class="mono">{selectedScanGroup.driver_id}</dd>
+            <dt>周期</dt><dd>{selectedScanGroup.scan_rate_ms ?? '-'} ms</dd>
+            <dt>テーブル</dt><dd class="mono">{selectedScanGroup.table ?? '-'}</dd>
+            <dt>時系列列</dt><dd class="mono">{selectedScanGroup.timestamp_column ?? '-'}</dd>
+          </dl>
+          <p class="helper-text">Scanグループの追加・変更は接続先ドライバ専用UI側で行います。</p>
         </div>
-        <dl class="detail-list compact">
-          <dt>ドライバ</dt><dd class="mono">{selectedScanGroup.driver_id}</dd>
-          <dt>周期</dt><dd>{selectedScanGroup.scan_rate_ms ?? '-'} ms</dd>
-          <dt>テーブル</dt><dd class="mono">{selectedScanGroup.table ?? '-'}</dd>
-          <dt>時系列列</dt><dd class="mono">{selectedScanGroup.timestamp_column ?? '-'}</dd>
-        </dl>
-        <p class="helper-text">Scanグループの追加・変更は接続先ドライバ専用UI側で行います。</p>
-      </div>
+      {:else}
+        <div class="empty-right">
+          <p>ツリーから接続先 / Scanグループ / タグを選択してください</p>
+        </div>
+      {/if}
     {:else}
       <div class="empty-right">
-        <p>ツリーから接続先 / Scanグループ / タグを選択してください</p>
+        <p>左の一覧から<br />項目を選択してください</p>
       </div>
     {/if}
-  {:else}
-    <div class="empty-right">
-      <p>左の一覧から<br />項目を選択してください</p>
-    </div>
-  {/if}
+  </div>
 </div>
 
 <style>
@@ -91,6 +93,13 @@
     min-width: 240px;
     border-left: 1px solid #dbe2ea;
     background-color: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .right-content {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
   }
 
@@ -161,4 +170,5 @@
   .mono {
     font-family: monospace;
   }
+
 </style>

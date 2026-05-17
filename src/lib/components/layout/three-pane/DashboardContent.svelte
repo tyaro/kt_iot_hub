@@ -22,9 +22,6 @@
     onStartServers: () => void;
     onStopServers: () => void;
   } = $props();
-
-  const isRuntimeRunning =
-    runtimeStatus.drivers_running || runtimeStatus.publishers_running;
 </script>
 
 <div class="content">
@@ -51,13 +48,17 @@
     <div class="card runtime-card">
       <span class="card-icon">🧩</span>
       <h3>サービス状態</h3>
-      <p class="runtime-badge" class:running={isRuntimeRunning}>
-        {isRuntimeRunning ? '起動中' : '停止中'}
+      <p
+        class="runtime-badge"
+        class:running={runtimeStatus.drivers_running || runtimeStatus.publishers_running}
+      >
+        {runtimeStatus.drivers_running || runtimeStatus.publishers_running
+          ? '起動中'
+          : '停止中'}
       </p>
       <ul class="runtime-list">
         <li>Drivers: {runtimeStatus.drivers_running ? 'ON' : 'OFF'}</li>
         <li>Publishers: {runtimeStatus.publishers_running ? 'ON' : 'OFF'}</li>
-        <li>gRPC (IPC): {runtimeStatus.grpc_running ? 'ON' : 'OFF'}</li>
       </ul>
     </div>
   </div>
@@ -72,14 +73,14 @@
     <button
       class="btn-primary"
       onclick={onStartServers}
-      disabled={runtimeBusy || isRuntimeRunning}
+      disabled={runtimeBusy || runtimeStatus.drivers_running || runtimeStatus.publishers_running}
     >
       {runtimeBusy ? '実行中...' : 'サーバ起動'}
     </button>
     <button
       class="btn-outline danger"
       onclick={onStopServers}
-      disabled={runtimeBusy || !isRuntimeRunning}
+      disabled={runtimeBusy || (!runtimeStatus.drivers_running && !runtimeStatus.publishers_running)}
     >
       サーバ停止
     </button>

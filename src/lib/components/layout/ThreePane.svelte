@@ -250,10 +250,6 @@
   });
 
   $effect(() => {
-    if (currentPage !== 'dashboard') {
-      return;
-    }
-
     let disposed = false;
     const refresh = async () => {
       if (disposed) {
@@ -275,7 +271,12 @@
 </script>
 
 <div class="three-pane">
-  <NavigationPane pages={pages} currentPage={currentPage} onSelect={selectPage} />
+  <NavigationPane
+    pages={pages}
+    currentPage={currentPage}
+    grpcRunning={runtimeStatus.grpc_running}
+    onSelect={selectPage}
+  />
 
   <CenterPaneContent
     currentPage={currentPage}
