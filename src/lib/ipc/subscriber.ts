@@ -28,10 +28,33 @@ export interface MqttMonitorMessageDto {
   retain: boolean;
 }
 
+export interface MqttMonitorTopicNodeDto {
+  id: string;
+  label: string;
+  fullPath: string;
+  hasChildren: boolean;
+  latestMessage: MqttMonitorMessageDto | null;
+  children: MqttMonitorTopicNodeDto[];
+}
+
 export interface StartMqttMonitorRequest {
   publisher_id: string;
   topic_filter: string;
   include_sys: boolean;
+}
+
+export interface GetMqttMonitorTreeRequest {
+  expanded_paths: string[];
+  include_all?: boolean;
+}
+
+export interface GetMqttMonitorTopicDetailRequest {
+  full_path: string;
+}
+
+export interface MqttMonitorTopicDetailDto {
+  fullPath: string;
+  latestMessage: MqttMonitorMessageDto | null;
 }
 
 type MqttMonitorStatusDtoRaw = {
@@ -77,6 +100,27 @@ export async function getMqttMonitorStatus(): Promise<MqttMonitorStatusDto> {
 
 export async function listMqttMonitorMessages(): Promise<MqttMonitorMessageDto[]> {
   return invoke('list_mqtt_monitor_messages');
+}
+
+export async function getMqttMonitorTree(
+  req: GetMqttMonitorTreeRequest,
+): Promise<MqttMonitorTopicNodeDto[]> {
+  return invoke('get_mqtt_monitor_tree', {
+    req: {
+      expandedPaths: req.expanded_paths,
+      includeAll: req.include_all ?? false,
+    },
+  });
+}
+
+export async function getMqttMonitorTopicDetail(
+  req: GetMqttMonitorTopicDetailRequest,
+): Promise<MqttMonitorTopicDetailDto> {
+  return invoke('get_mqtt_monitor_topic_detail', {
+    req: {
+      fullPath: req.full_path,
+    },
+  });
 }
 
 export async function clearMqttMonitorMessages(): Promise<void> {

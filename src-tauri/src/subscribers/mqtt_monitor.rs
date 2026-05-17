@@ -35,6 +35,7 @@ impl MqttMonitor {
         &mut self,
         status: std::sync::Arc<tokio::sync::RwLock<MqttMonitorStatusState>>,
         messages: std::sync::Arc<tokio::sync::RwLock<std::collections::VecDeque<MqttMonitorMessageState>>>,
+        topics: std::sync::Arc<tokio::sync::RwLock<std::collections::HashMap<String, MqttMonitorMessageState>>>,
         options: MqttMonitorStartOptions,
     ) -> Result<()> {
         self.stop(status.clone()).await?;
@@ -42,6 +43,11 @@ impl MqttMonitor {
         {
             let mut buffer = messages.write().await;
             buffer.clear();
+        }
+
+        {
+            let mut topic_map = topics.write().await;
+            topic_map.clear();
         }
 
         {
@@ -79,6 +85,7 @@ impl MqttMonitor {
         let (stop_tx, mut stop_rx) = oneshot::channel();
         let status_handle = status.clone();
         let messages_handle = messages.clone();
+        let topics_handle = topics.clone();
         let publisher_id = options.publisher_id.clone();
         let broker = options.broker.clone();
         let topic_filter = options.topic_filter.clone();
@@ -121,7 +128,15 @@ impl MqttMonitor {
                                     while buffer.len() > MAX_MONITOR_MESSAGES {
                                         buffer.pop_front();
                                     }
+                                }
 
+                                {
+                                    let mut topic_map = topics_handle.write().await;
+                                    topic_map.insert(message.topic.clone(), message.clone());
+                                }
+
+                                {
+                                    let buffer = messages_handle.read().await;
                                     let mut state = status_handle.write().await;
                                     state.message_count = buffer.len();
                                     state.last_message_at = Some(message.timestamp.clone());

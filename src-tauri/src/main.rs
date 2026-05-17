@@ -57,6 +57,8 @@ fn main() {
             commands::subscriber::monitor::list_mqtt_monitor_publishers,
             commands::subscriber::monitor::get_mqtt_monitor_status,
             commands::subscriber::monitor::list_mqtt_monitor_messages,
+            commands::subscriber::monitor::get_mqtt_monitor_tree,
+            commands::subscriber::monitor::get_mqtt_monitor_topic_detail,
             commands::subscriber::monitor::clear_mqtt_monitor_messages,
             commands::subscriber::monitor::start_mqtt_monitor,
             commands::subscriber::monitor::stop_mqtt_monitor,

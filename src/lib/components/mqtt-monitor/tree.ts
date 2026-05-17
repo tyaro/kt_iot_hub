@@ -1,76 +1,57 @@
-import type { MqttMonitorMessageDto } from '$lib/ipc';
+import type { MqttMonitorTopicNodeDto } from '$lib/ipc';
 
-export type TopicTreeNode = {
-  id: string;
-  label: string;
-  fullPath: string;
-  latestMessage: MqttMonitorMessageDto | null;
-  children: TopicTreeNode[];
-};
+export type TopicTreeNode = MqttMonitorTopicNodeDto;
 
-type MutableNode = {
-  id: string;
-  label: string;
-  fullPath: string;
-  latestMessage: MqttMonitorMessageDto | null;
-  children: Map<string, MutableNode>;
-};
-
-function createNode(label: string, fullPath: string): MutableNode {
-  return {
-    id: fullPath || label,
-    label,
-    fullPath,
-    latestMessage: null,
-    children: new Map(),
-  };
-}
-
-function freezeNode(node: MutableNode): TopicTreeNode {
-  return {
-    id: node.id,
-    label: node.label,
-    fullPath: node.fullPath,
-    latestMessage: node.latestMessage,
-    children: Array.from(node.children.values())
-      .map(freezeNode)
-      .sort((a, b) => a.label.localeCompare(b.label)),
-  };
-}
-
-export function buildTopicTree(messages: MqttMonitorMessageDto[]): TopicTreeNode[] {
-  const roots = new Map<string, MutableNode>();
-
-  for (const message of messages) {
-    const segments = message.topic.split('/').filter(Boolean);
-    if (segments.length === 0) {
-      continue;
-    }
-
-    let currentMap = roots;
-    let currentNode: MutableNode | null = null;
-    let currentPath = '';
-
-    for (const segment of segments) {
-      currentPath = currentPath ? `${currentPath}/${segment}` : segment;
-      let nextNode = currentMap.get(segment);
-      if (!nextNode) {
-        nextNode = createNode(segment, currentPath);
-        currentMap.set(segment, nextNode);
-      }
-      nextNode.latestMessage = message;
-      currentNode = nextNode;
-      currentMap = nextNode.children;
-    }
-
-    if (currentNode) {
-      currentNode.latestMessage = message;
-    }
+function compareTopicNodes(a: TopicTreeNode, b: TopicTreeNode): number {
+  const aIsSys = a.label === '$SYS';
+  const bIsSys = b.label === '$SYS';
+  if (aIsSys !== bIsSys) {
+    return aIsSys ? -1 : 1;
   }
 
-  return Array.from(roots.values())
-    .map(freezeNode)
-    .sort((a, b) => a.label.localeCompare(b.label));
+  const left = a.label.toLowerCase();
+  const right = b.label.toLowerCase();
+
+  if (left < right) {
+    return -1;
+  }
+  if (left > right) {
+    return 1;
+  }
+
+  return a.label.localeCompare(b.label);
+}
+
+function collectNodesByPath(nodes: TopicTreeNode[], target = new Map<string, TopicTreeNode>()): Map<string, TopicTreeNode> {
+  for (const node of nodes) {
+    target.set(node.fullPath, node);
+    collectNodesByPath(node.children, target);
+  }
+  return target;
+}
+
+function mergeNodeValues(current: TopicTreeNode, nextByPath: Map<string, TopicTreeNode>): TopicTreeNode {
+  const nextNode = nextByPath.get(current.fullPath);
+
+  return {
+    ...current,
+    hasChildren: nextNode?.hasChildren ?? current.hasChildren,
+    latestMessage: nextNode?.latestMessage ?? current.latestMessage,
+    children: mergeTreeValues(current.children, nextNode?.children ?? []),
+  };
+}
+
+export function mergeTreeValues(current: TopicTreeNode[], next: TopicTreeNode[]): TopicTreeNode[] {
+  if (current.length === 0) {
+    return [...next].sort(compareTopicNodes);
+  }
+
+  const nextByPath = collectNodesByPath(next);
+  const mergedCurrent = current.map((node) => mergeNodeValues(node, nextByPath));
+  const currentPaths = new Set(current.map((node) => node.fullPath));
+  const appendedNodes = next.filter((node) => !currentPaths.has(node.fullPath));
+
+  return [...mergedCurrent, ...appendedNodes].sort(compareTopicNodes);
 }
 
 export function findNodeByPath(nodes: TopicTreeNode[], fullPath: string | null): TopicTreeNode | null {
@@ -91,4 +72,21 @@ export function findNodeByPath(nodes: TopicTreeNode[], fullPath: string | null):
   }
 
   return null;
+}
+
+export function listAncestorPaths(fullPath: string | null): string[] {
+  if (!fullPath) {
+    return [];
+  }
+
+  const segments = fullPath.split('/').filter(Boolean);
+  const ancestors: string[] = [];
+  let currentPath = '';
+
+  for (const segment of segments.slice(0, -1)) {
+    currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+    ancestors.push(currentPath);
+  }
+
+  return ancestors;
 }

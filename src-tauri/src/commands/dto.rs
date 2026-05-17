@@ -106,12 +106,43 @@ pub struct MqttMonitorMessageDto {
     pub retain: bool,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MqttMonitorTopicNodeDto {
+    pub id: String,
+    pub label: String,
+    pub full_path: String,
+    pub has_children: bool,
+    pub latest_message: Option<MqttMonitorMessageDto>,
+    pub children: Vec<MqttMonitorTopicNodeDto>,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StartMqttMonitorRequest {
     pub publisher_id: String,
     pub topic_filter: String,
     pub include_sys: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetMqttMonitorTreeRequest {
+    pub expanded_paths: Vec<String>,
+    pub include_all: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetMqttMonitorTopicDetailRequest {
+    pub full_path: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MqttMonitorTopicDetailDto {
+    pub full_path: String,
+    pub latest_message: Option<MqttMonitorMessageDto>,
 }
 
 /// ドライバUI起動リクエスト DTO

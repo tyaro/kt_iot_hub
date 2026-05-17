@@ -66,6 +66,8 @@ pub struct AppState {
     pub mqtt_monitor_status: std::sync::Arc<tokio::sync::RwLock<MqttMonitorStatusState>>,
     pub mqtt_monitor_messages:
         std::sync::Arc<tokio::sync::RwLock<VecDeque<MqttMonitorMessageState>>>,
+    pub mqtt_monitor_topics:
+        std::sync::Arc<tokio::sync::RwLock<HashMap<String, MqttMonitorMessageState>>>,
 }
 
 impl AppState {
@@ -94,6 +96,7 @@ impl AppState {
             mqtt_monitor: std::sync::Arc::new(tokio::sync::Mutex::new(MqttMonitor::new())),
             mqtt_monitor_status: std::sync::Arc::new(tokio::sync::RwLock::new(MqttMonitorStatusState::default())),
             mqtt_monitor_messages: std::sync::Arc::new(tokio::sync::RwLock::new(VecDeque::new())),
+            mqtt_monitor_topics: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
         }
     }
 }
