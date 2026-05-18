@@ -1,183 +1,11 @@
-use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::io::{BufRead, Write};
 
 use anyhow::{anyhow, Context, Result};
 
-use crate::joywatcher_artifacts::JoyWatcherArtifacts;
-use crate::path_utils::{bridge_exe_candidates, BRIDGE_EXE_NAME};
-
-pub struct JoyWatcherBridgeProcess {
-    child: Child,
-    stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
-    connected: bool,
-    connection: Option<BridgeConnectionSettings>,
-    mode: BridgeMode,
-    exe_path: PathBuf,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct BridgeConnectionSettings {
-    pub endpoint: Option<String>,
-    pub user_id: i32,
-    pub password: String,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct BridgeReadValue {
-    pub native_tag_id: i32,
-    pub quality: String,
-    pub value: BridgeValue,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum BridgeValue {
-    Bool(bool),
-    Number(f64),
-    String(String),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BridgeMode {
-    Mock,
-    Dll,
-}
-
-impl BridgeMode {
-    fn as_arg(self) -> &'static str {
-        match self {
-            Self::Mock => "mock",
-            Self::Dll => "dll",
-        }
-    }
-}
+use super::{BridgeReadValue, BridgeValue, JoyWatcherBridgeProcess};
 
 impl JoyWatcherBridgeProcess {
-    pub fn start(artifacts: &JoyWatcherArtifacts) -> Result<Self> {
-        let exe_path = resolve_bridge_exe_path()?.ok_or_else(|| {
-            anyhow!(
-                "JoyWatcher bridge executable not found. Looked for '{}' in known bridge locations.",
-                BRIDGE_EXE_NAME
-            )
-        })?;
-
-        let mode = if artifacts.dll_path.is_some() {
-            BridgeMode::Dll
-        } else {
-            BridgeMode::Mock
-        };
-
-        let mut command = Command::new(&exe_path);
-        command
-            .arg("--mode")
-            .arg(mode.as_arg())
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit());
-
-        if let (BridgeMode::Dll, Some(dll_path)) = (mode, artifacts.dll_path.as_ref()) {
-            command.arg("--dll-path").arg(dll_path);
-        }
-
-        let mut child = command
-            .spawn()
-            .with_context(|| format!("failed to spawn JoyWatcher bridge: {}", exe_path.display()))?;
-
-        let stdin = child
-            .stdin
-            .take()
-            .ok_or_else(|| anyhow!("failed to capture bridge stdin"))?;
-        let stdout = child
-            .stdout
-            .take()
-            .ok_or_else(|| anyhow!("failed to capture bridge stdout"))?;
-
-        Ok(Self {
-            child,
-            stdin,
-            stdout: BufReader::new(stdout),
-            connected: false,
-            connection: None,
-            mode,
-            exe_path,
-        })
-    }
-
-    pub fn exe_path(&self) -> &Path {
-        &self.exe_path
-    }
-
-    pub fn mode(&self) -> BridgeMode {
-        self.mode
-    }
-
-    pub fn ping(&mut self) -> Result<String> {
-        let response = self.send_request(r#"{"type":"ping"}"#)?;
-        if !response.contains(r#""type":"pong""#) {
-            return Err(anyhow!("unexpected bridge ping response: {}", response));
-        }
-        Ok(response)
-    }
-
-    pub fn ensure_connection(&mut self, settings: &BridgeConnectionSettings) -> Result<()> {
-        if self.connected && self.connection.as_ref() == Some(settings) {
-            return Ok(());
-        }
-
-        if self.connected {
-            self.disconnect()?;
-        }
-
-        self.connect(settings)?;
-        Ok(())
-    }
-
-    pub fn connect(&mut self, settings: &BridgeConnectionSettings) -> Result<String> {
-        let mut request = String::from("{\"type\":\"connect\"");
-        if let Some(endpoint) = settings.endpoint.as_deref() {
-            request.push_str(&format!(",\"endpoint\":\"{}\"", escape_json_string(endpoint)));
-        }
-        request.push_str(&format!(",\"user_id\":{}", settings.user_id));
-        request.push_str(&format!(",\"password\":\"{}\"}}", escape_json_string(&settings.password)));
-
-        let response = self.send_request(&request)?;
-        if !response.contains(r#""type":"connected""#) {
-            return Err(anyhow!("unexpected bridge connect response: {}", response));
-        }
-        self.connected = true;
-        self.connection = Some(settings.clone());
-        Ok(response)
-    }
-
-    pub fn disconnect(&mut self) -> Result<String> {
-        let response = self.send_request(r#"{"type":"disconnect"}"#)?;
-        if !response.contains(r#""type":"disconnected""#) {
-            return Err(anyhow!("unexpected bridge disconnect response: {}", response));
-        }
-        self.connected = false;
-        self.connection = None;
-        Ok(response)
-    }
-
-    pub fn read_tags(&mut self, tag_ids: &[i32]) -> Result<Vec<BridgeReadValue>> {
-        if tag_ids.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let request = format!(
-            r#"{{"type":"read","request_id":"joywatcher-read","tag_ids":[{}]}}"#,
-            tag_ids
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(",")
-        );
-        let response = self.send_request(&request)?;
-        parse_read_result(&response)
-    }
-
-    fn send_request(&mut self, request: &str) -> Result<String> {
+    pub(super) fn send_request(&mut self, request: &str) -> Result<String> {
         writeln!(self.stdin, "{}", request).context("failed to write bridge request")?;
         self.stdin.flush().context("failed to flush bridge stdin")?;
 
@@ -206,28 +34,7 @@ impl JoyWatcherBridgeProcess {
     }
 }
 
-impl Drop for JoyWatcherBridgeProcess {
-    fn drop(&mut self) {
-        if self.connected {
-            let _ = self.disconnect();
-        }
-
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-    }
-}
-
-fn resolve_bridge_exe_path() -> Result<Option<PathBuf>> {
-    for candidate in bridge_exe_candidates() {
-        if candidate.exists() {
-            return Ok(Some(candidate));
-        }
-    }
-
-    Ok(None)
-}
-
-fn parse_read_result(response: &str) -> Result<Vec<BridgeReadValue>> {
+pub(super) fn parse_read_result(response: &str) -> Result<Vec<BridgeReadValue>> {
     if !response.contains(r#""type":"readResult""#) {
         return Err(anyhow!("unexpected bridge read response: {}", response));
     }
@@ -342,7 +149,12 @@ fn extract_field_value<'a>(source: &'a str, field_name: &str) -> Option<&'a str>
     }
 }
 
-fn extract_bracketed_value<'a>(source: &'a str, start: usize, open: char, close: char) -> Option<&'a str> {
+fn extract_bracketed_value<'a>(
+    source: &'a str,
+    start: usize,
+    open: char,
+    close: char,
+) -> Option<&'a str> {
     let mut depth = 0usize;
     let mut in_string = false;
     let mut escape = false;
@@ -408,7 +220,7 @@ fn parse_bridge_value(value: &str) -> Option<BridgeValue> {
     trimmed.parse::<f64>().ok().map(BridgeValue::Number)
 }
 
-fn escape_json_string(value: &str) -> String {
+pub(super) fn escape_json_string(value: &str) -> String {
     let mut escaped = String::with_capacity(value.len());
     for ch in value.chars() {
         match ch {
@@ -426,28 +238,6 @@ fn escape_json_string(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn bridge_candidates_prioritize_driver_ui_and_x86_target_paths() {
-        let candidates = bridge_exe_candidates();
-
-        let driver_ui_index = candidates
-            .iter()
-            .position(|path| path.ends_with(Path::new(r"driver-ui\joywatcher\joywatcher-bridge-x86.exe")))
-            .expect("driver-ui candidate should exist");
-        let x86_debug_index = candidates
-            .iter()
-            .position(|path| path.ends_with(Path::new(r"target\i686-pc-windows-msvc\debug\joywatcher-bridge-x86.exe")))
-            .expect("x86 target candidate should exist");
-        let x64_debug_index = candidates
-            .iter()
-            .position(|path| path.ends_with(Path::new(r"target\debug\joywatcher-bridge-x86.exe")));
-
-        assert!(driver_ui_index < x86_debug_index || driver_ui_index == x86_debug_index.saturating_sub(1));
-        if let Some(x64_debug_index) = x64_debug_index {
-            assert!(x86_debug_index < x64_debug_index);
-        }
-    }
 
     #[test]
     fn parse_read_result_decodes_number_string_and_bool_values() {

@@ -627,7 +627,7 @@ components/
 | R-FE-09 | Copilot | 完了（ローカル） | - | 2026-05-18: driver UI静的資産をmodule化し共通tauriユーティリティへ重複集約 |
 | R-RS-01 | Copilot | 完了（ローカル） | - | 2026-05-18: `dll_api.rs` を高レベルAPIへ整理し、FFI/シンボル解決を `dll_ffi.rs` / `dll_symbols.rs` へ分離 |
 | R-RS-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `joywatcher_bridge_client.rs` を `commands.rs` / `protocol.rs` / `process.rs` に分割 |
-| R-RS-03 | - | 未着手 | - | - |
+| R-RS-03 | Copilot | 完了（ローカル） | - | 2026-05-18: `joywatcher_bridge.rs` を `process.rs` / `protocol.rs` / `commands.rs` に分割 |
 | R-DEDUP-01 | Copilot | 完了（ローカル） | - | 2026-05-18: `write_tags_toml_atomic` 重複定義を排除 |
 | R-DEDUP-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/config_io` へ TOML I/O 共通化 |
 | R-DEDUP-03 | Copilot | 完了（ローカル） | - | 2026-05-18: `ErrorResponse` コンストラクタ共通化と `commands` 側置換 |
