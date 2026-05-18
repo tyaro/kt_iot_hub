@@ -12,3 +12,4 @@ pub mod subscriber;
 pub mod tag;
 
 pub(crate) mod config_io;
+pub(crate) mod util;

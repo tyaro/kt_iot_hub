@@ -3,14 +3,7 @@ use crate::config::{DriverConfig, ScanGroupConfig, TagConfig};
 use crate::core::Tag;
 
 pub(super) fn normalize_optional_string(value: Option<String>) -> Option<String> {
-    value.and_then(|v| {
-        let trimmed = v.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    })
+    crate::commands::util::normalize_optional_string(value)
 }
 
 pub(super) fn build_driver_config(

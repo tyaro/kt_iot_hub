@@ -1,4 +1,5 @@
 use super::dto::{ErrorResponse, RuntimeStatusDto, StartRuntimeServicesRequest};
+use super::util::normalize_optional_string;
 use crate::app_state::AppState;
 use crate::grpc;
 use tracing::info;
@@ -191,17 +192,6 @@ pub async fn start_grpc_server(state: &AppState) -> Result<(), ErrorResponse> {
 
 async fn clear_last_error(state: &AppState) {
     state.runtime_status.write().await.last_error = None;
-}
-
-fn normalize_optional_string(value: Option<String>) -> Option<String> {
-    value.and_then(|v| {
-        let trimmed = v.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    })
 }
 
 async fn read_runtime_status(state: &AppState) -> RuntimeStatusDto {
