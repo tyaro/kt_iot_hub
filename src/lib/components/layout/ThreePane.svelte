@@ -39,6 +39,7 @@
     ensureDriverUiNotBusy as ensureDriverUiNotBusyOrchestrated,
     syncSelectionAfterDriverSaved,
   } from './three-pane/orchestrators/tagManagement';
+  import { buildThreePaneControllerDeps } from './three-pane/orchestrators/controllerDeps';
   import {
     scanGroupsStore,
     tagsStore,
@@ -157,13 +158,11 @@
     tagUiController,
     deletionController,
     driverUiSettingsController,
-  } = createThreePaneControllers({
-    common: {
+  } = createThreePaneControllers(
+    buildThreePaneControllerDeps({
       notify,
       extractErrorMessage,
       confirmAction,
-    },
-    data: {
       getDrivers: () => $driversStore.items,
       getScanGroups: () => $scanGroupsStore.items,
       reloadTags,
@@ -171,8 +170,6 @@
       reloadScanGroups,
       reloadAllRegistry,
       reloadTagManagementData,
-    },
-    selectionState: {
       getSelectionState: () => ({
         selectedTag,
         selectedDriver,
@@ -207,8 +204,6 @@
       getSelectedTag: () => selectedTag,
       getSelectedDriver: () => selectedDriver,
       getSelectedScanGroup: () => selectedScanGroup,
-    },
-    runtime: {
       isRuntimeBusy: () => runtimeBusy,
       setRuntimeBusy: (busy) => {
         runtimeBusy = busy;
@@ -219,8 +214,6 @@
       setDashboardMessage: (message) => {
         dashboardMessage = message;
       },
-    },
-    driverUi: {
       ensureDriverUiNotBusy,
       setTagActionMessage,
       setDriverUiPolling: (polling) => {
@@ -233,8 +226,6 @@
       importDriverUiResultApi: importDriverUiResult,
       launchDriverUiForDriverApi: launchDriverUi,
       launchDriverUiForTypeApi: launchDriverUi,
-    },
-    tagFlow: {
       getDriversCount: () => $driversStore.items.length,
       isDriversLoading: () => $driversStore.loading,
       setDriverPickerOpen: (open) => {
@@ -243,16 +234,12 @@
       setDriverTypePickerOpen: (open) => {
         driverTypePickerOpen = open;
       },
-    },
-    deletion: {
       getDeletingTag: () => deletingTag,
       setDeletingTag: (value) => {
         deletingTag = value;
       },
       deleteTagApi: deleteTag,
       deleteDriverApi: deleteDriver,
-    },
-    settings: {
       getDriverUiBaseDirInput: () => driverUiBaseDirInput,
       setDriverUiBaseDirInput: (value) => {
         driverUiBaseDirInput = value;
@@ -273,8 +260,8 @@
         });
         return typeof selected === 'string' ? selected : null;
       },
-    },
-  });
+    }),
+  );
 
   function selectPage(pageId: string) {
     if (!isPageId(pageId)) {
@@ -306,6 +293,113 @@
   const scanCycleHealthSummary = $derived.by<ScanCycleHealthSummary>(() =>
     computeScanCycleHealthSummary($scanGroupsStore.items),
   );
+
+  function handleNavigateTags() {
+    selectPage('tags');
+  }
+
+  function handleStartServers() {
+    return runtimeController.runAction(
+      () => startRuntimeServices({ driver_ui_base_dir: driverUiBaseDirSaved }),
+      'ドライバ / MQTT を開始しました。',
+      'ドライバ / MQTT の開始に失敗しました',
+    );
+  }
+
+  function handleStopServers() {
+    return runtimeController.runAction(
+      stopRuntimeServices,
+      'ドライバ / MQTT を停止しました。',
+      'ドライバ / MQTT の停止に失敗しました',
+    );
+  }
+
+  function handleConfirmDialogConfirm() {
+    closeConfirmDialog(true);
+  }
+
+  function handleConfirmDialogCancel() {
+    closeConfirmDialog(false);
+  }
+
+  const navigationPaneProps = $derived.by(() => ({
+    pages,
+    currentPage,
+    grpcRunning: runtimeStatus.grpc_running,
+    onSelect: selectPage,
+  }));
+
+  const centerPaneProps = $derived.by(() => ({
+    currentPage,
+    tagCount: $tagsStore.items.length,
+    driverCount: $driversStore.items.length,
+    enabledDriverCount: $driversStore.items.filter((d: DriverDto) => d.enabled).length,
+    runtimeStatus,
+    appMetrics,
+    driverMetrics,
+    runtimeBusy,
+    dashboardMessage,
+    scanCycleHealthSummary,
+    driverUiPolling,
+    tagActionMessage,
+    selectedTagId: selectedTag?.id ?? null,
+    selectedDriverId: selectedDriver?.id ?? null,
+    selectedScanGroupId: selectedScanGroup?.id ?? null,
+    driverUiBaseDirInput,
+    driverUiBaseDirSaved,
+    settingsMessage,
+    onNavigateTags: handleNavigateTags,
+    onOpenMqttMonitor: openMqttMonitorWindow,
+    onStartServers: handleStartServers,
+    onStopServers: handleStopServers,
+    onNewDriver: tagUiController.newDriver,
+    onSelectTag: selectionController.onTagSelect,
+    onSelectDriver: selectionController.onDriverSelect,
+    onSelectScanGroup: selectionController.onScanGroupSelect,
+    onRequestNewTag: tagUiController.requestNewTagForDriver,
+    onRequestEditDriver: tagUiController.requestEditDriver,
+    onRequestDeleteDriver: deletionController.requestDeleteDriver,
+    onRequestEditTag: tagUiController.requestEditTag,
+    onRequestDeleteTag: deletionController.requestDeleteTag,
+    onDriverUiBaseDirInput: driverUiSettingsController.setInputValue,
+    onPickDriverUiBaseDir: driverUiSettingsController.pick,
+    onSaveDriverUiBaseDir: driverUiSettingsController.save,
+    onClearDriverUiBaseDir: driverUiSettingsController.clear,
+  }));
+
+  const threePaneOverlayProps = $derived.by(() => ({
+    currentPage,
+    tagMode,
+    selectedTag,
+    selectedDriver,
+    selectedScanGroup,
+    editorDriverId,
+    onTagEditorDone: selectionController.onTagEditorDone,
+    onTagEditorCancel: selectionController.onTagEditorCancel,
+    onTagDetailEdit: tagUiController.requestEditTag,
+    onTagDetailDelete: deletionController.requestDeleteTag,
+    onTagDetailClose: selectionController.onTagDetailClose,
+    onDriverDelete: deletionController.requestDeleteDriver,
+    onDriverDone: handleDriverSaved,
+    driverPickerOpen,
+    drivers: $driversStore.items,
+    driversLoading: $driversStore.loading,
+    driversError: $driversStore.error,
+    driverTypePickerOpen,
+    driverTypeOptions,
+    onReloadDrivers: reloadDrivers,
+    onCloseDriverPicker: tagUiController.closeDriverPicker,
+    onSelectDriver: tagUiController.onDriverPicked,
+    onCloseDriverTypePicker: tagUiController.closeDriverTypePicker,
+    onSelectDriverType: tagUiController.onDriverTypePicked,
+    confirmDialogOpen,
+    confirmDialogTitle,
+    confirmDialogMessage,
+    confirmDialogConfirmLabel,
+    confirmDialogCancelLabel,
+    onConfirmDialogConfirm: handleConfirmDialogConfirm,
+    onConfirmDialogCancel: handleConfirmDialogCancel,
+  }));
 
   $effect(() => {
     if (currentPage === 'dashboard' || currentPage === 'tags') {
@@ -348,84 +442,11 @@
 </script>
 
 <div class="three-pane">
-  <NavigationPane
-    pages={pages}
-    currentPage={currentPage}
-    grpcRunning={runtimeStatus.grpc_running}
-    onSelect={selectPage}
-  />
+  <NavigationPane {...navigationPaneProps} />
 
-  <CenterPaneContent
-    currentPage={currentPage}
-    tagCount={$tagsStore.items.length}
-    driverCount={$driversStore.items.length}
-    enabledDriverCount={$driversStore.items.filter((d: DriverDto) => d.enabled).length}
-    {runtimeStatus}
-    {appMetrics}
-    {driverMetrics}
-    {runtimeBusy}
-    {dashboardMessage}
-    {scanCycleHealthSummary}
-    {driverUiPolling}
-    {tagActionMessage}
-    selectedTagId={selectedTag?.id ?? null}
-    selectedDriverId={selectedDriver?.id ?? null}
-    selectedScanGroupId={selectedScanGroup?.id ?? null}
-    {driverUiBaseDirInput}
-    {driverUiBaseDirSaved}
-    {settingsMessage}
-    onNavigateTags={() => selectPage('tags')}
-    onOpenMqttMonitor={openMqttMonitorWindow}
-    onStartServers={() => runtimeController.runAction(() => startRuntimeServices({ driver_ui_base_dir: driverUiBaseDirSaved }), 'ドライバ / MQTT を開始しました。', 'ドライバ / MQTT の開始に失敗しました')}
-    onStopServers={() => runtimeController.runAction(stopRuntimeServices, 'ドライバ / MQTT を停止しました。', 'ドライバ / MQTT の停止に失敗しました')}
-    onNewDriver={tagUiController.newDriver}
-    onSelectTag={selectionController.onTagSelect}
-    onSelectDriver={selectionController.onDriverSelect}
-    onSelectScanGroup={selectionController.onScanGroupSelect}
-    onRequestNewTag={tagUiController.requestNewTagForDriver}
-    onRequestEditDriver={tagUiController.requestEditDriver}
-    onRequestDeleteDriver={deletionController.requestDeleteDriver}
-    onRequestEditTag={tagUiController.requestEditTag}
-    onRequestDeleteTag={deletionController.requestDeleteTag}
-    onDriverUiBaseDirInput={driverUiSettingsController.setInputValue}
-    onPickDriverUiBaseDir={driverUiSettingsController.pick}
-    onSaveDriverUiBaseDir={driverUiSettingsController.save}
-    onClearDriverUiBaseDir={driverUiSettingsController.clear}
-  />
+  <CenterPaneContent {...centerPaneProps} />
 
-  <ThreePaneOverlays
-    {currentPage}
-    {tagMode}
-    {selectedTag}
-    {selectedDriver}
-    {selectedScanGroup}
-    {editorDriverId}
-    onTagEditorDone={selectionController.onTagEditorDone}
-    onTagEditorCancel={selectionController.onTagEditorCancel}
-    onTagDetailEdit={tagUiController.requestEditTag}
-    onTagDetailDelete={deletionController.requestDeleteTag}
-    onTagDetailClose={selectionController.onTagDetailClose}
-    onDriverDelete={deletionController.requestDeleteDriver}
-    onDriverDone={handleDriverSaved}
-    {driverPickerOpen}
-    drivers={$driversStore.items}
-    driversLoading={$driversStore.loading}
-    driversError={$driversStore.error}
-    {driverTypePickerOpen}
-    {driverTypeOptions}
-    onReloadDrivers={reloadDrivers}
-    onCloseDriverPicker={tagUiController.closeDriverPicker}
-    onSelectDriver={tagUiController.onDriverPicked}
-    onCloseDriverTypePicker={tagUiController.closeDriverTypePicker}
-    onSelectDriverType={tagUiController.onDriverTypePicked}
-    {confirmDialogOpen}
-    confirmDialogTitle={confirmDialogTitle}
-    confirmDialogMessage={confirmDialogMessage}
-    confirmDialogConfirmLabel={confirmDialogConfirmLabel}
-    confirmDialogCancelLabel={confirmDialogCancelLabel}
-    onConfirmDialogConfirm={() => closeConfirmDialog(true)}
-    onConfirmDialogCancel={() => closeConfirmDialog(false)}
-  />
+  <ThreePaneOverlays {...threePaneOverlayProps} />
 </div>
 
 <style>
