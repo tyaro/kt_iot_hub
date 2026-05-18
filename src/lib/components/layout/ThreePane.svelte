@@ -371,6 +371,9 @@
       if (disposed) {
         return;
       }
+      if (currentPage === 'dashboard' || currentPage === 'tags') {
+        await reloadScanGroups();
+      }
       await runtimeController.refreshStatus(getRuntimeStatus);
       try {
         const metrics = await getAppMetrics();

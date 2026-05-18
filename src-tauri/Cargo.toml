@@ -45,6 +45,7 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 # Other utilities
 chrono = { version = "0.4", features = ["serde"] }
 sysinfo = "0.33"
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_Threading"] }
 kt_driver_ui_protocol = { path = "../packages/protocol-rs" }
 kt_driver_ui_host = { path = "../packages/driver-ui-host" }
 
