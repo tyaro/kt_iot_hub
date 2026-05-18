@@ -68,4 +68,10 @@ export async function reloadDrivers(): Promise<void> {
   }
 }
 
+export async function reloadAllRegistry(): Promise<void> {
+  await reloadDrivers();
+  await reloadScanGroups();
+  await reloadTags();
+}
+
 

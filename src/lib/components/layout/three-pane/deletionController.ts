@@ -12,6 +12,7 @@ export type CreateDeletionControllerDeps = {
   reloadTags: () => Promise<void>;
   reloadDrivers: () => Promise<void>;
   reloadScanGroups: () => Promise<void>;
+  reloadAllRegistry: () => Promise<void>;
   getSelectedTag: () => TagDto | null;
   getSelectedDriver: () => DriverDto | null;
   getSelectedScanGroup: () => ScanGroupDto | null;
@@ -54,9 +55,7 @@ export function createDeletionController(
       setMessage: deps.setMessage,
       confirmAction: deps.confirmAction,
       deleteDriverApi: deps.deleteDriverApi,
-      reloadDrivers: deps.reloadDrivers,
-      reloadScanGroups: deps.reloadScanGroups,
-      reloadTags: deps.reloadTags,
+      reloadAllRegistry: deps.reloadAllRegistry,
       selectedDriver: deps.getSelectedDriver(),
       selectedTag: deps.getSelectedTag(),
       selectedScanGroup: deps.getSelectedScanGroup(),

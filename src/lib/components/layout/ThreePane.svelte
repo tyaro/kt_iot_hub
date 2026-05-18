@@ -35,6 +35,7 @@
     reloadScanGroups,
     reloadTags,
     reloadDrivers,
+    reloadAllRegistry,
   } from '$lib/stores/index';
   import {
     checkDriverUiAvailable,
@@ -86,9 +87,7 @@
   }
 
   async function reloadTagManagementData() {
-    await reloadDrivers();
-    await reloadScanGroups();
-    await reloadTags();
+    await reloadAllRegistry();
   }
 
   async function handleDriverSaved(driverId?: string): Promise<DriverDto | null> {
@@ -195,6 +194,7 @@
       reloadTags,
       reloadDrivers,
       reloadScanGroups,
+      reloadAllRegistry,
       reloadTagManagementData,
     },
     selectionState: {

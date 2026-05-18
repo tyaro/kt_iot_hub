@@ -27,6 +27,7 @@ export type CreateThreePaneControllersDeps = {
     reloadTags: () => Promise<void>;
     reloadDrivers: () => Promise<void>;
     reloadScanGroups: () => Promise<void>;
+    reloadAllRegistry: () => Promise<void>;
     reloadTagManagementData: () => Promise<void>;
   };
   selectionState: {
@@ -189,6 +190,7 @@ export function createThreePaneControllers(deps: CreateThreePaneControllersDeps)
     reloadTags: data.reloadTags,
     reloadDrivers: data.reloadDrivers,
     reloadScanGroups: data.reloadScanGroups,
+    reloadAllRegistry: data.reloadAllRegistry,
     getSelectedTag: selectionState.getSelectedTag,
     getSelectedDriver: selectionState.getSelectedDriver,
     getSelectedScanGroup: selectionState.getSelectedScanGroup,

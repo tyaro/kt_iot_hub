@@ -63,9 +63,7 @@ export type DeleteDriverFlowDeps = {
   setMessage: (message: string) => void;
   confirmAction: (message: string) => Promise<boolean>;
   deleteDriverApi: (driverId: string) => Promise<void>;
-  reloadDrivers: () => Promise<void>;
-  reloadScanGroups: () => Promise<void>;
-  reloadTags: () => Promise<void>;
+  reloadAllRegistry: () => Promise<void>;
   selectedDriver: DriverDto | null;
   selectedTag: TagDto | null;
   selectedScanGroup: ScanGroupDto | null;
@@ -82,9 +80,7 @@ export async function runDeleteDriverFlow({
   setMessage,
   confirmAction,
   deleteDriverApi,
-  reloadDrivers,
-  reloadScanGroups,
-  reloadTags,
+  reloadAllRegistry,
   selectedDriver,
   selectedTag,
   selectedScanGroup,
@@ -105,9 +101,7 @@ export async function runDeleteDriverFlow({
 
   try {
     await deleteDriverApi(driverId);
-    await reloadDrivers();
-    await reloadScanGroups();
-    await reloadTags();
+    await reloadAllRegistry();
 
     if (selectedDriver?.id === driverId) {
       clearSelectedDriver();

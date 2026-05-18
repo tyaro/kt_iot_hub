@@ -1,6 +1,6 @@
 <script lang="ts">
   import { listDrivers, saveDriver, type DriverDto, type SaveDriverRequest } from '$lib/ipc/index';
-  import { reloadDrivers, reloadScanGroups, reloadTags } from '$lib/stores/index';
+  import { reloadAllRegistry } from '$lib/stores/index';
 
   interface Props {
     driver?: DriverDto | null;
@@ -78,9 +78,7 @@
     errorMsg = '';
     try {
       await saveDriver(form);
-      await reloadDrivers();
-      await reloadScanGroups();
-      await reloadTags();
+      await reloadAllRegistry();
 
       const driverId = form.id.trim();
       const refreshedDrivers = await listDrivers();
