@@ -608,7 +608,7 @@ components/
 ## 4. 進行ログ（着手者が更新）
 
 | タスク | 着手者 | 状態 | コミット / PR | 備考 |
-| --- | --- | --- | --- | --- |  |
+| --- | --- | --- | --- | --- |  
 | R-BE-01 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/dto.rs` を `commands/dto/` へ分割 |
 | R-BE-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/driver/ui_launcher.rs` を `ui_launcher/` へ分割 |
 | R-BE-03 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/driver/import.rs` を `import/` へ分割 |
@@ -648,7 +648,14 @@ components/
 > 仕様の齟齬・隠れた依存・追加で潰すべき問題をここに記録する。
 > 本リファクタの範囲外（=機能変更/挙動変更）と判断したものは **`OUT-OF-SCOPE`** ラベルを付け、別タスク化提案する。
 
-- (空)
+- 2026-05-18 実行ログ（ローカル）
+  - `npm run check`: ✅ 通過（svelte-check: 0 errors / 0 warnings）
+  - `npm run build`: ✅ 通過
+  - `cargo test` (`src-tauri`): ✅ 通過（17 passed, 0 failed）
+  - `npm run lint`: ❌ 失敗（既存の未使用変数検出。例: `apps/joywatcher/ui/assets/app.js` の `hasImportedTags`、`apps/postgres/ui/assets/app.js` の `currentStep`）
+  - `cargo fmt -- --check` (`src-tauri`): ❌ 失敗（既存の整形差分）
+  - `cargo clippy --all-targets --all-features -- -D warnings` (`src-tauri`): ❌ 失敗（既存の `dead_code` 警告を `-D warnings` でエラー化。例: `src/app_state/app_cpu.rs` の `last_driver_io_samples`）
+- OUT-OF-SCOPE: 上記 `lint` / `fmt` / `clippy` の失敗は、今回の「ドキュメント追記 + 実行確認」依頼範囲では修正未実施。別タスクでのベースライン是正が必要。
 
 ---
 
