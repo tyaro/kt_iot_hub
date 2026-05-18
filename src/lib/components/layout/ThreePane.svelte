@@ -29,6 +29,17 @@
     type SelectionState,
   } from './three-pane/handlers';
   import {
+    computeScanCycleHealthSummary,
+    createInitialDashboardMetrics,
+    refreshDashboardMetrics,
+    type DashboardMetrics,
+    type ScanCycleHealthSummary,
+  } from './three-pane/orchestrators/dashboard';
+  import {
+    ensureDriverUiNotBusy as ensureDriverUiNotBusyOrchestrated,
+    syncSelectionAfterDriverSaved,
+  } from './three-pane/orchestrators/tagManagement';
+  import {
     scanGroupsStore,
     tagsStore,
     driversStore,
@@ -52,34 +63,17 @@
     stopRuntimeServices,
     type DriverDto,
     type RuntimeStatusDto,
-    type AppMetricsDto,
     type DriverMetricsDto,
     type ScanGroupDto,
     type TagDto,
   } from '$lib/ipc/index';
 
-  type ScanCycleHealthSummary = {
-    observedGroupCount: number;
-    delayedGroupCount: number;
-    avgDeltaRatio: number | null;
-    worstGroupLabel: string | null;
-    worstDeltaRatio: number | null;
-  };
-
-  type DashboardMetrics = AppMetricsDto & {
-    webview_memory_used_bytes: number | null;
-    webview_memory_total_bytes: number | null;
-    webview_memory_limit_bytes: number | null;
-  };
-
   let currentPage = $state<PageId>('dashboard');
 
   function ensureDriverUiNotBusy(): boolean {
-    if (!driverUiPolling) {
-      return true;
-    }
-    tagActionMessage = DRIVER_UI_IMPORT_BUSY_MESSAGE;
-    return false;
+    return ensureDriverUiNotBusyOrchestrated(driverUiPolling, DRIVER_UI_IMPORT_BUSY_MESSAGE, (msg) => {
+      tagActionMessage = msg;
+    });
   }
 
   function setTagActionMessage(message: string) {
@@ -92,23 +86,16 @@
 
   async function handleDriverSaved(driverId?: string): Promise<DriverDto | null> {
     await reloadTagManagementData();
-
-    if (!driverId) {
-      selectedDriver = null;
-      return null;
-    }
-
-    const refreshedDriver = $driversStore.items.find((item: DriverDto) => item.id === driverId) ?? null;
-    selectedDriver = refreshedDriver;
-
-    if (selectedTag?.driver_id !== driverId) {
-      selectedTag = null;
-    }
-    if (selectedScanGroup?.driver_id !== driverId) {
-      selectedScanGroup = null;
-    }
-
-    return refreshedDriver;
+    const next = syncSelectionAfterDriverSaved(
+      $driversStore.items,
+      driverId,
+      selectedTag,
+      selectedScanGroup,
+    );
+    selectedDriver = next.selectedDriver;
+    selectedTag = next.selectedTag;
+    selectedScanGroup = next.selectedScanGroup;
+    return next.selectedDriver;
   }
 
   let selectedTag = $state<TagDto | null>(null);
@@ -121,19 +108,7 @@
   let tagMode = $state<'detail' | 'new' | 'edit'>('detail');
   let editorDriverId = $state<string | null>(null);
   let runtimeStatus = $state<RuntimeStatusDto>({ ...defaultRuntimeStatus });
-  let appMetrics = $state<DashboardMetrics>({
-    sampled_at: new Date().toISOString(),
-    process_cpu_percent: null,
-    process_memory_bytes: null,
-    system_cpu_percent: null,
-    system_memory_used_bytes: null,
-    system_memory_total_bytes: null,
-    network_rx_bytes_per_sec: null,
-    network_tx_bytes_per_sec: null,
-    webview_memory_used_bytes: null,
-    webview_memory_total_bytes: null,
-    webview_memory_limit_bytes: null,
-  });
+  let appMetrics = $state<DashboardMetrics>(createInitialDashboardMetrics());
   let driverMetrics = $state<DriverMetricsDto[]>([]);
   let runtimeBusy = $state(false);
   let dashboardMessage = $state('');
@@ -328,36 +303,9 @@
     buildDriverTypeOptions($driversStore.items, knownDriverTypes, driverUiAvailableByType),
   );
 
-  const scanCycleHealthSummary = $derived.by<ScanCycleHealthSummary>(() => {
-    const observed = $scanGroupsStore.items.filter((group) => group.cycle_delta_ratio != null);
-    if (observed.length === 0) {
-      return {
-        observedGroupCount: 0,
-        delayedGroupCount: 0,
-        avgDeltaRatio: null,
-        worstGroupLabel: null,
-        worstDeltaRatio: null,
-      };
-    }
-
-    const delayed = observed.filter((group) => (group.cycle_delta_ratio ?? 0) > 0.30);
-    let worst = observed[0];
-    for (const item of observed) {
-      if ((item.cycle_delta_ratio ?? 0) > (worst.cycle_delta_ratio ?? 0)) {
-        worst = item;
-      }
-    }
-    const avgDeltaRatio =
-      observed.reduce((sum, group) => sum + (group.cycle_delta_ratio ?? 0), 0) / observed.length;
-
-    return {
-      observedGroupCount: observed.length,
-      delayedGroupCount: delayed.length,
-      avgDeltaRatio,
-      worstGroupLabel: `${worst.driver_id} / ${worst.id}`,
-      worstDeltaRatio: worst.cycle_delta_ratio ?? null,
-    };
-  });
+  const scanCycleHealthSummary = $derived.by<ScanCycleHealthSummary>(() =>
+    computeScanCycleHealthSummary($scanGroupsStore.items),
+  );
 
   $effect(() => {
     if (currentPage === 'dashboard' || currentPage === 'tags') {
@@ -371,29 +319,20 @@
       if (disposed) {
         return;
       }
-      if (currentPage === 'dashboard' || currentPage === 'tags') {
-        await reloadScanGroups();
-      }
-      await runtimeController.refreshStatus(getRuntimeStatus);
-      try {
-        const metrics = await getAppMetrics();
-        const dMetrics = await getDriverMetrics();
-        const perf = (globalThis.performance as unknown as { memory?: {
-          usedJSHeapSize?: number;
-          totalJSHeapSize?: number;
-          jsHeapSizeLimit?: number;
-        } }).memory;
-
-        appMetrics = {
-          ...metrics,
-          webview_memory_used_bytes: perf?.usedJSHeapSize ?? null,
-          webview_memory_total_bytes: perf?.totalJSHeapSize ?? null,
-          webview_memory_limit_bytes: perf?.jsHeapSizeLimit ?? null,
-        };
-        driverMetrics = dMetrics;
-      } catch {
-        // ダッシュボード表示に影響しないよう、メトリクス取得失敗は握りつぶす
-      }
+      await refreshDashboardMetrics({
+        currentPage,
+        reloadScanGroups,
+        refreshRuntimeStatus: runtimeController.refreshStatus,
+        getRuntimeStatus,
+        getAppMetrics,
+        getDriverMetrics,
+        setAppMetrics: (metrics) => {
+          appMetrics = metrics;
+        },
+        setDriverMetrics: (metrics) => {
+          driverMetrics = metrics;
+        },
+      });
     };
 
     void refresh();
