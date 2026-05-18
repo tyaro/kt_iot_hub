@@ -617,7 +617,7 @@ components/
 | R-BE-06 | - | 未着手 | - | 任意 |
 | R-BE-07 | Copilot | 完了（ローカル） | - | 2026-05-18: `app_state.rs` を `app_state/` へ分割（補助型外出し） |
 | R-FE-01 | Copilot | 完了（ローカル） | - | 2026-05-18: `ThreePane.svelte` を薄いラッパに移行し、`ThreePaneHost.svelte` + orchestrators へ責務分割 |
-| R-FE-02 | - | 未着手 | - | - |
+| R-FE-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `DashboardContent.svelte` を 183 行へ縮小し、dashboard部品へ分割 |
 | R-FE-03 | Copilot | 完了（ローカル） | - | 2026-05-18: Logs フィルタUI/テーブルを分割し `logs/logFilters.ts` へ純粋関数化 |
 | R-FE-04 | Copilot | 完了（ローカル） | - | 2026-05-18: Publishers を一覧/編集コンポーネントと form 補助へ分割 |
 | R-FE-05 | Copilot | 完了（ローカル） | - | 2026-05-18: TagTree を treeBuilder/ノード/コンテキストメニューへ分割 |
