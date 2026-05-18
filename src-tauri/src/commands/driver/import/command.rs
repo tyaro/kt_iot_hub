@@ -15,19 +15,22 @@ pub async fn import_driver_ui_result(
     {
         let imported = state.imported_driver_ui_sessions.read().await;
         if imported.contains(&req.session_id) {
-            return Err(ErrorResponse {
-                error: format!("Session already imported: {}", req.session_id),
-                code: "DUPLICATE_IMPORT".to_string(),
-            });
+            return Err(ErrorResponse::new(
+                "DUPLICATE_IMPORT",
+                format!("Session already imported: {}", req.session_id),
+            ));
         }
     }
 
     let session = {
         let sessions = state.active_driver_ui_sessions.read().await;
-        sessions.get(&req.session_id).cloned().ok_or(ErrorResponse {
-            error: format!("No active driver UI session: {}", req.session_id),
-            code: "NO_ACTIVE_SESSION".to_string(),
-        })?
+        sessions
+            .get(&req.session_id)
+            .cloned()
+            .ok_or(ErrorResponse::new(
+                "NO_ACTIVE_SESSION",
+                format!("No active driver UI session: {}", req.session_id),
+            ))?
     };
 
     if let Some(request_driver_id) = req
@@ -37,35 +40,34 @@ pub async fn import_driver_ui_result(
     {
         if let Some(session_driver_id) = session.target_driver_id.as_ref() {
             if request_driver_id != *session_driver_id {
-                return Err(ErrorResponse {
-                    error: format!(
+                return Err(ErrorResponse::new(
+                    "SESSION_MISMATCH",
+                    format!(
                         "Session mismatch for driver {} (expected={}, got={})",
                         request_driver_id, session_driver_id, request_driver_id
                     ),
-                    code: "SESSION_MISMATCH".to_string(),
-                });
+                ));
             }
         }
     }
 
     let output_path = std::path::PathBuf::from(&req.output_json_path);
     if !output_path.exists() {
-        return Err(ErrorResponse {
-            error: format!("Result file not found: {}", req.output_json_path),
-            code: "RESULT_NOT_READY".to_string(),
-        });
+        return Err(ErrorResponse::new(
+            "RESULT_NOT_READY",
+            format!("Result file not found: {}", req.output_json_path),
+        ));
     }
 
-    let json_text = std::fs::read_to_string(&output_path).map_err(|e| ErrorResponse {
-        error: format!("Failed to read result file: {}", e),
-        code: "IO_ERROR".to_string(),
-    })?;
+    let json_text = std::fs::read_to_string(&output_path)
+        .map_err(|e| ErrorResponse::io_error(format!("Failed to read result file: {}", e)))?;
 
-    let payload: DriverUiImportPayload =
-        serde_json::from_str(&json_text).map_err(|e| ErrorResponse {
-            error: format!("Failed to parse driver UI JSON: {}", e),
-            code: "INVALID_JSON".to_string(),
-        })?;
+    let payload: DriverUiImportPayload = serde_json::from_str(&json_text).map_err(|e| {
+        ErrorResponse::new(
+            "INVALID_JSON",
+            format!("Failed to parse driver UI JSON: {}", e),
+        )
+    })?;
 
     let (driver_config, new_scan_groups, new_tags) =
         validate_and_convert_payload(&state, &session, payload).await?;

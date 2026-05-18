@@ -20,10 +20,10 @@ pub(super) async fn sync_publisher_runtime(
             manager.register(Box::new(MqttPublisher::new(config.clone())));
         }
         other => {
-            return Err(ErrorResponse {
-                error: format!("Unsupported publisher_type: {}", other),
-                code: "INVALID_INPUT".to_string(),
-            });
+            return Err(ErrorResponse::invalid_input(format!(
+                "Unsupported publisher_type: {}",
+                other
+            )));
         }
     }
 

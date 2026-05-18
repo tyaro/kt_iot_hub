@@ -19,9 +19,11 @@ pub async fn open_mqtt_monitor_window(app: tauri::AppHandle) -> Result<(), Error
     .min_inner_size(920.0, 620.0)
     .resizable(true)
     .build()
-    .map_err(|e| ErrorResponse {
-        error: format!("Failed to open MQTT monitor window: {}", e),
-        code: "WINDOW_OPEN_FAILED".to_string(),
+    .map_err(|e| {
+        ErrorResponse::new(
+            "WINDOW_OPEN_FAILED",
+            format!("Failed to open MQTT monitor window: {}", e),
+        )
     })?;
 
     Ok(())

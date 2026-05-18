@@ -16,10 +16,9 @@ pub(super) fn resolve_launch_target(
     driver_configs: &[DriverConfig],
 ) -> Result<ResolvedLaunchTarget, ErrorResponse> {
     if requested_driver_id.is_none() && requested_driver_type.is_none() {
-        return Err(ErrorResponse {
-            error: "driver_id or driver_type is required".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input(
+            "driver_id or driver_type is required",
+        ));
     }
 
     if let Some(driver_id) = requested_driver_id {
@@ -27,22 +26,19 @@ pub(super) fn resolve_launch_target(
             .iter()
             .find(|cfg| cfg.id == driver_id)
             .cloned()
-            .ok_or(ErrorResponse {
-                error: format!("Driver not found: {}", driver_id),
-                code: "NOT_FOUND".to_string(),
-            })?;
+            .ok_or(ErrorResponse::not_found(format!("Driver not found: {}", driver_id)))?;
 
         let executable_path = resolve_driver_ui_path_with_base(
             &driver_config,
             requested_driver_ui_base_dir.as_deref(),
         )
-        .ok_or(ErrorResponse {
-            error: format!(
+        .ok_or(ErrorResponse::new(
+            "NOT_CONFIGURED",
+            format!(
                 "Driver UI executable not found for driver {} (place it under driver-ui/{}/registration-ui(.exe))",
                 driver_id, driver_config.driver_type
             ),
-            code: "NOT_CONFIGURED".to_string(),
-        })?;
+        ))?;
 
         return Ok(ResolvedLaunchTarget {
             driver_id: Some(driver_id),
@@ -51,23 +47,21 @@ pub(super) fn resolve_launch_target(
         });
     }
 
-    let driver_type = requested_driver_type.ok_or(ErrorResponse {
-        error: "driver_type is required when driver_id is omitted".to_string(),
-        code: "INVALID_INPUT".to_string(),
-    })?;
+    let driver_type = requested_driver_type
+        .ok_or(ErrorResponse::invalid_input("driver_type is required when driver_id is omitted"))?;
 
     let executable_path = resolve_driver_ui_path_for_type(
         driver_configs,
         &driver_type,
         requested_driver_ui_base_dir.as_deref(),
     )
-    .ok_or(ErrorResponse {
-        error: format!(
+    .ok_or(ErrorResponse::new(
+        "NOT_CONFIGURED",
+        format!(
             "Driver UI executable not found for driver type {} (place it under driver-ui/{}/registration-ui(.exe))",
             driver_type, driver_type
         ),
-        code: "NOT_CONFIGURED".to_string(),
-    })?;
+    ))?;
 
     Ok(ResolvedLaunchTarget {
         driver_id: None,
@@ -88,10 +82,10 @@ pub(super) async fn register_active_session(
             .values()
             .any(|session| session.process_active && session.target_driver_id.as_ref() == Some(existing_driver_id))
         {
-            return Err(ErrorResponse {
-                error: format!("Driver UI is already active for driver {}", existing_driver_id),
-                code: "ALREADY_RUNNING".to_string(),
-            });
+            return Err(ErrorResponse::new(
+                "ALREADY_RUNNING",
+                format!("Driver UI is already active for driver {}", existing_driver_id),
+            ));
         }
     }
 

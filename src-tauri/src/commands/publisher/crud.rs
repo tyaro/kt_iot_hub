@@ -66,34 +66,19 @@ pub async fn save_publisher(
 ) -> Result<(), ErrorResponse> {
     let publisher_id = req.id.trim().to_string();
     if publisher_id.is_empty() {
-        return Err(ErrorResponse {
-            error: "Publisher ID cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("Publisher ID cannot be empty"));
     }
     if req.publisher_type.trim() != "mqtt" {
-        return Err(ErrorResponse {
-            error: "Only mqtt publisher is supported".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("Only mqtt publisher is supported"));
     }
     if req.broker.trim().is_empty() {
-        return Err(ErrorResponse {
-            error: "Broker cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("Broker cannot be empty"));
     }
     if req.client_id.trim().is_empty() {
-        return Err(ErrorResponse {
-            error: "Client ID cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("Client ID cannot be empty"));
     }
     if req.qos > 2 {
-        return Err(ErrorResponse {
-            error: "QoS must be 0, 1, or 2".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("QoS must be 0, 1, or 2"));
     }
 
     let existing_configs = state.publisher_configs.read().await.clone();

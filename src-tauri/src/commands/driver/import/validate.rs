@@ -10,16 +10,10 @@ pub(super) fn validate_import_request(
     req: &ImportDriverUiResultRequest,
 ) -> Result<(), ErrorResponse> {
     if req.session_id.trim().is_empty() {
-        return Err(ErrorResponse {
-            error: "session_id cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("session_id cannot be empty"));
     }
     if req.output_json_path.trim().is_empty() {
-        return Err(ErrorResponse {
-            error: "output_json_path cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("output_json_path cannot be empty"));
     }
     Ok(())
 }
@@ -30,10 +24,7 @@ pub(super) async fn validate_and_convert_payload(
     payload: DriverUiImportPayload,
 ) -> Result<(DriverConfig, Vec<ScanGroupConfig>, Vec<TagConfig>), ErrorResponse> {
     if payload.schema_version.unwrap_or(1) != 1 {
-        return Err(ErrorResponse {
-            error: "Unsupported schemaVersion".to_string(),
-            code: "SCHEMA_MISMATCH".to_string(),
-        });
+        return Err(ErrorResponse::new("SCHEMA_MISMATCH", "Unsupported schemaVersion"));
     }
 
     let driver_payload = payload.driver;
@@ -41,13 +32,10 @@ pub(super) async fn validate_and_convert_payload(
 
     if let Some(session_driver_id) = session.target_driver_id.as_ref() {
         if effective_driver_id != *session_driver_id {
-            return Err(ErrorResponse {
-                error: format!(
-                    "driver_id mismatch (payload={}, expected={})",
-                    effective_driver_id, session_driver_id
-                ),
-                code: "VALIDATION_ERROR".to_string(),
-            });
+            return Err(ErrorResponse::validation_error(format!(
+                "driver_id mismatch (payload={}, expected={})",
+                effective_driver_id, session_driver_id
+            )));
         }
     }
 
@@ -61,10 +49,10 @@ pub(super) async fn validate_and_convert_payload(
 
     for sg in &driver_payload.scan_groups {
         if !scan_group_ids.insert(sg.id.clone()) {
-            return Err(ErrorResponse {
-                error: format!("Duplicate scan_group id: {}", sg.id),
-                code: "VALIDATION_ERROR".to_string(),
-            });
+            return Err(ErrorResponse::validation_error(format!(
+                "Duplicate scan_group id: {}",
+                sg.id
+            )));
         }
 
         new_scan_groups.push(ScanGroupConfig {
@@ -93,22 +81,19 @@ pub(super) async fn validate_and_convert_payload(
     for sg in &driver_payload.scan_groups {
         for t in &sg.tags {
             if !local_tag_ids.insert(t.id.clone()) || !existing_tag_ids.insert(t.id.clone()) {
-                return Err(ErrorResponse {
-                    error: format!("Duplicate tag id: {}", t.id),
-                    code: "VALIDATION_ERROR".to_string(),
-                });
+                return Err(ErrorResponse::validation_error(format!(
+                    "Duplicate tag id: {}",
+                    t.id
+                )));
             }
 
             let scan_group_id = sg.id.clone();
             let name_key = format!("{}:{}:{}", effective_driver_id, scan_group_id, t.name);
             if !local_name_keys.insert(name_key) {
-                return Err(ErrorResponse {
-                    error: format!(
-                        "Duplicate tag name in same scanGroup: {} (scanGroup={})",
-                        t.name, scan_group_id
-                    ),
-                    code: "VALIDATION_ERROR".to_string(),
-                });
+                return Err(ErrorResponse::validation_error(format!(
+                    "Duplicate tag name in same scanGroup: {} (scanGroup={})",
+                    t.name, scan_group_id
+                )));
             }
 
             DataType::from_str(&t.data_type).map_err(ErrorResponse::from)?;
@@ -158,23 +143,17 @@ fn build_import_driver_config(
     driver_payload: &DriverUiDriverPayload,
 ) -> Result<DriverConfig, ErrorResponse> {
     if driver_payload.id != driver_id {
-        return Err(ErrorResponse {
-            error: format!(
-                "driver.id mismatch (driver.id={}, expected={})",
-                driver_payload.id, driver_id
-            ),
-            code: "VALIDATION_ERROR".to_string(),
-        });
+        return Err(ErrorResponse::validation_error(format!(
+            "driver.id mismatch (driver.id={}, expected={})",
+            driver_payload.id, driver_id
+        )));
     }
 
     if driver_payload.driver_type != driver_type {
-        return Err(ErrorResponse {
-            error: format!(
-                "driver.driverType mismatch (driver.driverType={}, expected={})",
-                driver_payload.driver_type, driver_type
-            ),
-            code: "VALIDATION_ERROR".to_string(),
-        });
+        return Err(ErrorResponse::validation_error(format!(
+            "driver.driverType mismatch (driver.driverType={}, expected={})",
+            driver_payload.driver_type, driver_type
+        )));
     }
 
     let settings = merge_driver_settings(driver_payload.settings.clone(), driver_payload.extra.clone());

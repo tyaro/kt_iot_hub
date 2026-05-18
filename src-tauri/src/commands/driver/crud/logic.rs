@@ -115,10 +115,7 @@ pub(super) fn merge_driver_configs_for_rename(
 
 pub(super) fn ensure_non_empty_driver_id(driver_id: &str) -> Result<(), ErrorResponse> {
     if driver_id.trim().is_empty() {
-        return Err(ErrorResponse {
-            error: "Driver ID cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("Driver ID cannot be empty"));
     }
     Ok(())
 }

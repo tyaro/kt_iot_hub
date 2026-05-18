@@ -154,10 +154,7 @@ pub async fn start_grpc_server(state: &AppState) -> Result<(), ErrorResponse> {
         Err(e) => {
             let message = format!("Failed to bind gRPC server {}: {}", GRPC_ADDR, e);
             state.runtime_status.write().await.last_error = Some(message.clone());
-            return Err(ErrorResponse {
-                error: message,
-                code: "GRPC_BIND_FAILED".to_string(),
-            });
+            return Err(ErrorResponse::new("GRPC_BIND_FAILED", message));
         }
     };
     drop(listener);

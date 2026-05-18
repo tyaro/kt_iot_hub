@@ -2,3 +2,5 @@
 /// その他の PostgreSQL DTO 群はドライバUI 専用のため、ここでは re-export しない
 /// （必要な場合は `kt_driver_ui_host::dto` から直接 import すること）。
 pub use kt_driver_ui_host::dto::ErrorResponse;
+#[allow(unused_imports)]
+pub use kt_driver_ui_host::dto::error_code;

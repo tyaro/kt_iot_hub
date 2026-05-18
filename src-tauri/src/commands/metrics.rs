@@ -50,10 +50,10 @@ fn get_windows_process_metrics(
             &mut process_user_time,
         ) == 0
         {
-            return Err(ErrorResponse {
-                error: "GetProcessTimes failed".to_string(),
-                code: "METRICS_PROCESS_TIMES_ERROR".to_string(),
-            });
+            return Err(ErrorResponse::new(
+                "METRICS_PROCESS_TIMES_ERROR",
+                "GetProcessTimes failed",
+            ));
         }
 
         let current_sample = AppCpuSampleState {
@@ -107,10 +107,10 @@ fn get_windows_process_metrics(
             std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32,
         ) == 0
         {
-            return Err(ErrorResponse {
-                error: "GetProcessMemoryInfo failed".to_string(),
-                code: "METRICS_PROCESS_MEMORY_ERROR".to_string(),
-            });
+            return Err(ErrorResponse::new(
+                "METRICS_PROCESS_MEMORY_ERROR",
+                "GetProcessMemoryInfo failed",
+            ));
         }
 
         Ok((process_cpu_percent, Some(counters.WorkingSetSize as u64)))

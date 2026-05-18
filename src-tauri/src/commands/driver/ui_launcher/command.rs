@@ -56,11 +56,8 @@ pub async fn launch_driver_ui(
     )
     .await?;
 
-    let launch_context_text =
-        serde_json::to_string_pretty(&launch_context).map_err(|e| ErrorResponse {
-            error: format!("Failed to serialize driver UI launch context: {}", e),
-            code: "SERIALIZE_ERROR".to_string(),
-        })?;
+    let launch_context_text = serde_json::to_string_pretty(&launch_context)
+        .map_err(|e| ErrorResponse::serialize_error(format!("Failed to serialize driver UI launch context: {}", e)))?;
 
     let state_for_input_write = state.clone();
     std::fs::write(&input_json_path, launch_context_text).map_err(|e| {
@@ -69,10 +66,7 @@ pub async fn launch_driver_ui(
             let mut sessions = state_for_input_write.active_driver_ui_sessions.write().await;
             sessions.remove(&session_id_clone);
         });
-        ErrorResponse {
-            error: format!("Failed to write driver UI input JSON: {}", e),
-            code: "IO_ERROR".to_string(),
-        }
+        ErrorResponse::io_error(format!("Failed to write driver UI input JSON: {}", e))
     })?;
 
     let mut command = std::process::Command::new(&resolved.executable_path);
@@ -113,13 +107,13 @@ pub async fn launch_driver_ui(
         });
         let _ = std::fs::remove_file(&input_json_path_for_spawn_error);
 
-        ErrorResponse {
-            error: format!(
+        ErrorResponse::new(
+            "PROCESS_LAUNCH_FAILED",
+            format!(
                 "Failed to launch driver UI: {} (path={})",
                 e, executable_path_for_error
             ),
-            code: "PROCESS_LAUNCH_FAILED".to_string(),
-        }
+        )
     })?;
 
     let app_state_for_wait = state.inner().clone();
@@ -193,10 +187,7 @@ pub async fn check_driver_ui_result(
     req: CheckDriverUiResultRequest,
 ) -> Result<CheckDriverUiResultResponse, ErrorResponse> {
     if req.output_json_path.trim().is_empty() {
-        return Err(ErrorResponse {
-            error: "output_json_path cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("output_json_path cannot be empty"));
     }
 
     let process_active = if let Some(session_id) = req.session_id.as_ref() {

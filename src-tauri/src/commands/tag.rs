@@ -13,22 +13,15 @@ pub async fn create_tag(
     req: CreateTagRequest,
 ) -> Result<TagDto, ErrorResponse> {
     if req.id.trim().is_empty() {
-        return Err(ErrorResponse {
-            error: "Tag ID cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("Tag ID cannot be empty"));
     }
     if req.name.trim().is_empty() {
-        return Err(ErrorResponse {
-            error: "Tag name cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("Tag name cannot be empty"));
     }
     if req.driver_id.trim().is_empty() || req.scan_group_id.trim().is_empty() {
-        return Err(ErrorResponse {
-            error: "driver_id and scan_group_id are required".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input(
+            "driver_id and scan_group_id are required",
+        ));
     }
 
     validate_tag_request(&state, &req).await?;
@@ -125,10 +118,7 @@ pub async fn delete_tag(
 ) -> Result<(), ErrorResponse> {
     let removed = state.registry.remove(&TagId(tag_id.clone())).await;
     if removed.is_none() {
-        return Err(ErrorResponse {
-            error: format!("Tag not found: {}", tag_id),
-            code: "NOT_FOUND".to_string(),
-        });
+        return Err(ErrorResponse::not_found(format!("Tag not found: {}", tag_id)));
     }
 
     persist_all_tags(&state).await?;
@@ -143,27 +133,24 @@ async fn validate_tag_request(
     let scan_group = scan_groups
         .iter()
         .find(|group| group.id == req.scan_group_id)
-        .ok_or(ErrorResponse {
-            error: format!("Unknown scan_group_id: {}", req.scan_group_id),
-            code: "INVALID_INPUT".to_string(),
-        })?;
+        .ok_or(ErrorResponse::invalid_input(format!(
+            "Unknown scan_group_id: {}",
+            req.scan_group_id
+        )))?;
 
     if scan_group.driver != req.driver_id {
-        return Err(ErrorResponse {
-            error: format!(
-                "scan_group {} does not belong to driver {}",
-                req.scan_group_id, req.driver_id
-            ),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input(format!(
+            "scan_group {} does not belong to driver {}",
+            req.scan_group_id, req.driver_id
+        )));
     }
 
     let tags = state.registry.list_all().await;
     if tags.iter().any(|tag| tag.id.0 == req.id) {
-        return Err(ErrorResponse {
-            error: format!("Duplicate tag id: {}", req.id),
-            code: "VALIDATION_ERROR".to_string(),
-        });
+        return Err(ErrorResponse::validation_error(format!(
+            "Duplicate tag id: {}",
+            req.id
+        )));
     }
 
     if tags.iter().any(|tag| {
@@ -172,13 +159,10 @@ async fn validate_tag_request(
             && tag.scan_group_id == req.scan_group_id
             && tag.name == req.name
     }) {
-        return Err(ErrorResponse {
-            error: format!(
-                "Duplicate tag name in same scan group: {} ({}/{})",
-                req.name, req.driver_id, req.scan_group_id
-            ),
-            code: "VALIDATION_ERROR".to_string(),
-        });
+        return Err(ErrorResponse::validation_error(format!(
+            "Duplicate tag name in same scan group: {} ({}/{})",
+            req.name, req.driver_id, req.scan_group_id
+        )));
     }
 
     Ok(())

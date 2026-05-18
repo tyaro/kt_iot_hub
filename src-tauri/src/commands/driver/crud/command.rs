@@ -72,10 +72,10 @@ pub async fn save_driver(
     }
 
     if renaming && existing_configs.iter().any(|cfg| cfg.id == driver_id) {
-        return Err(ErrorResponse {
-            error: format!("Driver ID already exists: {}", driver_id),
-            code: "ALREADY_EXISTS".to_string(),
-        });
+        return Err(ErrorResponse::new(
+            "ALREADY_EXISTS",
+            format!("Driver ID already exists: {}", driver_id),
+        ));
     }
 
     let config = build_driver_config(&req, driver_id.clone(), existing.as_ref());
@@ -109,13 +109,13 @@ async fn ensure_driver_ui_session_not_active(
         .values()
         .any(|session| session.target_driver_id.as_deref() == Some(driver_id))
     {
-        return Err(ErrorResponse {
-            error: format!(
+        return Err(ErrorResponse::new(
+            "SESSION_ACTIVE",
+            format!(
                 "Driver UI session exists for {}. Close or import the external UI result first.",
                 driver_id
             ),
-            code: "SESSION_ACTIVE".to_string(),
-        });
+        ));
     }
     Ok(())
 }
@@ -185,10 +185,7 @@ pub async fn delete_driver(
 ) -> Result<(), ErrorResponse> {
     let driver_id = driver_id.trim().to_string();
     if driver_id.is_empty() {
-        return Err(ErrorResponse {
-            error: "driver_id cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("driver_id cannot be empty"));
     }
 
     {
@@ -202,22 +199,19 @@ pub async fn delete_driver(
             session.process_active
                 && session.target_driver_id.as_deref() == Some(driver_id.as_str())
         }) {
-            return Err(ErrorResponse {
-                error: format!(
+            return Err(ErrorResponse::new(
+                "SESSION_ACTIVE",
+                format!(
                     "Driver UI session is active for {}. Close the external UI first.",
                     driver_id
                 ),
-                code: "SESSION_ACTIVE".to_string(),
-            });
+            ));
         }
     }
 
     let existing_driver_configs = state.driver_configs.read().await.clone();
     if !existing_driver_configs.iter().any(|cfg| cfg.id == driver_id) {
-        return Err(ErrorResponse {
-            error: format!("Driver not found: {}", driver_id),
-            code: "NOT_FOUND".to_string(),
-        });
+        return Err(ErrorResponse::not_found(format!("Driver not found: {}", driver_id)));
     }
 
     let final_driver_configs: Vec<DriverConfig> = existing_driver_configs

@@ -137,18 +137,12 @@ pub async fn start_mqtt_monitor(
 ) -> Result<MqttMonitorStatusDto, ErrorResponse> {
     let publisher_id = req.publisher_id.trim().to_string();
     if publisher_id.is_empty() {
-        return Err(ErrorResponse {
-            error: "Publisher ID cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("Publisher ID cannot be empty"));
     }
 
     let topic_filter = req.topic_filter.trim().to_string();
     if topic_filter.is_empty() {
-        return Err(ErrorResponse {
-            error: "Topic filter cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
+        return Err(ErrorResponse::invalid_input("Topic filter cannot be empty"));
     }
 
     let config = {
@@ -158,10 +152,7 @@ pub async fn start_mqtt_monitor(
             .find(|cfg| cfg.id == publisher_id && cfg.publisher_type == "mqtt")
             .cloned()
     }
-    .ok_or_else(|| ErrorResponse {
-        error: format!("Publisher not found: {}", publisher_id),
-        code: "NOT_FOUND".to_string(),
-    })?;
+    .ok_or_else(|| ErrorResponse::not_found(format!("Publisher not found: {}", publisher_id)))?;
 
     let options = MqttMonitorStartOptions {
         publisher_id: config.id.clone(),
