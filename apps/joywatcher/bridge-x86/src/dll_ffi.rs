@@ -32,6 +32,7 @@ pub(crate) type DisconnectNetStdcallFn = unsafe extern "system" fn() -> isize;
 pub(crate) const TAG_NAME_SLOT_SIZE: usize = 256;
 pub(crate) const TAGSEL2_BUFFER_SIZE: usize = 1024 * 1024;
 pub(crate) const DEFAULT_READ_USER_ID: i32 = 1;
+const SHIFT_JIS_CODE_PAGE: u32 = 932;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -102,7 +103,7 @@ impl JoyWatcherComData1 {
             .iter()
             .position(|byte| *byte == 0)
             .unwrap_or(self.raw_value.len());
-        String::from_utf8_lossy(&self.raw_value[..end]).to_string()
+        decode_shift_jis_lossy(&self.raw_value[..end])
     }
 }
 
@@ -110,7 +111,7 @@ pub(crate) fn build_tag_name_buffer(tags: &[String]) -> Result<Vec<u8>> {
     let mut buffer = vec![0u8; tags.len() * TAG_NAME_SLOT_SIZE];
 
     for (index, tag) in tags.iter().enumerate() {
-        let bytes = tag.as_bytes();
+        let bytes = encode_shift_jis(tag)?;
         if bytes.len() >= TAG_NAME_SLOT_SIZE {
             return Err(anyhow!(
                 "tag path is too long for JWGetTagIDS2 fixed buffer (max {} bytes): {}",
@@ -120,7 +121,7 @@ pub(crate) fn build_tag_name_buffer(tags: &[String]) -> Result<Vec<u8>> {
         }
 
         let offset = index * TAG_NAME_SLOT_SIZE;
-        buffer[offset..offset + bytes.len()].copy_from_slice(bytes);
+        buffer[offset..offset + bytes.len()].copy_from_slice(&bytes);
     }
 
     Ok(buffer)
@@ -161,7 +162,7 @@ pub(crate) fn ensure_jwread_success(result: i32) -> Result<()> {
 
 pub(crate) fn parse_tagsel2_buffer(buffer: &[u8]) -> Result<Vec<String>> {
     let end = buffer.iter().position(|byte| *byte == 0).unwrap_or(buffer.len());
-    let text = String::from_utf8_lossy(&buffer[..end]).to_string();
+    let text = decode_shift_jis_lossy(&buffer[..end]);
 
     Ok(text
         .split(['\r', '\n'])
@@ -169,6 +170,129 @@ pub(crate) fn parse_tagsel2_buffer(buffer: &[u8]) -> Result<Vec<String>> {
         .filter(|item| !item.is_empty())
         .map(ToOwned::to_owned)
         .collect())
+}
+
+fn encode_shift_jis(text: &str) -> Result<Vec<u8>> {
+    #[cfg(windows)]
+    {
+        if text.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let source = text.encode_utf16().collect::<Vec<u16>>();
+        let required = unsafe {
+            WideCharToMultiByte(
+                SHIFT_JIS_CODE_PAGE,
+                0,
+                source.as_ptr(),
+                source.len() as i32,
+                std::ptr::null_mut(),
+                0,
+                std::ptr::null(),
+                std::ptr::null_mut(),
+            )
+        };
+        if required <= 0 {
+            return Err(anyhow!(
+                "WideCharToMultiByte(cp932) failed while encoding tag path"
+            ));
+        }
+
+        let mut encoded = vec![0u8; required as usize];
+        let written = unsafe {
+            WideCharToMultiByte(
+                SHIFT_JIS_CODE_PAGE,
+                0,
+                source.as_ptr(),
+                source.len() as i32,
+                encoded.as_mut_ptr().cast::<i8>(),
+                encoded.len() as i32,
+                std::ptr::null(),
+                std::ptr::null_mut(),
+            )
+        };
+        if written <= 0 {
+            return Err(anyhow!(
+                "WideCharToMultiByte(cp932) failed while writing encoded bytes"
+            ));
+        }
+
+        Ok(encoded)
+    }
+
+    #[cfg(not(windows))]
+    {
+        Ok(text.as_bytes().to_vec())
+    }
+}
+
+fn decode_shift_jis_lossy(bytes: &[u8]) -> String {
+    #[cfg(windows)]
+    {
+        if bytes.is_empty() {
+            return String::new();
+        }
+
+        let required = unsafe {
+            MultiByteToWideChar(
+                SHIFT_JIS_CODE_PAGE,
+                0,
+                bytes.as_ptr().cast::<i8>(),
+                bytes.len() as i32,
+                std::ptr::null_mut(),
+                0,
+            )
+        };
+        if required <= 0 {
+            return String::from_utf8_lossy(bytes).to_string();
+        }
+
+        let mut wide = vec![0u16; required as usize];
+        let written = unsafe {
+            MultiByteToWideChar(
+                SHIFT_JIS_CODE_PAGE,
+                0,
+                bytes.as_ptr().cast::<i8>(),
+                bytes.len() as i32,
+                wide.as_mut_ptr(),
+                wide.len() as i32,
+            )
+        };
+        if written <= 0 {
+            return String::from_utf8_lossy(bytes).to_string();
+        }
+
+        String::from_utf16_lossy(&wide)
+    }
+
+    #[cfg(not(windows))]
+    {
+        String::from_utf8_lossy(bytes).to_string()
+    }
+}
+
+#[cfg(windows)]
+#[link(name = "kernel32")]
+extern "system" {
+    fn MultiByteToWideChar(
+        CodePage: u32,
+        dwFlags: u32,
+        lpMultiByteStr: *const i8,
+        cbMultiByte: i32,
+        lpWideCharStr: *mut u16,
+        cchWideChar: i32,
+    ) -> i32;
+
+    fn WideCharToMultiByte(
+        CodePage: u32,
+        dwFlags: u32,
+        lpWideCharStr: *const u16,
+        cchWideChar: i32,
+        lpMultiByteStr: *mut i8,
+        cbMultiByte: i32,
+        lpDefaultChar: *const i8,
+        lpUsedDefaultChar: *mut i32,
+    ) -> i32;
 }
 
 #[cfg(test)]
@@ -236,6 +360,15 @@ mod tests {
             items,
             vec!["Line1/Tank/Level".to_string(), "Line1/Tank/Temp".to_string()]
         );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn parse_tagsel2_buffer_decodes_shift_jis_japanese() {
+        let buffer = [0x93, 0xFA, 0x96, 0x7B, 0x8C, 0xEA, b'/', b'T', b'a', b'g', 0x00];
+        let items = parse_tagsel2_buffer(&buffer).unwrap();
+
+        assert_eq!(items, vec!["日本語/Tag".to_string()]);
     }
 
     #[test]
