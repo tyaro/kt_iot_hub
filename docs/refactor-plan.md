@@ -615,7 +615,7 @@ components/
 | R-BE-04 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/driver/crud.rs` を `crud/` へ分割 |
 | R-BE-05 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/subscriber/monitor.rs` を `monitor/` へ分割（treeテスト追加） |
 | R-BE-06 | - | 未着手 | - | 任意 |
-| R-BE-07 | - | 未着手 | - | - |
+| R-BE-07 | Copilot | 完了（ローカル） | - | 2026-05-18: `app_state.rs` を `app_state/` へ分割（補助型外出し） |
 | R-FE-01 | - | 未着手 | - | - |
 | R-FE-02 | - | 未着手 | - | - |
 | R-FE-03 | - | 未着手 | - | - |
