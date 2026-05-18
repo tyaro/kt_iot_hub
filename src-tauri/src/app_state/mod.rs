@@ -1,17 +1,21 @@
+mod app_cpu;
+mod driver_ui_session;
+mod mqtt_monitor;
+mod scan_metrics;
+
+pub use app_cpu::{AppCpuSampleState, RuntimeMetricsCacheState};
+pub use driver_ui_session::DriverUiSessionState;
+pub use mqtt_monitor::{MqttMonitorMessageState, MqttMonitorStatusState};
+pub use scan_metrics::{
+    DriverIoSampleState, DriverIoTotalState, ScanGroupRuntimeMetricState,
+};
+
 use crate::config::{DriverConfig, PublisherConfig, ScanGroupConfig};
 use crate::core::{TagBus, TagRegistry};
 use crate::drivers::DriverProcessManager;
 use crate::publishers::PublisherManager;
 use crate::subscribers::mqtt_monitor::MqttMonitor;
 use std::collections::{HashMap, HashSet, VecDeque};
-use chrono::{DateTime, Utc};
-
-#[derive(Clone, Debug)]
-pub struct DriverUiSessionState {
-    pub target_driver_id: Option<String>,
-    pub driver_type: String,
-    pub process_active: bool,
-}
 
 #[derive(Clone, Debug, Default)]
 pub struct RuntimeStatusState {
@@ -19,90 +23,6 @@ pub struct RuntimeStatusState {
     pub publishers_running: bool,
     pub grpc_running: bool,
     pub last_error: Option<String>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct MqttMonitorStatusState {
-    pub connected: bool,
-    pub subscribing: bool,
-    pub include_sys: bool,
-    pub publisher_id: Option<String>,
-    pub broker: String,
-    pub port: u16,
-    pub topic_filter: String,
-    pub message_count: usize,
-    pub last_message_at: Option<String>,
-    pub last_error: Option<String>,
-}
-
-#[derive(Clone, Debug)]
-pub struct MqttMonitorMessageState {
-    pub timestamp: String,
-    pub topic: String,
-    pub payload: String,
-    pub qos: u8,
-    pub retain: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct ScanGroupRuntimeMetricState {
-    pub expected_scan_rate_ms: Option<u32>,
-    pub last_cycle_anchor_at: Option<DateTime<Utc>>,
-    pub last_cycle_ms: Option<u64>,
-    pub avg_cycle_ms: Option<f64>,
-    pub p95_cycle_ms: Option<u64>,
-    pub cycle_history_ms: VecDeque<u64>,
-    pub cycle_delta_ratio: Option<f64>,
-    pub consecutive_lag_count: u32,
-    pub last_warn_at: Option<DateTime<Utc>>,
-}
-
-impl ScanGroupRuntimeMetricState {
-    pub fn new(expected_scan_rate_ms: Option<u32>) -> Self {
-        Self {
-            expected_scan_rate_ms,
-            last_cycle_anchor_at: None,
-            last_cycle_ms: None,
-            avg_cycle_ms: None,
-            p95_cycle_ms: None,
-            cycle_history_ms: VecDeque::with_capacity(32),
-            cycle_delta_ratio: None,
-            consecutive_lag_count: 0,
-            last_warn_at: None,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct DriverIoSampleState {
-    pub read_bytes: u64,
-    pub write_bytes: u64,
-    pub sampled_at: DateTime<Utc>,
-}
-
-#[derive(Clone, Debug)]
-pub struct DriverIoTotalState {
-    pub rx_bytes_total: u64,
-    pub tx_bytes_total: u64,
-    pub sampled_at: DateTime<Utc>,
-}
-
-#[derive(Clone, Debug)]
-pub struct AppCpuSampleState {
-    pub process_kernel_time: u64,
-    pub process_user_time: u64,
-    pub sampled_at: DateTime<Utc>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct RuntimeMetricsCacheState {
-    pub last_network_rx_bytes: Option<u64>,
-    pub last_network_tx_bytes: Option<u64>,
-    pub last_sampled_at: Option<DateTime<Utc>>,
-    pub last_driver_io_samples: HashMap<u32, DriverIoSampleState>,
-    pub last_driver_reported_io_totals: HashMap<String, DriverIoTotalState>,
-    pub last_driver_reported_io_samples: HashMap<String, DriverIoSampleState>,
-    pub last_app_cpu_sample: Option<AppCpuSampleState>,
 }
 
 /// アプリ全体で共有する状態
