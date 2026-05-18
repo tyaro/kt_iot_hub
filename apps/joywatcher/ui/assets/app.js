@@ -1,13 +1,16 @@
 /* eslint-env browser */
 
+import {
+  bindTauriInvoke,
+  clearMessageElements,
+  formatError,
+  invokeWithGuard,
+  normalizeId
+} from '../../../common/ui-assets/tauri.js'
+
 const browserWindow = globalThis
-const tauriInvoke = browserWindow.__TAURI_INTERNALS__?.invoke?.bind(browserWindow.__TAURI_INTERNALS__)
-const invoke = (cmd, args = {}) => {
-  if (!tauriInvoke) {
-    return Promise.reject(new Error('Tauri runtime is not available in static preview'))
-  }
-  return tauriInvoke(cmd, args)
-}
+const tauriInvoke = bindTauriInvoke(browserWindow)
+const invoke = (cmd, args = {}) => invokeWithGuard(tauriInvoke, cmd, args)
 
 let launchContext = null
 let scanGroups = []
@@ -32,37 +35,15 @@ function setTypeProbeBusy(busy) {
   button.textContent = busy ? '型確認中...' : '型確認 (JWRead)'
 }
 
-function formatError(error) {
-  if (!error) return '不明なエラーが発生しました'
-  if (typeof error === 'string') return error
-  if (typeof error === 'object') {
-    if (typeof error.error === 'string' && error.error) return error.error
-    if (typeof error.message === 'string' && error.message) return error.message
-    try {
-      return JSON.stringify(error)
-    } catch {
-      return String(error)
-    }
-  }
-  return String(error)
-}
-
 function clearMessages() {
-  el('msgOk').textContent = ''
-  el('msgErr').textContent = ''
-  el('outOk').textContent = ''
-  el('outErr').textContent = ''
-  if (el('outOkReview')) el('outOkReview').textContent = ''
-  if (el('outErrReview')) el('outErrReview').textContent = ''
-}
-
-function normalizeId(value) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
+  clearMessageElements([
+    el('msgOk'),
+    el('msgErr'),
+    el('outOk'),
+    el('outErr'),
+    el('outOkReview'),
+    el('outErrReview')
+  ])
 }
 
 function connectionSettings() {

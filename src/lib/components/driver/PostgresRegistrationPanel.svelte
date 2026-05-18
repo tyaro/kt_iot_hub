@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
+  import ColumnMapping from './postgres-registration/ColumnMapping.svelte';
+  import ConnectionFields from './postgres-registration/ConnectionFields.svelte';
+  import TableSelector from './postgres-registration/TableSelector.svelte';
   import {
     listDrivers,
     postgresListColumns,
@@ -243,112 +246,94 @@
       timestampColumn.trim().length > 0 &&
       selectedFields.length > 0,
   );
+
+  function setDriverIdInput(value: string) {
+    driverIdInput = value;
+  }
+
+  function setHost(value: string) {
+    host = value;
+  }
+
+  function setPortInput(value: string) {
+    portInput = value;
+  }
+
+  function setDatabase(value: string) {
+    database = value;
+  }
+
+  function setUsername(value: string) {
+    username = value;
+  }
+
+  function setPassword(value: string) {
+    password = value;
+  }
+
+  function setScanGroupId(value: string) {
+    scanGroupId = value;
+  }
+
+  function setScanRateMs(value: number) {
+    scanRateMs = value;
+  }
+
+  async function handleTableChange(value: string) {
+    selectedTableKey = value;
+    await onTableChanged();
+  }
+
+  function setTimestampColumn(value: string) {
+    timestampColumn = value;
+  }
 </script>
 
 <section class="panel">
   <h4>PostgreSQL 登録UI</h4>
   <p class="desc">接続情報 → テスト接続 → テーブル選択 → フィールド選択 → 確定 の順で設定します。</p>
 
-  <!-- 接続情報フォーム -->
-  <div class="grid2">
-    <label>
-      接続先ID
-      <input bind:value={driverIdInput} placeholder="pg_main" />
-    </label>
-    <label>
-      ホスト
-      <input bind:value={host} placeholder="127.0.0.1" />
-    </label>
-  </div>
-  <div class="grid3">
-    <label>
-      ポート
-      <input type="number" min="1" max="65535" bind:value={portInput} />
-    </label>
-    <label>
-      データベース
-      <input bind:value={database} placeholder="mydb" />
-    </label>
-    <label>
-      ユーザー名
-      <input bind:value={username} placeholder="postgres" />
-    </label>
-  </div>
-  <label>
-    パスワード
-    <input type="password" bind:value={password} placeholder="(任意)" />
-  </label>
+  <ConnectionFields
+    {driverIdInput}
+    {host}
+    {portInput}
+    {database}
+    {username}
+    {password}
+    {testing}
+    {loadingTables}
+    {testMessage}
+    {testError}
+    {tableError}
+    onDriverIdInput={setDriverIdInput}
+    onHostInput={setHost}
+    onPortInput={setPortInput}
+    onDatabaseInput={setDatabase}
+    onUsernameInput={setUsername}
+    onPasswordInput={setPassword}
+    onTestConnection={testConnection}
+    onLoadTables={loadTables}
+  />
 
-  <div class="row">
-    <button class="btn" onclick={testConnection} disabled={testing}>
-      {testing ? '接続テスト中...' : 'テスト接続'}
-    </button>
-    <button class="btn secondary" onclick={loadTables} disabled={loadingTables}>
-      {loadingTables ? 'テーブル取得中...' : 'テーブル再取得'}
-    </button>
-  </div>
-  {#if testMessage}<p class="ok">{testMessage}</p>{/if}
-  {#if testError}<p class="error">{testError}</p>{/if}
-  {#if tableError}<p class="error">{tableError}</p>{/if}
+  <TableSelector
+    {scanGroupId}
+    {scanRateMs}
+    {selectedTableKey}
+    {tables}
+    onScanGroupIdInput={setScanGroupId}
+    onScanRateMsInput={setScanRateMs}
+    onTableChange={handleTableChange}
+  />
 
-  <div class="grid2">
-    <label>
-      周期グループID
-      <input bind:value={scanGroupId} placeholder="line1_sensors_1000ms" />
-    </label>
-    <label>
-      周期(ms)
-      <input type="number" min="100" step="100" bind:value={scanRateMs} />
-    </label>
-  </div>
-
-  <label>
-    テーブル選択
-    <select bind:value={selectedTableKey} onchange={onTableChanged}>
-      <option value="">テーブルを選択してください</option>
-      {#each tables as table (`${table.schema}.${table.name}`)}
-        <option value={`${table.schema}.${table.name}`}>{table.schema}.{table.name}</option>
-      {/each}
-    </select>
-  </label>
-
-  <label>
-    時系列フィールド
-    <select bind:value={timestampColumn} disabled={columns.length === 0}>
-      <option value="">時系列フィールドを選択</option>
-      {#each columns as column (column.name)}
-        <option value={column.name}>{column.name} ({column.data_type})</option>
-      {/each}
-    </select>
-  </label>
-
-  <div class="field-box">
-    <div class="field-header">
-      <strong>フィールド選択（タグ化対象）</strong>
-      {#if loadingColumns}<span>読込中...</span>{/if}
-    </div>
-    {#if columnError}
-      <p class="error">{columnError}</p>
-    {:else if columns.length === 0}
-      <p class="muted">テーブル選択後にフィールドが表示されます。</p>
-    {:else}
-      <ul class="field-list">
-        {#each columns as column (column.name)}
-          <li>
-            <label class="field-item">
-              <input
-                type="checkbox"
-                checked={selectedFields.includes(column.name)}
-                onchange={(event) => toggleField(column.name, (event.currentTarget as HTMLInputElement).checked)}
-              />
-              <span>{column.name}</span>
-              <small>{column.data_type}</small>
-            </label>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </div>
+  <ColumnMapping
+    {columns}
+    {loadingColumns}
+    {columnError}
+    {timestampColumn}
+    {selectedFields}
+    onTimestampColumnChange={setTimestampColumn}
+    onToggleField={toggleField}
+  />
 
   <div class="summary">
     <p>接続先ID: <strong>{driverIdInput || '-'}</strong></p>
@@ -376,7 +361,6 @@
   }
   h4 { margin: 0 0 6px; color: #1e293b; }
   .desc { margin: 0 0 12px; font-size: 0.8rem; color: #475569; }
-  .row { display: flex; gap: 8px; margin-bottom: 8px; }
   .btn {
     border: none;
     border-radius: 6px;
@@ -386,44 +370,8 @@
     font-size: 0.8rem;
     cursor: pointer;
   }
-  .btn.secondary { background: #475569; }
   .btn.confirm { width: 100%; padding: 8px; font-size: 0.85rem; }
   .btn:disabled { opacity: 0.7; cursor: not-allowed; }
-  .grid2 { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; margin-bottom: 8px; }
-  .grid3 { display: grid; gap: 8px; grid-template-columns: 1fr 1fr 1fr; margin-bottom: 8px; }
-  label { display: grid; gap: 4px; font-size: 0.82rem; color: #334155; margin-bottom: 8px; }
-  input, select {
-    padding: 6px 8px;
-    border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    font-size: 0.82rem;
-    background: #fff;
-  }
-  .field-box {
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: #fff;
-    padding: 8px;
-    margin-bottom: 8px;
-  }
-  .field-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-    font-size: 0.8rem;
-  }
-  .field-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 4px;
-    max-height: 180px;
-    overflow-y: auto;
-  }
-  .field-item { display: flex; align-items: center; gap: 8px; margin: 0; }
-  .field-item small { color: #64748b; }
   .summary {
     margin-bottom: 10px;
     background: #eef2ff;
@@ -442,7 +390,6 @@
     display: grid;
     gap: 6px;
   }
-  .ok { color: #166534; font-size: 0.8rem; margin: 4px 0; }
   .error { color: #b91c1c; font-size: 0.8rem; margin: 4px 0; }
-  .muted { color: #64748b; font-size: 0.8rem; margin: 0; }
+  .ok { color: #166534; font-size: 0.8rem; margin: 4px 0; }
 </style>

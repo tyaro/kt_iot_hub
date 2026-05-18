@@ -619,14 +619,14 @@ components/
 | R-FE-01 | - | 未着手 | - | - |
 | R-FE-02 | - | 未着手 | - | - |
 | R-FE-03 | Copilot | 完了（ローカル） | - | 2026-05-18: Logs フィルタUI/テーブルを分割し `logs/logFilters.ts` へ純粋関数化 |
-| R-FE-04 | - | 未着手 | - | - |
-| R-FE-05 | - | 未着手 | - | - |
-| R-FE-06 | - | 未着手 | - | - |
-| R-FE-07 | - | 未着手 | - | - |
-| R-FE-08 | - | 未着手 | - | - |
-| R-FE-09 | - | 未着手 | - | - |
-| R-RS-01 | - | 未着手 | - | - |
-| R-RS-02 | - | 未着手 | - | - |
+| R-FE-04 | Copilot | 完了（ローカル） | - | 2026-05-18: Publishers を一覧/編集コンポーネントと form 補助へ分割 |
+| R-FE-05 | Copilot | 完了（ローカル） | - | 2026-05-18: TagTree を treeBuilder/ノード/コンテキストメニューへ分割 |
+| R-FE-06 | Copilot | 完了（ローカル） | - | 2026-05-18: DriverDetailPanel を接続フォーム/詳細表示部品へ分割 |
+| R-FE-07 | Copilot | 完了（ローカル） | - | 2026-05-18: PostgresRegistrationPanel を接続/テーブル/カラム対応部品へ分割 |
+| R-FE-08 | Copilot | 完了（ローカル） | - | 2026-05-18: MQTT Monitor を ControlBar/TopicTree/Detail と polling モジュールへ分割 |
+| R-FE-09 | Copilot | 完了（ローカル） | - | 2026-05-18: driver UI静的資産をmodule化し共通tauriユーティリティへ重複集約 |
+| R-RS-01 | Copilot | 完了（ローカル） | - | 2026-05-18: `dll_api.rs` を高レベルAPIへ整理し、FFI/シンボル解決を `dll_ffi.rs` / `dll_symbols.rs` へ分離 |
+| R-RS-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `joywatcher_bridge_client.rs` を `commands.rs` / `protocol.rs` / `process.rs` に分割 |
 | R-RS-03 | - | 未着手 | - | - |
 | R-DEDUP-01 | Copilot | 完了（ローカル） | - | 2026-05-18: `write_tags_toml_atomic` 重複定義を排除 |
 | R-DEDUP-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/config_io` へ TOML I/O 共通化 |

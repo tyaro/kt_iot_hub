@@ -1,6 +1,12 @@
 <script lang="ts">
-  import { driversStore, scanGroupsStore, tagsStore, reloadDrivers, reloadScanGroups, reloadTags } from '$lib/stores/index';
   import type { DriverDto, ScanGroupDto, TagDto } from '$lib/ipc/index';
+  import { driversStore, reloadDrivers, reloadScanGroups, reloadTags, scanGroupsStore, tagsStore } from '$lib/stores/index';
+  import ContextMenu from './tag-tree/ContextMenu.svelte';
+  import DriverNode from './tag-tree/DriverNode.svelte';
+  import ScanGroupNode from './tag-tree/ScanGroupNode.svelte';
+  import TagNode from './tag-tree/TagNode.svelte';
+  import { buildGroupedTree } from './tag-tree/treeBuilder';
+  import type { ContextMenuState } from './tag-tree/types';
 
   interface Props {
     onSelect?: (tag: TagDto | null) => void;
@@ -15,6 +21,7 @@
     onRequestEditTag?: (tag: TagDto) => void;
     onRequestDeleteTag?: (tag: TagDto) => void;
   }
+
   let {
     onSelect = () => {},
     onSelectDriver = () => {},
@@ -29,19 +36,13 @@
     onRequestDeleteTag = () => {},
   }: Props = $props();
 
-  interface ContextMenuState {
-    open: boolean;
-    x: number;
-    y: number;
-    kind?: 'driver' | 'tag';
-    driverId?: string;
-    tag?: TagDto;
-  }
-
-  // 展開状態管理
   let expandedDrivers = $state(new Set<string>());
   let expandedScanGroups = $state(new Set<string>());
   let contextMenu = $state<ContextMenuState>({ open: false, x: 0, y: 0 });
+
+  const groupedTree = $derived(
+    buildGroupedTree($driversStore.items, $scanGroupsStore.items, $tagsStore.items),
+  );
 
   function resolveDriverLabel(driverId: string) {
     const driver = $driversStore.items.find((item) => item.id === driverId);
@@ -51,62 +52,6 @@
     return `${driver.id} (${driver.driver_type})`;
   }
 
-  function formatCycleSummary(scanGroup: ScanGroupDto) {
-    const configured = scanGroup.scan_rate_ms;
-    const observed = scanGroup.observed_cycle_ms;
-    if (!configured && !observed) {
-      return '周期: -';
-    }
-    if (configured && !observed) {
-      return `設定 ${configured}ms / 実測 -`;
-    }
-    if (!configured && observed) {
-      return `実測 ${observed}ms`;
-    }
-    return `設定 ${configured}ms / 実測 ${observed}ms`;
-  }
-
-  function formatDeltaRatio(scanGroup: ScanGroupDto) {
-    if (scanGroup.cycle_delta_ratio == null) {
-      return null;
-    }
-    return `乖離 ${(scanGroup.cycle_delta_ratio * 100).toFixed(1)}%`;
-  }
-
-  let groupedTree = $derived.by(() => {
-    const tagsByScanGroup = new Map<string, TagDto[]>();
-
-    $tagsStore.items.forEach((tag) => {
-      if (!tagsByScanGroup.has(tag.scan_group_id)) {
-        tagsByScanGroup.set(tag.scan_group_id, []);
-      }
-      tagsByScanGroup.get(tag.scan_group_id)!.push(tag);
-    });
-
-    const scanGroupsByDriver = new Map<string, ScanGroupDto[]>();
-    $scanGroupsStore.items.forEach((scanGroup) => {
-      if (!scanGroupsByDriver.has(scanGroup.driver_id)) {
-        scanGroupsByDriver.set(scanGroup.driver_id, []);
-      }
-      scanGroupsByDriver.get(scanGroup.driver_id)!.push(scanGroup);
-    });
-
-    return [...$driversStore.items]
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .map((driver) => {
-        const scanGroups = [...(scanGroupsByDriver.get(driver.id) ?? [])]
-          .sort((a, b) => a.id.localeCompare(b.id))
-          .map((scanGroup) => ({
-            scanGroup,
-            tags: [...(tagsByScanGroup.get(scanGroup.id) ?? [])]
-              .sort((a, b) => a.name.localeCompare(b.name)),
-          }));
-
-        return { driver, scanGroups };
-      });
-  });
-
-  // ツリー操作
   function toggleDriver(driverId: string) {
     if (expandedDrivers.has(driverId)) {
       expandedDrivers.delete(driverId);
@@ -117,11 +62,10 @@
   }
 
   function toggleScanGroup(scanGroupId: string) {
-    const key = scanGroupId;
-    if (expandedScanGroups.has(key)) {
-      expandedScanGroups.delete(key);
+    if (expandedScanGroups.has(scanGroupId)) {
+      expandedScanGroups.delete(scanGroupId);
     } else {
-      expandedScanGroups.add(key);
+      expandedScanGroups.add(scanGroupId);
     }
     expandedScanGroups = new Set(expandedScanGroups);
   }
@@ -165,7 +109,9 @@
   }
 
   function closeContextMenu() {
-    if (!contextMenu.open) return;
+    if (!contextMenu.open) {
+      return;
+    }
     contextMenu = { open: false, x: 0, y: 0, kind: undefined, driverId: undefined, tag: undefined };
   }
 
@@ -184,12 +130,6 @@
     closeContextMenu();
   }
 
-  function handleDriverDoubleClick(event: MouseEvent, driver: DriverDto) {
-    event.preventDefault();
-    selectDriver(driver);
-    requestEditDriver(driver.id);
-  }
-
   function requestEditTag(tag: TagDto) {
     onRequestEditTag(tag);
     closeContextMenu();
@@ -200,7 +140,12 @@
     closeContextMenu();
   }
 
-  // 初期ロード
+  function handleDriverDoubleClick(event: MouseEvent, driver: DriverDto) {
+    event.preventDefault();
+    selectDriver(driver);
+    requestEditDriver(driver.id);
+  }
+
   $effect(() => {
     reloadDrivers();
     reloadScanGroups();
@@ -211,7 +156,6 @@
 <svelte:window onclick={closeContextMenu} onblur={closeContextMenu} />
 
 <div class="tag-tree">
-
   <div class="toolbar">
     <button
       class="btn-reload secondary"
@@ -223,11 +167,7 @@
     >
       {($driversStore.loading || $scanGroupsStore.loading) ? '同期中...' : '接続先を同期'}
     </button>
-    <button
-      class="btn-reload"
-      onclick={() => reloadTags()}
-      disabled={$tagsStore.loading}
-    >
+    <button class="btn-reload" onclick={() => reloadTags()} disabled={$tagsStore.loading}>
       {$tagsStore.loading ? '読み込み中...' : '再読み込み'}
     </button>
   </div>
@@ -242,94 +182,54 @@
     <div class="tree-container">
       {#each groupedTree as node (node.driver.id)}
         {@const driver = node.driver}
-        {@const driverId = driver.id}
-        {@const isExpanded = expandedDrivers.has(driverId)}
+        {@const isExpanded = expandedDrivers.has(driver.id)}
 
-        <div class="tree-node driver-node">
-          <button
-            class="tree-toggle"
-            onclick={() => toggleDriver(driverId)}
-            title={isExpanded ? '折畳む' : '展開'}
-          >
-            {isExpanded ? '▼' : '▶'}
-          </button>
-          <button
-            type="button"
-            class="tree-label tree-label-btn driver-label"
-            class:selected={selectedDriverId === driverId}
-            onclick={() => selectDriver(driver)}
-            ondblclick={(event) => handleDriverDoubleClick(event, driver)}
-            oncontextmenu={(event) => openDriverContextMenu(event, driverId)}
-            title="クリックで選択 / ダブルクリックで接続先設定を編集"
-          >
-              🧩 {resolveDriverLabel(driverId)}
-          </button>
-        </div>
+        <DriverNode
+          {isExpanded}
+          isSelected={selectedDriverId === driver.id}
+          label={resolveDriverLabel(driver.id)}
+          onToggle={() => toggleDriver(driver.id)}
+          onSelect={() => selectDriver(driver)}
+          onDoubleClick={(event) => handleDriverDoubleClick(event, driver)}
+          onContextMenu={(event) => openDriverContextMenu(event, driver.id)}
+        />
 
         {#if isExpanded}
           {#if node.scanGroups.length === 0}
-            <div class="tree-node scan-group-node empty-node">
+            <div class="empty-node scan-empty-node">
               <div class="indent-1">
-                <span class="tree-label scan-group-label muted">Scanグループ未登録</span>
+                <span class="muted">Scanグループ未登録</span>
               </div>
             </div>
           {/if}
 
           {#each node.scanGroups as scanNode (scanNode.scanGroup.id)}
             {@const scanGroup = scanNode.scanGroup}
-            {@const scanGroupId = scanGroup.id}
-            {@const isGroupExpanded = expandedScanGroups.has(scanGroupId)}
-            {@const tags = scanNode.tags}
-            {@const deltaLabel = formatDeltaRatio(scanGroup)}
+            {@const isGroupExpanded = expandedScanGroups.has(scanGroup.id)}
 
-            <div class="tree-node scan-group-node">
-              <div class="indent-1">
-                <button
-                  class="tree-toggle"
-                  onclick={() => toggleScanGroup(scanGroupId)}
-                  title={isGroupExpanded ? '折畳む' : '展開'}
-                >
-                  {isGroupExpanded ? '▼' : '▶'}
-                </button>
-                <button
-                  type="button"
-                  class="tree-label tree-label-btn scan-group-label"
-                  class:selected={selectedScanGroupId === scanGroupId}
-                  onclick={() => selectScanGroup(scanGroup)}
-                >
-                  📊 {scanGroupId}
-                </button>
-                <span class="scan-meta">{formatCycleSummary(scanGroup)}</span>
-                {#if deltaLabel}
-                  <span class={`scan-badge ${scanGroup.cycle_status ?? 'unknown'}`}>{deltaLabel}</span>
-                {/if}
-              </div>
-            </div>
+            <ScanGroupNode
+              {scanGroup}
+              isExpanded={isGroupExpanded}
+              isSelected={selectedScanGroupId === scanGroup.id}
+              onToggle={() => toggleScanGroup(scanGroup.id)}
+              onSelect={() => selectScanGroup(scanGroup)}
+            />
 
             {#if isGroupExpanded}
-              {#if tags.length === 0}
-                <div class="tree-node tag-node empty-node">
+              {#if scanNode.tags.length === 0}
+                <div class="empty-node tag-empty-node">
                   <div class="indent-2">
-                    <span class="tree-label muted">タグ未登録</span>
+                    <span class="muted">タグ未登録</span>
                   </div>
                 </div>
               {:else}
-                {#each tags as tag (tag.id)}
-                  <div class="tree-node tag-node">
-                    <div class="indent-2">
-                      <button
-                        class="tree-tag-btn"
-                        class:selected={tag.id === selectedTagId}
-                        onclick={() => selectTag(tag)}
-                        oncontextmenu={(event) => openTagContextMenu(event, tag)}
-                        title={`${tag.name} (${tag.data_type})`}
-                      >
-                        <span class="tag-icon">🏷️</span>
-                        <span class="tag-name">{tag.name}</span>
-                        <span class="tag-type">({tag.data_type})</span>
-                      </button>
-                    </div>
-                  </div>
+                {#each scanNode.tags as tag (tag.id)}
+                  <TagNode
+                    {tag}
+                    isSelected={tag.id === selectedTagId}
+                    onSelect={() => selectTag(tag)}
+                    onContextMenu={(event) => openTagContextMenu(event, tag)}
+                  />
                 {/each}
               {/if}
             {/if}
@@ -339,40 +239,14 @@
     </div>
   {/if}
 
-  {#if contextMenu.open && contextMenu.kind === 'driver' && contextMenu.driverId}
-    <div
-      class="context-menu"
-      style={`left: ${contextMenu.x}px; top: ${contextMenu.y}px;`}
-      role="menu"
-      aria-label="タグツリー操作メニュー"
-      tabindex="-1"
-    >
-      <button class="context-item" onclick={() => requestNewTag(contextMenu.driverId!)}>
-        タグ追加
-      </button>
-      <button class="context-item" onclick={() => requestEditDriver(contextMenu.driverId!)}>
-        全タグ編集
-      </button>
-      <button class="context-item danger" onclick={() => requestDeleteDriver(contextMenu.driverId!)}>
-        接続先削除
-      </button>
-    </div>
-  {:else if contextMenu.open && contextMenu.kind === 'tag' && contextMenu.tag}
-    <div
-      class="context-menu"
-      style={`left: ${contextMenu.x}px; top: ${contextMenu.y}px;`}
-      role="menu"
-      aria-label="タグツリー操作メニュー"
-      tabindex="-1"
-    >
-      <button class="context-item" onclick={() => requestEditTag(contextMenu.tag!)}>
-        編集
-      </button>
-      <button class="context-item danger" onclick={() => requestDeleteTag(contextMenu.tag!)}>
-        削除
-      </button>
-    </div>
-  {/if}
+  <ContextMenu
+    menu={contextMenu}
+    onRequestNewTag={requestNewTag}
+    onRequestEditDriver={requestEditDriver}
+    onRequestDeleteDriver={requestDeleteDriver}
+    onRequestEditTag={requestEditTag}
+    onRequestDeleteTag={requestDeleteTag}
+  />
 </div>
 
 <style>
@@ -438,109 +312,6 @@
     font-size: 0.875rem;
   }
 
-  .tree-node {
-    user-select: none;
-    padding: 0.25rem 0;
-  }
-
-  .driver-node {
-    background: #f5f5f5;
-  }
-
-  .scan-group-node {
-    background: #fafafa;
-  }
-
-  .tag-node {
-    background: white;
-  }
-
-  .tree-toggle {
-    width: 20px;
-    height: 20px;
-    padding: 0;
-    margin: 0 0.25rem;
-    border: none;
-    background: none;
-    cursor: pointer;
-    color: #666;
-    font-size: 0.75rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .tree-toggle:hover {
-    color: #333;
-  }
-
-  .tree-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.4rem;
-    cursor: pointer;
-  }
-
-  .tree-label-btn {
-    border: none;
-    background: transparent;
-    font: inherit;
-  }
-
-  .driver-label {
-    font-weight: 600;
-    color: #333;
-  }
-
-  .scan-group-label {
-    border: none;
-    background: transparent;
-    font-weight: 500;
-    color: #555;
-  }
-
-  .scan-meta {
-    margin-left: 0.35rem;
-    color: #64748b;
-    font-size: 0.78rem;
-    white-space: nowrap;
-  }
-
-  .scan-badge {
-    margin-left: 0.35rem;
-    border-radius: 999px;
-    padding: 0.05rem 0.45rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .scan-badge.ok {
-    color: #166534;
-    background: #dcfce7;
-  }
-
-  .scan-badge.warn {
-    color: #92400e;
-    background: #fef3c7;
-  }
-
-  .scan-badge.danger {
-    color: #991b1b;
-    background: #fee2e2;
-  }
-
-  .scan-badge.unknown {
-    color: #334155;
-    background: #e2e8f0;
-  }
-
-  .tree-label-btn.selected {
-    background: #dbeafe;
-    border-radius: 4px;
-  }
-
   .indent-1 {
     display: flex;
     align-items: center;
@@ -553,82 +324,17 @@
     padding-left: 3rem;
   }
 
-  .tree-tag-btn {
-    flex: 1;
-    text-align: left;
-    padding: 0.3rem 0.4rem;
-    border: none;
-    background: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: #333;
-    font-size: 0.875rem;
-  }
-
-  .tree-tag-btn:hover {
-    background: #e3f2fd;
-  }
-
-  .tree-tag-btn.selected {
-    background: #bbdefb;
-    font-weight: 500;
-  }
-
-  .context-menu {
-    position: fixed;
-    z-index: 1200;
-    min-width: 150px;
-    background: #fff;
-    border: 1px solid #d0d7de;
-    border-radius: 6px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
-    padding: 0.3rem;
-    display: grid;
-    gap: 0.2rem;
-  }
-
-  .context-item {
-    border: none;
-    background: transparent;
-    text-align: left;
-    font-size: 0.82rem;
-    padding: 0.4rem 0.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    color: #334155;
-  }
-
-  .context-item:hover {
-    background: #eff6ff;
-  }
-
-  .context-item.danger {
-    color: #b91c1c;
-  }
-
-  .context-item.danger:hover {
-    background: #fef2f2;
-  }
-
-  .tag-icon {
-    display: inline-block;
-    width: 1.2em;
-    text-align: center;
-  }
-
-  .tag-name {
-    font-weight: 500;
-  }
-
-  .tag-type {
-    color: #999;
-    font-size: 0.8rem;
-  }
-
   .empty-node {
     color: #94a3b8;
+    padding: 0.25rem 0;
+  }
+
+  .scan-empty-node {
+    background: #fafafa;
+  }
+
+  .tag-empty-node {
+    background: white;
   }
 
   .muted {

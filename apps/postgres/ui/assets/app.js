@@ -1,4 +1,11 @@
-const invoke = (cmd, args = {}) => window.__TAURI_INTERNALS__.invoke(cmd, args);
+import {
+  clearMessageElements,
+  formatError,
+  invokeDirect,
+  normalizeId
+} from '../../../common/ui-assets/tauri.js';
+
+const invoke = (cmd, args = {}) => invokeDirect(cmd, args);
 
 let launchContext = null;
 let tables = [];
@@ -17,26 +24,8 @@ const msgErr = el('msgErr');
 const outOk = el('outOk');
 const outErr = el('outErr');
 
-function formatError(error) {
-  if (!error) return '不明なエラーが発生しました';
-  if (typeof error === 'string') return error;
-  if (typeof error === 'object') {
-    if (typeof error.error === 'string' && error.error) return error.error;
-    if (typeof error.message === 'string' && error.message) return error.message;
-    try {
-      return JSON.stringify(error);
-    } catch {
-      return String(error);
-    }
-  }
-  return String(error);
-}
-
 function clearMessages() {
-  msgOk.textContent = '';
-  msgErr.textContent = '';
-  outOk.textContent = '';
-  outErr.textContent = '';
+  clearMessageElements([msgOk, msgErr, outOk, outErr]);
 }
 
 function conn() {
@@ -74,10 +63,6 @@ function mapPgTypeToTagType(dataType) {
   if (t.includes('real') || t.includes('float4')) return 'f32';
   if (t.includes('double') || t.includes('float8') || t.includes('numeric') || t.includes('decimal')) return 'f64';
   return 'string';
-}
-
-function normalizeId(raw) {
-  return raw.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 }
 
 function generateDefaultDriverId() {

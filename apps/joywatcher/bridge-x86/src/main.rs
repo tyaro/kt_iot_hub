@@ -1,5 +1,7 @@
 mod connection;
 mod dll_api;
+mod dll_ffi;
+mod dll_symbols;
 mod mock_api;
 #[allow(dead_code)]
 #[path = "../../common/path_utils.rs"]
