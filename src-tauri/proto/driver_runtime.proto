@@ -55,6 +55,8 @@ message TagValueMessage {
   string value_json  = 2; // serde_json::Value をシリアライズした文字列
   string quality     = 3; // "good" | "bad" | "uncertain"
   string timestamp   = 4; // RFC 3339 形式
+  uint64 io_rx_bytes_total = 5; // ドライバが観測した累積受信バイト
+  uint64 io_tx_bytes_total = 6; // ドライバが観測した累積送信バイト
 }
 
 message StreamTagValuesAck {

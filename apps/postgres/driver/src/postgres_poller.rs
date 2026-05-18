@@ -68,6 +68,12 @@ pub struct PostgresPoller {
     tags_by_group: HashMap<String, Vec<TagRuntime>>,
 }
 
+#[derive(Debug, Default)]
+struct DriverIoTotals {
+    rx_bytes_total: u64,
+    tx_bytes_total: u64,
+}
+
 impl PostgresPoller {
     pub fn from_definition(def: GetDriverDefinitionResponse) -> Result<Self> {
         let settings = def
@@ -188,6 +194,7 @@ impl PostgresPoller {
             let mut ticker = tokio::time::interval(Duration::from_millis(BASE_TICK_MS));
             ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             let mut last_polled: HashMap<String, Instant> = HashMap::new();
+            let mut io_totals = DriverIoTotals::default();
 
             loop {
                 tokio::select! {
@@ -217,6 +224,10 @@ impl PostgresPoller {
                                 }
                             };
 
+                            io_totals.tx_bytes_total = io_totals
+                                .tx_bytes_total
+                                .saturating_add(sql.as_bytes().len() as u64);
+
                             let rows = match client.query_opt(&sql, &[]).await {
                                 Ok(row) => row,
                                 Err(e) => {
@@ -241,6 +252,10 @@ impl PostgresPoller {
                                     }
                                 };
 
+                                io_totals.rx_bytes_total = io_totals
+                                    .rx_bytes_total
+                                    .saturating_add(raw.as_bytes().len() as u64);
+
                                 let value = match tag.data_type.parse_value(&raw) {
                                     Ok(v) => v,
                                     Err(e) => {
@@ -254,6 +269,8 @@ impl PostgresPoller {
                                     value_json: value.to_string(),
                                     quality: "good".to_string(),
                                     timestamp: Utc::now().to_rfc3339(),
+                                    io_rx_bytes_total: io_totals.rx_bytes_total,
+                                    io_tx_bytes_total: io_totals.tx_bytes_total,
                                 };
 
                                 if tx.send(msg).await.is_err() {

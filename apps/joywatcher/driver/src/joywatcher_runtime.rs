@@ -30,6 +30,12 @@ pub struct PollGroup {
     pub tags: Vec<RuntimeTag>,
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct DriverIoTotals {
+    pub rx_bytes_total: u64,
+    pub tx_bytes_total: u64,
+}
+
 impl PollGroup {
     fn effective_scan_rate_ms(&self) -> u32 {
         if self.scan_rate_ms == 0 {
@@ -50,7 +56,7 @@ impl PollGroup {
         tag_ids
     }
 
-    fn build_messages(&self, values: &[BridgeReadValue]) -> Vec<TagValueMessage> {
+    fn build_messages(&self, values: &[BridgeReadValue], io_totals: &mut DriverIoTotals) -> Vec<TagValueMessage> {
         let mut tags_by_native_id = HashMap::<i32, Vec<&RuntimeTag>>::new();
         for tag in &self.tags {
             tags_by_native_id
@@ -65,12 +71,20 @@ impl PollGroup {
                 continue;
             };
 
+            let encoded_value = encode_json_value(&value.value);
+            io_totals.rx_bytes_total = io_totals
+                .rx_bytes_total
+                .saturating_add(encoded_value.as_bytes().len() as u64)
+                .saturating_add(value.quality.as_bytes().len() as u64);
+
             for tag in tags {
                 messages.push(TagValueMessage {
                     tag_id: tag.tag_id.clone(),
-                    value_json: encode_json_value(&value.value),
+                    value_json: encoded_value.clone(),
                     quality: value.quality.clone(),
                     timestamp: String::new(),
+                    io_rx_bytes_total: io_totals.rx_bytes_total,
+                    io_tx_bytes_total: io_totals.tx_bytes_total,
                 });
             }
         }
@@ -175,6 +189,7 @@ impl JoyWatcherPollPlan {
         let mut ticker = tokio::time::interval(Duration::from_millis(BASE_TICK_MS));
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         let mut last_polled = HashMap::<String, Instant>::new();
+        let mut io_totals = DriverIoTotals::default();
 
         loop {
             ticker.tick().await;
@@ -191,8 +206,13 @@ impl JoyWatcherPollPlan {
                 }
 
                 last_polled.insert(group.id.clone(), now);
-                let values = bridge.read_tags(&group.unique_native_tag_ids())?;
-                let messages = group.build_messages(&values);
+                let native_tag_ids = group.unique_native_tag_ids();
+                io_totals.tx_bytes_total = io_totals
+                    .tx_bytes_total
+                    .saturating_add((native_tag_ids.len() * std::mem::size_of::<i32>()) as u64);
+
+                let values = bridge.read_tags(&native_tag_ids)?;
+                let messages = group.build_messages(&values, &mut io_totals);
                 if messages.is_empty() {
                     debug!("JoyWatcher scan group {} produced no mapped messages", group.id);
                     continue;
@@ -339,11 +359,12 @@ mod tests {
             }],
         };
 
+        let mut io_totals = DriverIoTotals::default();
         let messages = group.build_messages(&[BridgeReadValue {
             native_tag_id: 77,
             quality: "good".to_string(),
             value: BridgeValue::Number(9.5),
-        }]);
+        }], &mut io_totals);
 
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].tag_id, "tag-1");

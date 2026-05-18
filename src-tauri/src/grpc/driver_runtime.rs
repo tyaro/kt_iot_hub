@@ -256,6 +256,18 @@ impl DriverRuntimeService for DriverRuntimeGrpcService {
             });
 
             if let Some(tag) = self.state.registry.get(&TagId(tag_id)).await {
+                {
+                    let mut cache = self.state.runtime_metrics_cache.write().await;
+                    cache.last_driver_reported_io_totals.insert(
+                        tag.driver_id.clone(),
+                        crate::app_state::DriverIoTotalState {
+                            rx_bytes_total: msg.io_rx_bytes_total,
+                            tx_bytes_total: msg.io_tx_bytes_total,
+                            sampled_at: chrono::Utc::now(),
+                        },
+                    );
+                }
+
                 self
                     .update_scan_group_runtime_metric(&tag.driver_id, &tag.scan_group_id, chrono::Utc::now())
                     .await;

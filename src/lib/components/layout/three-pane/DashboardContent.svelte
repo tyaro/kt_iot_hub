@@ -22,6 +22,16 @@
     return `${value.toFixed(1)}%`;
   }
 
+  function formatByteRate(value?: number | null): string {
+    if (value == null || !Number.isFinite(value)) {
+      return '-';
+    }
+    if (value < 1024) {
+      return `${value.toFixed(1)} B`;
+    }
+    return formatBytes(value);
+  }
+
   function cpuLevel(value?: number | null): 'normal' | 'warn' | 'danger' {
     if (value == null || !Number.isFinite(value)) {
       return 'normal';
@@ -402,12 +412,12 @@
                 <td>{formatBytes(metric.memory_bytes)}</td>
                 <td>
                   <span class={`metric-badge ${ioLevel(metric.network_rx_bytes_per_sec)}`}>
-                    {formatBytes(metric.network_rx_bytes_per_sec)}/s
+                    {formatByteRate(metric.network_rx_bytes_per_sec)}/s
                   </span>
                 </td>
                 <td>
                   <span class={`metric-badge ${ioLevel(metric.network_tx_bytes_per_sec)}`}>
-                    {formatBytes(metric.network_tx_bytes_per_sec)}/s
+                    {formatByteRate(metric.network_tx_bytes_per_sec)}/s
                   </span>
                 </td>
               </tr>
@@ -416,8 +426,8 @@
         </table>
       {/if}
       <p class="sub">※ CPU は Task Manager 風に 0〜100% へ正規化して表示</p>
-      <p class="sub">※ Windowsではプロセス I/O カウンタ由来の近似値です（ネットワーク専用値ではなく、ファイルI/Oを含む場合あり）</p>
-      <p class="sub">※ PostgreSQL のようなソケット通信中心のドライバは、この指標では 0 のままに見える場合があります</p>
+      <p class="sub">※ I/O Read/Write は各通信ドライバが報告する累積送受信バイト差分（B/s）です</p>
+      <p class="sub">※ ドライバ起動直後や初回サンプルでは 0 B/s になることがあります</p>
       <p class="sub">※ 色の目安: CPU 70%/90%、I/O 1MB/s / 10MB/s</p>
     </div>
   </div>
