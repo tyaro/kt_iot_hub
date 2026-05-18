@@ -230,3 +230,53 @@ npm run build
 npm run tauri dev
 npm run tauri build
 ```
+
+---
+
+## 8. 進行中のリファクタリング引き継ぎ
+
+> 本プロジェクトでは **保守性向上のためのリファクタを継続的に進行**している。
+> 機能追加・修正タスクであっても、関連箇所がリファクタ対象に含まれる場合は本セクションを参照すること。
+
+### 8.1 唯一の正本
+
+- **[docs/refactor-plan.md](../docs/refactor-plan.md)** がリファクタ計画の正本。タスク ID（`R-BE-*` / `R-FE-*` / `R-RS-*` / `R-DEDUP-*` / `R-DOC-*`）単位で独立着手できる構成。
+- タスク着手前に必ず以下を確認:
+  1. `docs/refactor-plan.md` §0.2 **不変条件**（Tauri コマンド名・serde 表現・proto・JSON 形・TOML キー・ログ grep キーは不変）
+  2. 同 §3 該当タスクの **Depends / 対象 / 手順 / 受け入れ条件**
+  3. 同 §4 進行ログ表（既に他エージェントが着手済みでないか）
+
+### 8.2 リファクタタスク着手の手順
+
+1. 着手前: 進行ログ表の該当行を「着手中」に更新し、コミットを 1 件作る（`docs(refactor): R-XX-NN 着手` 等）。
+2. 実装中: コミットメッセージの先頭にタスク ID を付ける（例: `refactor(R-BE-01): dto.rs を機能別に分割`）。
+3. 完了時:
+   - `cargo fmt` / `cargo clippy --all-targets --all-features -- -D warnings` / `cargo test` / `npm run check` を必ず通す。
+   - 進行ログ表を「完了」に更新し、コミット ID を埋める。
+   - 派生タスク・前提崩れを発見した場合は §5 発見メモへ追記。
+
+### 8.3 既知の地雷（着手前必読）
+
+- **`write_tags_toml_atomic` が 2 箇所で重複定義**（`src-tauri/src/commands/driver/toml_io.rs:31` と `src-tauri/src/commands/tag.rs:215`）。tag CRUD を触る場合は **R-DEDUP-01** を先に終わらせるか、両方を同期させて編集する。
+- `normalize_optional_string` が 3 ファイルに同名で並存（R-DEDUP-08）。新規呼び出し追加時はどれを import すべきか **R-DEDUP-08** 完了後に統一される予定。
+- `apps/joywatcher/{driver,ui}` 間でブリッジ探索ロジック / `BRIDGE_EXE_NAME` 等が重複（R-DEDUP-09）。片方だけ修正しない。
+- driver-UI 静的資産（`apps/*/ui/assets/app.js`）の `tauriInvoke` ラッパ等が重複（R-DEDUP-07）。
+
+### 8.4 リファクタ作業のスコープ規律（再掲・厳守）
+
+- **シリアライズ表現を変えない**。Tauri コマンドの引数・戻り値 JSON、`config/*.toml` キー、ドライバ UI 連携 JSON、gRPC proto はバイト互換を維持。
+- **依頼スコープ外のリファクタを混ぜない**。R-XX-NN 着手中であっても、計画外の整形・命名変更・依存追加は別タスクに切り出す。
+- **共通化は「明らかな同一実装」のみ対象**。似て非なるロジック（例: ドライバ毎の探索順）は安易に統合しない。
+- **1 タスク = 1 コミット粒度**。移動だけの変更とロジック変更はコミットを分ける。
+
+### 8.5 関連ドキュメント早見表
+
+| 知りたいこと | 参照先 |
+| --- | --- |
+| アーキ全体・設計判断 | [docs/design.md](../docs/design.md), [docs/architecture.md](../docs/architecture.md), [docs/decisions.md](../docs/decisions.md) |
+| ドライバ実装フロー | [docs/driver-development.md](../docs/driver-development.md), [docs/driver-implementation-flow.md](../docs/driver-implementation-flow.md) |
+| 引き継ぎテンプレ | [docs/templates/driver-session-handoff-template.md](../docs/templates/driver-session-handoff-template.md) |
+| 設定ファイル仕様 | [docs/config-spec.md](../docs/config-spec.md) |
+| UI 登録仕様 | [docs/ui-registration.md](../docs/ui-registration.md) |
+| MQTT モニタ仕様 | [docs/mqtt-monitor.md](../docs/mqtt-monitor.md) |
+| **リファクタ計画（本セクションの正本）** | [docs/refactor-plan.md](../docs/refactor-plan.md) |
