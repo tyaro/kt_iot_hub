@@ -11,8 +11,17 @@
 - Mosquitto Windows バイナリ
 - 既定設定ファイル（`mosquitto.conf`）
 - 必要に応じて JoyWatcher ランタイム DLL（再配布可否確認後）
-- 将来的なドライバ実行ファイル（例: `driver-postgres.exe`, `driver-joywatcher.exe`）
-- 将来的なドライバ登録ツール（例: `driver-postgres.exe register`）
+- ドライバ実行ファイル（`driver-ui/postgres/driver-postgres.exe`, `driver-ui/joywatcher/driver-joywatcher.exe`）
+- ドライバ登録UI（`driver-ui/postgres/registration-ui.exe`, `driver-ui/joywatcher/registration-ui.exe`）
+- JoyWatcher x86 ブリッジ（`driver-ui/joywatcher/joywatcher-bridge-x86.exe`）
+
+### 同梱用アーティファクト準備手順
+
+1. `npm run driver-suite:release` を実行し、`driver-ui/` 配下へ release 成果物を配置する。
+2. `npm run tauri-build:bundle-drivers` を実行して本体インストーラをビルドする。
+
+`src-tauri/tauri.conf.json` の `bundle.resources` で上記実行ファイルを指定し、
+インストーラへ同梱する。
 
 ## インストール時の処理
 

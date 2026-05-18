@@ -17,9 +17,11 @@
     "driver-runtime:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-dev-driver-runtime.ps1",
     "driver-ui:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/install-driver-ui.ps1",
     "driver-ui:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-dev-driver-ui.ps1",
+    "driver-suite:release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-release-driver-suite.ps1",
     "joywatcher-ui:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-dev-joywatcher-ui.ps1",
     "joywatcher-suite:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-dev-joywatcher-suite.ps1",
-    "joywatcher-ui:launch": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/launch-dev-joywatcher-ui.ps1"
+    "joywatcher-ui:launch": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/launch-dev-joywatcher-ui.ps1",
+    "tauri-build:bundle-drivers": "npm run driver-suite:release && npm run tauri-build"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",

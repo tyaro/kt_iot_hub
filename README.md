@@ -84,6 +84,24 @@ PostgreSQL ランタイム本体の crate は `apps/postgres/driver` です。
 
 見つからない場合は、ランタイム開始時にエラーを返します。
 
+## インストーラ同梱（v0.1.0）
+
+本体インストーラには、以下の実行ファイルを同梱します。
+
+- `driver-ui/postgres/registration-ui.exe`
+- `driver-ui/postgres/driver-postgres.exe`
+- `driver-ui/joywatcher/registration-ui.exe`
+- `driver-ui/joywatcher/driver-joywatcher.exe`
+- `driver-ui/joywatcher/joywatcher-bridge-x86.exe`
+
+同梱ビルドは次の手順で実行します。
+
+- `npm run driver-suite:release`（同梱用成果物を `driver-ui/` へ配置）
+- `npm run tauri-build:bundle-drivers`（同梱済みで本体インストーラをビルド）
+
+本体は実行時に `resources/driver-ui/...` も探索対象に含めるため、
+インストール直後に driver-ui ベースパス未設定でも同梱実行ファイルを利用できます。
+
 ## 補足
 
 - `参考/` 配下はライセンス上の理由で Git 管理対象外です（`.gitignore` 設定済み）。

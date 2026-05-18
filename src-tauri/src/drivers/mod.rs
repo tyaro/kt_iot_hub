@@ -222,6 +222,11 @@ fn app_root_candidates(driver_ui_base_dir: Option<&str>) -> Vec<PathBuf> {
 
     if let Ok(current_exe) = std::env::current_exe() {
         if let Some(exe_dir) = current_exe.parent() {
+            roots.push(exe_dir.join("resources"));
+            if let Some(parent) = exe_dir.parent() {
+                roots.push(parent.join("Resources"));
+            }
+
             let mut cursor = Some(exe_dir);
             while let Some(path) = cursor {
                 roots.push(path.to_path_buf());

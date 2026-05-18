@@ -1,7 +1,7 @@
 {
   "productName": "kt_iot_hub",
   "version": "0.1.0",
-  "identifier": "com.example.kt_iot_hub",
+  "identifier": "com.example.kt-iot-hub",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -23,5 +23,19 @@
     "security": {
       "csp": "default-src 'self'; script-src 'self'"
     }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "../driver-ui/postgres/registration-ui.exe",
+      "../driver-ui/postgres/driver-postgres.exe",
+      "../driver-ui/joywatcher/registration-ui.exe",
+      "../driver-ui/joywatcher/driver-joywatcher.exe",
+      "../driver-ui/joywatcher/joywatcher-bridge-x86.exe"
+    ]
   }
 }
