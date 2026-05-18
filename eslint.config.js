@@ -7,7 +7,30 @@ import svelteParser from 'svelte-eslint-parser';
 export default [
   js.configs.recommended,
   {
-    ignores: ['build', 'dist', 'node_modules', '*.config.js']
+    ignores: ['build', 'dist', 'node_modules', 'target', 'src-tauri/target', '参考/**', '*.config.js']
+  },
+  {
+    files: ['**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      sourceType: 'module',
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+        globalThis: 'readonly',
+        navigator: 'readonly',
+        location: 'readonly',
+        screen: 'readonly',
+        parent: 'readonly',
+        self: 'readonly',
+        top: 'readonly',
+        Event: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly'
+      }
+    }
   },
   {
     files: ['**/*.ts'],

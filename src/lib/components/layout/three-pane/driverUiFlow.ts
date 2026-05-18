@@ -71,7 +71,6 @@ export async function monitorDriverUiImport({
 }: MonitorDriverUiImportDeps): Promise<void> {
   setPolling(true);
 
-  let attempt = 1;
   let inactiveAttempts = 0;
   while (isTokenValid(token)) {
     if (!isTokenValid(token)) {
@@ -96,7 +95,6 @@ export async function monitorDriverUiImport({
         if (inactiveAttempts <= inactiveGraceAttempts) {
           setMessage('ドライバUI終了後の保存結果を確認しています...');
           await waitFn(intervalMs);
-          attempt += 1;
           continue;
         }
 
@@ -117,7 +115,6 @@ export async function monitorDriverUiImport({
     }
 
     await waitFn(intervalMs);
-    attempt += 1;
   }
 }
 

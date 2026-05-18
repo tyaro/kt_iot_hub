@@ -12,7 +12,6 @@ let tables = [];
 let columns = [];
 let scanGroups = [];
 let existingDriverIds = [];
-let currentStep = 1;
 let activeTableKey = '';
 let isEditMode = false;
 let selectedTimestampField = '';
@@ -127,8 +126,6 @@ function totalTagCount() {
 }
 
 function setStep(step) {
-  currentStep = step;
-
   document.querySelectorAll('[data-step-panel]').forEach((panel) => {
     panel.classList.toggle('hidden', Number(panel.dataset.stepPanel) !== step);
   });

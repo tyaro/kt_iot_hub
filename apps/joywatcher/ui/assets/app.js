@@ -50,10 +50,6 @@ function connectionSettings() {
   return { ...connectionState }
 }
 
-function hasImportedTags() {
-  return totalTagCount() > 0
-}
-
 function countDetectedTypes() {
   return scanGroups.reduce(
     (acc, group) => {

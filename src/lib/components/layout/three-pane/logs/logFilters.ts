@@ -13,9 +13,12 @@ export type ParsedLogLine = {
   lifecycle: boolean;
 };
 
+const ANSI_ESCAPE = String.fromCharCode(27);
+const ANSI_ESCAPE_PATTERN = new RegExp(`${ANSI_ESCAPE}\\[[0-9;]*m`, 'g');
+
 export function cleanLogText(raw: string): string {
   return raw
-    .replace(/\u001b\[[0-9;]*m/g, '')
+    .replace(ANSI_ESCAPE_PATTERN, '')
     .replace(/\uFFFD\[[0-9;]*m/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -26,9 +29,9 @@ export function parseLogLine(raw: string): ParsedLogLine {
   const levelMatch = cleaned.match(/\b(TRACE|DEBUG|INFO|WARN|ERROR)\b/);
   const level = levelMatch?.[1] ?? 'INFO';
   const structuredMatch = cleaned.match(
-    /^(\d{4}-\d{2}-\d{2}T[^\s]+)\s+(TRACE|DEBUG|INFO|WARN|ERROR)\s+([a-zA-Z0-9_:\-]+):\s*(.*)$/,
+    /^(\d{4}-\d{2}-\d{2}T[^\s]+)\s+(TRACE|DEBUG|INFO|WARN|ERROR)\s+([a-zA-Z0-9_:-]+):\s*(.*)$/,
   );
-  const fallbackMatch = cleaned.match(/\b(?:TRACE|DEBUG|INFO|WARN|ERROR)\s+([a-zA-Z0-9_:\-]+):\s*(.*)$/);
+  const fallbackMatch = cleaned.match(/\b(?:TRACE|DEBUG|INFO|WARN|ERROR)\s+([a-zA-Z0-9_:-]+):\s*(.*)$/);
   const timestamp = structuredMatch?.[1] ?? '-';
   const target = structuredMatch?.[3] ?? fallbackMatch?.[1] ?? 'unknown';
   const message = structuredMatch?.[4] ?? fallbackMatch?.[2] ?? cleaned;

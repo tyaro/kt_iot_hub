@@ -656,6 +656,11 @@ components/
   - `cargo fmt -- --check` (`src-tauri`): ❌ 失敗（既存の整形差分）
   - `cargo clippy --all-targets --all-features -- -D warnings` (`src-tauri`): ❌ 失敗（既存の `dead_code` 警告を `-D warnings` でエラー化。例: `src/app_state/app_cpu.rs` の `last_driver_io_samples`）
 - OUT-OF-SCOPE: 上記 `lint` / `fmt` / `clippy` の失敗は、今回の「ドキュメント追記 + 実行確認」依頼範囲では修正未実施。別タスクでのベースライン是正が必要。
+- 2026-05-18 追記（ローカル）
+  - `npm run lint`: ✅ 通過（`参考/**` を lint 対象外に整理し、残件の正規表現/未使用変数を修正）
+  - `cargo fmt -- --check` (`src-tauri`): ❌ 継続失敗（既存整形差分）
+  - `cargo clippy --all-targets --all-features -- -D warnings` (`src-tauri`): ❌ 継続失敗（既存 dead_code/unused をエラー化）
+  - `cargo test` (`src-tauri`): ✅ 通過（17 passed, 0 failed）
 
 ---
 
