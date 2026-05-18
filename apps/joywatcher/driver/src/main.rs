@@ -1,3 +1,4 @@
+#[path = "../../../common/driver_runtime_grpc_client.rs"]
 mod grpc_client;
 mod joywatcher_artifacts;
 mod joywatcher_bridge;
