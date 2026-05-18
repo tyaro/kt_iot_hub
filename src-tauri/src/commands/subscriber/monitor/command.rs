@@ -1,3 +1,6 @@
+use super::tree::{
+    build_visible_topic_tree, find_latest_message_for_path, first_fixed_topic_segment,
+};
 use crate::app_state::AppState;
 use crate::commands::dto::{
     ErrorResponse, GetMqttMonitorTopicDetailRequest, GetMqttMonitorTreeRequest,
@@ -5,53 +8,7 @@ use crate::commands::dto::{
     MqttMonitorTopicDetailDto, MqttMonitorTopicNodeDto, StartMqttMonitorRequest,
 };
 use crate::subscribers::mqtt_monitor::MqttMonitorStartOptions;
-use std::collections::{HashMap, HashSet};
-use tauri::Manager;
-
-#[derive(Clone, Debug)]
-struct MutableTopicNode {
-    label: String,
-    full_path: String,
-    latest_message: Option<MqttMonitorMessageDto>,
-    children: HashMap<String, MutableTopicNode>,
-}
-
-impl MutableTopicNode {
-    fn new(label: String, full_path: String) -> Self {
-        Self {
-            label,
-            full_path,
-            latest_message: None,
-            children: HashMap::new(),
-        }
-    }
-}
-
-#[tauri::command]
-pub async fn open_mqtt_monitor_window(app: tauri::AppHandle) -> Result<(), ErrorResponse> {
-    if let Some(window) = app.get_webview_window("mqtt-monitor") {
-        let _ = window.show();
-        let _ = window.set_focus();
-        return Ok(());
-    }
-
-    tauri::WebviewWindowBuilder::new(
-        &app,
-        "mqtt-monitor",
-        tauri::WebviewUrl::App("/?view=mqtt-monitor".into()),
-    )
-    .title("MQTT Monitor")
-    .inner_size(1180.0, 760.0)
-    .min_inner_size(920.0, 620.0)
-    .resizable(true)
-    .build()
-    .map_err(|e| ErrorResponse {
-        error: format!("Failed to open MQTT monitor window: {}", e),
-        code: "WINDOW_OPEN_FAILED".to_string(),
-    })?;
-
-    Ok(())
-}
+use std::collections::HashSet;
 
 #[tauri::command]
 pub async fn list_mqtt_monitor_publishers(
@@ -263,123 +220,3 @@ pub async fn stop_mqtt_monitor(
     let status = state.mqtt_monitor_status.read().await.clone();
     Ok(status.into())
 }
-
-fn build_visible_topic_tree(
-    topics: &HashMap<String, crate::app_state::MqttMonitorMessageState>,
-    expanded_paths: &HashSet<String>,
-    publisher_topic_root: Option<String>,
-    include_sys: bool,
-    topic_filter: &str,
-    include_all: bool,
-) -> Vec<MqttMonitorTopicNodeDto> {
-    let mut roots = HashMap::<String, MutableTopicNode>::new();
-
-    if let Some(root) = publisher_topic_root
-        .or_else(|| first_fixed_topic_segment(topic_filter).map(|segment| segment.to_string()))
-    {
-        roots
-            .entry(root.clone())
-            .or_insert_with(|| MutableTopicNode::new(root.clone(), root));
-    }
-
-    if include_sys {
-        roots
-            .entry("$SYS".to_string())
-            .or_insert_with(|| MutableTopicNode::new("$SYS".to_string(), "$SYS".to_string()));
-    }
-
-    for message in topics.values() {
-        let segments = message
-            .topic
-            .split('/')
-            .filter(|segment| !segment.is_empty())
-            .collect::<Vec<_>>();
-        if segments.is_empty() {
-            continue;
-        }
-
-        let message_dto: MqttMonitorMessageDto = message.clone().into();
-        let mut current_map = &mut roots;
-        let mut current_path = String::new();
-
-        for segment in segments {
-            if !current_path.is_empty() {
-                current_path.push('/');
-            }
-            current_path.push_str(segment);
-
-            let node = current_map
-                .entry(segment.to_string())
-                .or_insert_with(|| MutableTopicNode::new(segment.to_string(), current_path.clone()));
-            node.latest_message = Some(message_dto.clone());
-            current_map = &mut node.children;
-        }
-    }
-
-    let mut nodes = roots
-        .into_values()
-        .map(|node| freeze_visible_node(node, expanded_paths, include_all))
-        .collect::<Vec<_>>();
-    sort_topic_nodes(&mut nodes);
-    nodes
-}
-
-fn freeze_visible_node(
-    node: MutableTopicNode,
-    expanded_paths: &HashSet<String>,
-    include_all: bool,
-) -> MqttMonitorTopicNodeDto {
-    let has_children = !node.children.is_empty();
-    let mut children = if has_children && (include_all || expanded_paths.contains(&node.full_path)) {
-        node.children
-            .into_values()
-            .map(|child| freeze_visible_node(child, expanded_paths, include_all))
-            .collect::<Vec<_>>()
-    } else {
-        Vec::new()
-    };
-    sort_topic_nodes(&mut children);
-
-    MqttMonitorTopicNodeDto {
-        id: node.full_path.clone(),
-        label: node.label,
-        full_path: node.full_path,
-        has_children,
-        latest_message: node.latest_message,
-        children,
-    }
-}
-
-fn sort_topic_nodes(nodes: &mut [MqttMonitorTopicNodeDto]) {
-    nodes.sort_by(|a, b| {
-        let a_is_sys = a.label == "$SYS";
-        let b_is_sys = b.label == "$SYS";
-
-        a_is_sys
-            .cmp(&b_is_sys)
-            .reverse()
-            .then_with(|| a.label.to_lowercase().cmp(&b.label.to_lowercase()))
-            .then_with(|| a.label.cmp(&b.label))
-    });
-}
-
-fn find_latest_message_for_path(
-    topics: &HashMap<String, crate::app_state::MqttMonitorMessageState>,
-    full_path: &str,
-) -> Option<MqttMonitorMessageDto> {
-    topics
-        .values()
-        .filter(|message| {
-            message.topic == full_path || message.topic.starts_with(&format!("{}/", full_path))
-        })
-        .max_by(|a, b| a.timestamp.cmp(&b.timestamp))
-        .cloned()
-        .map(Into::into)
-}
-
-fn first_fixed_topic_segment(topic_filter: &str) -> Option<&str> {
-    topic_filter
-        .split('/')
-        .map(str::trim)
-        .find(|segment| !segment.is_empty() && *segment != "#" && *segment != "+")
-    }
