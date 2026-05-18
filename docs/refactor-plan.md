@@ -636,7 +636,7 @@ components/
 | R-DEDUP-06 | - | 未着手 | - | R-FE-02 と並行可 |
 | R-DEDUP-07 | - | 未着手 | - | R-FE-09 と並行可 |
 | R-DEDUP-08 | Copilot | 完了（ローカル） | - | 2026-05-18: `normalize_optional_string` を `commands/util.rs` へ一本化 |
-| R-DEDUP-09 | - | 未着手 | - | - |
+| R-DEDUP-09 | Copilot | 完了（ローカル） | - | 2026-05-18: JoyWatcher 探索ロジックを `apps/joywatcher/common/path_utils.rs` へ集約 |
 | R-DEDUP-10 | - | 未着手 | - | R-DEDUP-09 後 |
 | R-DEDUP-11 | - | 未着手 | - | - |
 | R-DEDUP-12 | - | 未着手 | - | 任意（YAGNI 注意） |
