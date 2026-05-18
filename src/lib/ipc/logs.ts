@@ -1,9 +1,9 @@
-import { invoke } from '@tauri-apps/api/core';
+import { ipcInvoke } from './_invoke';
 
 export async function listAppLogs(limit = 500): Promise<string[]> {
-  return invoke<string[]>('list_app_logs', { limit });
+  return ipcInvoke<string[]>('list_app_logs', { limit });
 }
 
 export async function clearAppLogs(): Promise<void> {
-  await invoke('clear_app_logs');
+  await ipcInvoke('clear_app_logs');
 }

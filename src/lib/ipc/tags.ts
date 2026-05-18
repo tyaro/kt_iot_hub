@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { ipcInvoke } from './_invoke';
 
 export interface TagShape {
   id: string;
@@ -95,7 +95,7 @@ function mapCreateTagToApi(req: CreateTagRequest): ApiCreateTagRequest {
  * タグを作成する
  */
 export async function createTag(req: CreateTagRequest): Promise<TagDto> {
-  const api = await invoke<ApiTagDto>('create_tag', {
+  const api = await ipcInvoke<ApiTagDto>('create_tag', {
     req: mapCreateTagToApi(req),
   });
   return mapTagFromApi(api);
@@ -105,7 +105,7 @@ export async function createTag(req: CreateTagRequest): Promise<TagDto> {
  * すべてのタグを取得する
  */
 export async function listTags(): Promise<TagDto[]> {
-  const api = await invoke<ApiTagDto[]>('list_tags');
+  const api = await ipcInvoke<ApiTagDto[]>('list_tags');
   return api.map(mapTagFromApi);
 }
 
@@ -113,7 +113,7 @@ export async function listTags(): Promise<TagDto[]> {
  * スキャングループ一覧を取得する
  */
 export async function listScanGroups(driverId?: string): Promise<ScanGroupDto[]> {
-  const api = await invoke<ApiScanGroupDto[]>('list_scan_groups', {
+  const api = await ipcInvoke<ApiScanGroupDto[]>('list_scan_groups', {
     driverId: driverId ?? null,
   });
   return api.map(mapScanGroupFromApi);
@@ -123,5 +123,5 @@ export async function listScanGroups(driverId?: string): Promise<ScanGroupDto[]>
  * タグを削除する
  */
 export async function deleteTag(tagId: string): Promise<void> {
-  return invoke('delete_tag', { tagId });
+  return ipcInvoke('delete_tag', { tagId });
 }

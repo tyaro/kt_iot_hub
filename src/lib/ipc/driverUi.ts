@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { ipcInvoke } from './_invoke';
 
 export interface LaunchDriverUiRequest {
   driver_id?: string | null;
@@ -94,7 +94,7 @@ export interface SaveDriverUiOutputRequest {
  * ドライバUIを外部プロセスとして起動する
  */
 export async function launchDriverUi(req: LaunchDriverUiRequest): Promise<LaunchDriverUiResponse> {
-  return invoke('launch_driver_ui', {
+  return ipcInvoke('launch_driver_ui', {
     req: {
       driverId: req.driver_id ?? null,
       driverType: req.driver_type ?? null,
@@ -110,7 +110,7 @@ export async function launchDriverUi(req: LaunchDriverUiRequest): Promise<Launch
 export async function checkDriverUiResult(
   req: CheckDriverUiResultRequest,
 ): Promise<CheckDriverUiResultResponse> {
-  const raw = await invoke<CheckDriverUiResultResponseRaw>('check_driver_ui_result', {
+  const raw = await ipcInvoke<CheckDriverUiResultResponseRaw>('check_driver_ui_result', {
     req: {
       sessionId: req.session_id ?? null,
       outputJsonPath: req.output_json_path,
@@ -125,7 +125,7 @@ export async function checkDriverUiResult(
 export async function importDriverUiResult(
   req: ImportDriverUiResultRequest,
 ): Promise<ImportDriverUiResultResponse> {
-  const raw = await invoke<{
+  const raw = await ipcInvoke<{
     driverId: string;
     sessionId: string;
     importedTagCount: number;
@@ -150,14 +150,14 @@ export async function importDriverUiResult(
  * ドライバUI起動コンテキストを取得する
  */
 export async function getDriverUiLaunchContext(): Promise<DriverUiLaunchContextDto> {
-  return invoke('get_driver_ui_launch_context');
+  return ipcInvoke('get_driver_ui_launch_context');
 }
 
 /**
  * ドライバUIの確定結果JSONを output-json へ保存する
  */
 export async function saveDriverUiOutput(req: SaveDriverUiOutputRequest): Promise<string> {
-  return invoke('save_driver_ui_output', { req });
+  return ipcInvoke('save_driver_ui_output', { req });
 }
 
 /**
@@ -168,7 +168,7 @@ export async function checkDriverUiAvailable(
   driverType: string,
   driverUiBaseDir?: string | null,
 ): Promise<boolean> {
-  return invoke('check_driver_ui_available', {
+  return ipcInvoke('check_driver_ui_available', {
     driverType,
     driverUiBaseDir: driverUiBaseDir ?? null,
   });

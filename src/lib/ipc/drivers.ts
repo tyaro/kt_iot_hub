@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { ipcInvoke } from './_invoke';
 
 interface DriverCoreFields {
   id: string;
@@ -23,19 +23,19 @@ export interface SaveDriverRequest extends DriverCoreFields {
  * すべてのドライバ設定を取得する
  */
 export async function listDrivers(): Promise<DriverDto[]> {
-  return invoke('list_drivers');
+  return ipcInvoke('list_drivers');
 }
 
 /**
  * ドライバ設定を保存する
  */
 export async function saveDriver(req: SaveDriverRequest): Promise<void> {
-  return invoke('save_driver', { req });
+  return ipcInvoke('save_driver', { req });
 }
 
 /**
  * ドライバ設定を削除する
  */
 export async function deleteDriver(driverId: string): Promise<void> {
-  return invoke('delete_driver', { driverId });
+  return ipcInvoke('delete_driver', { driverId });
 }

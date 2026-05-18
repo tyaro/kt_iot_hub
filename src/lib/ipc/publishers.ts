@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { ipcInvoke } from './_invoke';
 
 interface PublisherCoreFields {
   id: string;
@@ -23,12 +23,12 @@ export interface SavePublisherRequest extends PublisherCoreFields {
  * すべてのパブリッシャ設定を取得する
  */
 export async function listPublishers(): Promise<PublisherDto[]> {
-  return invoke('list_publishers');
+  return ipcInvoke('list_publishers');
 }
 
 /**
  * パブリッシャ設定を保存する
  */
 export async function savePublisher(req: SavePublisherRequest): Promise<void> {
-  return invoke('save_publisher', { req });
+  return ipcInvoke('save_publisher', { req });
 }

@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { ipcInvoke } from './_invoke';
 
 export interface PostgresConnectionParams {
   host: string;
@@ -37,7 +37,7 @@ export interface PostgresConnectionTestResult {
 export async function postgresTestConnection(
   conn: PostgresConnectionParams,
 ): Promise<PostgresConnectionTestResult> {
-  return invoke('postgres_test_connection', { conn });
+  return ipcInvoke('postgres_test_connection', { conn });
 }
 
 /**
@@ -46,7 +46,7 @@ export async function postgresTestConnection(
 export async function postgresListTables(
   conn: PostgresConnectionParams,
 ): Promise<PostgresTableDto[]> {
-  return invoke('postgres_list_tables', { conn });
+  return ipcInvoke('postgres_list_tables', { conn });
 }
 
 /**
@@ -55,5 +55,5 @@ export async function postgresListTables(
 export async function postgresListColumns(
   req: PostgresColumnsRequest,
 ): Promise<PostgresColumnDto[]> {
-  return invoke('postgres_list_columns', { req });
+  return ipcInvoke('postgres_list_columns', { req });
 }

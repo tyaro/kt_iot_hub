@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { ipcInvoke } from './_invoke';
 
 export interface MqttMonitorPublisherDto {
   id: string;
@@ -86,26 +86,26 @@ function normalizeStatus(raw: MqttMonitorStatusDtoRaw): MqttMonitorStatusDto {
 }
 
 export async function listMqttMonitorPublishers(): Promise<MqttMonitorPublisherDto[]> {
-  return invoke('list_mqtt_monitor_publishers');
+  return ipcInvoke('list_mqtt_monitor_publishers');
 }
 
 export async function openMqttMonitorWindow(): Promise<void> {
-  return invoke('open_mqtt_monitor_window');
+  return ipcInvoke('open_mqtt_monitor_window');
 }
 
 export async function getMqttMonitorStatus(): Promise<MqttMonitorStatusDto> {
-  const raw = await invoke<MqttMonitorStatusDtoRaw>('get_mqtt_monitor_status');
+  const raw = await ipcInvoke<MqttMonitorStatusDtoRaw>('get_mqtt_monitor_status');
   return normalizeStatus(raw);
 }
 
 export async function listMqttMonitorMessages(): Promise<MqttMonitorMessageDto[]> {
-  return invoke('list_mqtt_monitor_messages');
+  return ipcInvoke('list_mqtt_monitor_messages');
 }
 
 export async function getMqttMonitorTree(
   req: GetMqttMonitorTreeRequest,
 ): Promise<MqttMonitorTopicNodeDto[]> {
-  return invoke('get_mqtt_monitor_tree', {
+  return ipcInvoke('get_mqtt_monitor_tree', {
     req: {
       expandedPaths: req.expanded_paths,
       includeAll: req.include_all ?? false,
@@ -116,7 +116,7 @@ export async function getMqttMonitorTree(
 export async function getMqttMonitorTopicDetail(
   req: GetMqttMonitorTopicDetailRequest,
 ): Promise<MqttMonitorTopicDetailDto> {
-  return invoke('get_mqtt_monitor_topic_detail', {
+  return ipcInvoke('get_mqtt_monitor_topic_detail', {
     req: {
       fullPath: req.full_path,
     },
@@ -124,13 +124,13 @@ export async function getMqttMonitorTopicDetail(
 }
 
 export async function clearMqttMonitorMessages(): Promise<void> {
-  return invoke('clear_mqtt_monitor_messages');
+  return ipcInvoke('clear_mqtt_monitor_messages');
 }
 
 export async function startMqttMonitor(
   req: StartMqttMonitorRequest,
 ): Promise<MqttMonitorStatusDto> {
-  const raw = await invoke<MqttMonitorStatusDtoRaw>('start_mqtt_monitor', {
+  const raw = await ipcInvoke<MqttMonitorStatusDtoRaw>('start_mqtt_monitor', {
     req: {
       publisherId: req.publisher_id,
       topicFilter: req.topic_filter,
@@ -141,6 +141,6 @@ export async function startMqttMonitor(
 }
 
 export async function stopMqttMonitor(): Promise<MqttMonitorStatusDto> {
-  const raw = await invoke<MqttMonitorStatusDtoRaw>('stop_mqtt_monitor');
+  const raw = await ipcInvoke<MqttMonitorStatusDtoRaw>('stop_mqtt_monitor');
   return normalizeStatus(raw);
 }

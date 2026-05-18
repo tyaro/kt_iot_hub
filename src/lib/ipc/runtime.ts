@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { ipcInvoke } from './_invoke';
 
 export interface StartRuntimeServicesRequest {
   driver_ui_base_dir?: string | null;
@@ -98,7 +98,7 @@ function normalizeDriverMetrics(raw: DriverMetricsDtoRaw): DriverMetricsDto {
  * ランタイム状態を取得する
  */
 export async function getRuntimeStatus(): Promise<RuntimeStatusDto> {
-  const raw = await invoke<RuntimeStatusDtoRaw>('get_runtime_status');
+  const raw = await ipcInvoke<RuntimeStatusDtoRaw>('get_runtime_status');
   return normalizeRuntimeStatus(raw);
 }
 
@@ -108,7 +108,7 @@ export async function getRuntimeStatus(): Promise<RuntimeStatusDto> {
 export async function startRuntimeServices(
   req?: StartRuntimeServicesRequest,
 ): Promise<RuntimeStatusDto> {
-  const raw = await invoke<RuntimeStatusDtoRaw>('start_runtime_services', {
+  const raw = await ipcInvoke<RuntimeStatusDtoRaw>('start_runtime_services', {
     req: req
       ? {
           driverUiBaseDir: req.driver_ui_base_dir ?? null,
@@ -122,7 +122,7 @@ export async function startRuntimeServices(
  * バックグラウンドサービスを停止する
  */
 export async function stopRuntimeServices(): Promise<RuntimeStatusDto> {
-  const raw = await invoke<RuntimeStatusDtoRaw>('stop_runtime_services');
+  const raw = await ipcInvoke<RuntimeStatusDtoRaw>('stop_runtime_services');
   return normalizeRuntimeStatus(raw);
 }
 
@@ -130,7 +130,7 @@ export async function stopRuntimeServices(): Promise<RuntimeStatusDto> {
  * アプリメトリクスを取得する
  */
 export async function getAppMetrics(): Promise<AppMetricsDto> {
-  const raw = await invoke<AppMetricsDtoRaw>('get_app_metrics');
+  const raw = await ipcInvoke<AppMetricsDtoRaw>('get_app_metrics');
   return normalizeAppMetrics(raw);
 }
 
@@ -138,6 +138,6 @@ export async function getAppMetrics(): Promise<AppMetricsDto> {
  * ドライバ別メトリクスを取得する
  */
 export async function getDriverMetrics(): Promise<DriverMetricsDto[]> {
-  const raw = await invoke<DriverMetricsDtoRaw[]>('get_driver_metrics');
+  const raw = await ipcInvoke<DriverMetricsDtoRaw[]>('get_driver_metrics');
   return raw.map(normalizeDriverMetrics);
 }
