@@ -2,7 +2,7 @@
 
 use super::runtime_sync::sync_driver_runtime;
 use super::toml_io::{write_drivers_toml_atomic, write_tags_toml_atomic};
-use super::ui_paths::resolve_driver_ui_path;
+use super::ui_launcher::paths::resolve_driver_ui_path;
 use crate::app_state::AppState;
 use crate::commands::dto::{DriverDto, ErrorResponse, SaveDriverRequest};
 use crate::config::{DriverConfig, ScanGroupConfig, TagConfig};

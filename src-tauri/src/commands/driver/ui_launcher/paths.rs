@@ -4,7 +4,7 @@ use crate::config::DriverConfig;
 use std::path::PathBuf;
 
 /// 単一ドライバ設定から登録UI 実行ファイルの絶対パスを解決する。
-pub(super) fn resolve_driver_ui_path(config: &DriverConfig) -> Option<String> {
+pub(in crate::commands::driver) fn resolve_driver_ui_path(config: &DriverConfig) -> Option<String> {
     resolve_driver_ui_path_with_base(config, None)
 }
 
@@ -114,7 +114,7 @@ fn path_to_string(path: PathBuf) -> String {
 }
 
 /// 任意文字列の空白除去と空判定。`None` / 空文字を一律 `None` に正規化する。
-pub(super) fn normalize_optional_string(value: Option<String>) -> Option<String> {
+pub(in crate::commands::driver) fn normalize_optional_string(value: Option<String>) -> Option<String> {
     value.and_then(|v| {
         let trimmed = v.trim();
         if trimmed.is_empty() {

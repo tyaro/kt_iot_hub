@@ -1,103 +1,14 @@
-//! ドライバUI 結果 JSON のバリデーションと、本体状態への取り込み処理。
-
-use super::runtime_sync::sync_driver_runtime;
-use super::toml_io::{write_drivers_toml_atomic, write_tags_toml_atomic};
-use super::ui_paths::normalize_optional_string;
 use crate::app_state::{AppState, DriverUiSessionState};
-use crate::commands::dto::{ErrorResponse, ImportDriverUiResultRequest, ImportDriverUiResultResponse};
-use kt_driver_ui_protocol::{
-    DriverUiDriverPayload, DriverUiImportPayload,
-};
+use crate::commands::dto::{ErrorResponse, ImportDriverUiResultRequest};
 use crate::config::{DriverConfig, ScanGroupConfig, TagConfig};
-use crate::core::{DataType, Tag, TagId};
+use crate::core::DataType;
+use kt_driver_ui_protocol::{DriverUiDriverPayload, DriverUiImportPayload};
 use std::collections::HashSet;
 use std::str::FromStr;
 
-#[tauri::command]
-pub async fn import_driver_ui_result(
-    state: tauri::State<'_, AppState>,
-    req: ImportDriverUiResultRequest,
-) -> Result<ImportDriverUiResultResponse, ErrorResponse> {
-    validate_import_request(&req)?;
-
-    {
-        let imported = state.imported_driver_ui_sessions.read().await;
-        if imported.contains(&req.session_id) {
-            return Err(ErrorResponse {
-                error: format!("Session already imported: {}", req.session_id),
-                code: "DUPLICATE_IMPORT".to_string(),
-            });
-        }
-    }
-
-    let session = {
-        let sessions = state.active_driver_ui_sessions.read().await;
-        sessions.get(&req.session_id).cloned().ok_or(ErrorResponse {
-            error: format!("No active driver UI session: {}", req.session_id),
-            code: "NO_ACTIVE_SESSION".to_string(),
-        })?
-    };
-
-    if let Some(request_driver_id) = req
-        .driver_id
-        .as_ref()
-        .and_then(|value| normalize_optional_string(Some(value.clone())))
-    {
-        if let Some(session_driver_id) = session.target_driver_id.as_ref() {
-            if request_driver_id != *session_driver_id {
-                return Err(ErrorResponse {
-                    error: format!(
-                        "Session mismatch for driver {} (expected={}, got={})",
-                        request_driver_id, session_driver_id, request_driver_id
-                    ),
-                    code: "SESSION_MISMATCH".to_string(),
-                });
-            }
-        }
-    }
-
-    let output_path = std::path::PathBuf::from(&req.output_json_path);
-    if !output_path.exists() {
-        return Err(ErrorResponse {
-            error: format!("Result file not found: {}", req.output_json_path),
-            code: "RESULT_NOT_READY".to_string(),
-        });
-    }
-
-    let json_text = std::fs::read_to_string(&output_path).map_err(|e| ErrorResponse {
-        error: format!("Failed to read result file: {}", e),
-        code: "IO_ERROR".to_string(),
-    })?;
-
-    let payload: DriverUiImportPayload =
-        serde_json::from_str(&json_text).map_err(|e| ErrorResponse {
-            error: format!("Failed to parse driver UI JSON: {}", e),
-            code: "INVALID_JSON".to_string(),
-        })?;
-
-    let (driver_config, new_scan_groups, new_tags) =
-        validate_and_convert_payload(&state, &session, payload).await?;
-
-    apply_driver_import(&state, &driver_config, &new_scan_groups, &new_tags).await?;
-
-    {
-        let mut imported = state.imported_driver_ui_sessions.write().await;
-        imported.insert(req.session_id.clone());
-    }
-    {
-        let mut sessions = state.active_driver_ui_sessions.write().await;
-        sessions.remove(&req.session_id);
-    }
-
-    Ok(ImportDriverUiResultResponse {
-        driver_id: driver_config.id,
-        session_id: req.session_id,
-        imported_tag_count: new_tags.len(),
-        imported_scan_group_count: new_scan_groups.len(),
-    })
-}
-
-fn validate_import_request(req: &ImportDriverUiResultRequest) -> Result<(), ErrorResponse> {
+pub(super) fn validate_import_request(
+    req: &ImportDriverUiResultRequest,
+) -> Result<(), ErrorResponse> {
     if req.session_id.trim().is_empty() {
         return Err(ErrorResponse {
             error: "session_id cannot be empty".to_string(),
@@ -113,7 +24,7 @@ fn validate_import_request(req: &ImportDriverUiResultRequest) -> Result<(), Erro
     Ok(())
 }
 
-async fn validate_and_convert_payload(
+pub(super) async fn validate_and_convert_payload(
     state: &tauri::State<'_, AppState>,
     session: &DriverUiSessionState,
     payload: DriverUiImportPayload,
@@ -148,7 +59,6 @@ async fn validate_and_convert_payload(
     let mut new_scan_groups = Vec::new();
     let mut all_new_tags = Vec::new();
 
-    // scanGroups とそこに含まれるタグを処理
     for sg in &driver_payload.scan_groups {
         if !scan_group_ids.insert(sg.id.clone()) {
             return Err(ErrorResponse {
@@ -156,6 +66,7 @@ async fn validate_and_convert_payload(
                 code: "VALIDATION_ERROR".to_string(),
             });
         }
+
         new_scan_groups.push(ScanGroupConfig {
             id: sg.id.clone(),
             driver: effective_driver_id.clone(),
@@ -166,7 +77,6 @@ async fn validate_and_convert_payload(
             node: sg.node.clone(),
         });
 
-        // この scanGroup に含まれるタグを処理
         all_new_tags.reserve(sg.tags.len());
     }
 
@@ -189,9 +99,7 @@ async fn validate_and_convert_payload(
                 });
             }
 
-            // ネストされたタグは既に正しい scanGroup に紐付いている
             let scan_group_id = sg.id.clone();
-
             let name_key = format!("{}:{}:{}", effective_driver_id, scan_group_id, t.name);
             if !local_name_keys.insert(name_key) {
                 return Err(ErrorResponse {
@@ -224,102 +132,24 @@ async fn validate_and_convert_payload(
 
 fn build_metadata(unit: &Option<String>, comment: &Option<String>) -> Option<serde_json::Value> {
     let mut map = serde_json::Map::new();
+
     if let Some(u) = unit {
         if !u.trim().is_empty() {
             map.insert("unit".to_string(), serde_json::Value::String(u.clone()));
         }
     }
+
     if let Some(c) = comment {
         if !c.trim().is_empty() {
             map.insert("comment".to_string(), serde_json::Value::String(c.clone()));
         }
     }
+
     if map.is_empty() {
         None
     } else {
         Some(serde_json::Value::Object(map))
     }
-}
-
-async fn apply_driver_import(
-    state: &tauri::State<'_, AppState>,
-    driver_config: &DriverConfig,
-    new_scan_groups: &[ScanGroupConfig],
-    new_tags: &[TagConfig],
-) -> Result<(), ErrorResponse> {
-    let driver_id = driver_config.id.as_str();
-
-    let existing_registry_tags = state.registry.list_all().await;
-    let mut final_tags_for_file: Vec<TagConfig> = existing_registry_tags
-        .iter()
-        .filter(|t| t.driver_id != driver_id)
-        .map(|t| TagConfig {
-            id: t.id.0.clone(),
-            name: t.name.clone(),
-            data_type: t.data_type.as_str().to_string(),
-            driver: t.driver_id.clone(),
-            scan_group: t.scan_group_id.clone(),
-            driver_spec: t.driver_spec.clone(),
-            enabled: Some(true),
-            metadata: t.metadata.clone(),
-        })
-        .collect();
-    final_tags_for_file.extend_from_slice(new_tags);
-
-    let existing_scan_groups = state.scan_groups.read().await.clone();
-    let mut final_scan_groups: Vec<ScanGroupConfig> = existing_scan_groups
-        .into_iter()
-        .filter(|sg| sg.driver != driver_id)
-        .collect();
-    final_scan_groups.extend_from_slice(new_scan_groups);
-
-    let final_driver_configs = {
-        let existing_configs = state.driver_configs.read().await.clone();
-        let mut configs: Vec<DriverConfig> = existing_configs
-            .into_iter()
-            .filter(|cfg| cfg.id != driver_id)
-            .collect();
-        configs.push(driver_config.clone());
-        configs
-    };
-
-    write_tags_toml_atomic(&final_scan_groups, &final_tags_for_file)?;
-    write_drivers_toml_atomic(&final_driver_configs)?;
-
-    {
-        let mut scan_groups = state.scan_groups.write().await;
-        *scan_groups = final_scan_groups;
-    }
-    {
-        let mut driver_configs = state.driver_configs.write().await;
-        *driver_configs = final_driver_configs;
-    }
-
-    for tag in existing_registry_tags
-        .into_iter()
-        .filter(|t| t.driver_id == driver_id)
-    {
-        let _ = state.registry.remove(&tag.id).await;
-    }
-    for tag_cfg in new_tags {
-        let data_type = DataType::from_str(&tag_cfg.data_type).map_err(ErrorResponse::from)?;
-        state
-            .registry
-            .insert(Tag {
-                id: TagId(tag_cfg.id.clone()),
-                name: tag_cfg.name.clone(),
-                data_type,
-                driver_id: tag_cfg.driver.clone(),
-                scan_group_id: tag_cfg.scan_group.clone(),
-                driver_spec: tag_cfg.driver_spec.clone(),
-                metadata: tag_cfg.metadata.clone(),
-            })
-            .await;
-    }
-
-    sync_driver_runtime(state, driver_config).await?;
-
-    Ok(())
 }
 
 fn build_import_driver_config(

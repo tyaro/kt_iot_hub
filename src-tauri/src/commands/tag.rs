@@ -2,7 +2,8 @@
 
 use super::dto::{CreateTagRequest, ErrorResponse, ScanGroupDto, TagDto};
 use crate::app_state::AppState;
-use crate::config::{ScanGroupConfig, TagConfig};
+use crate::commands::driver::toml_io::write_tags_toml_atomic;
+use crate::config::TagConfig;
 use crate::core::{DataType, Tag, TagId};
 use std::str::FromStr;
 
@@ -202,64 +203,4 @@ async fn persist_all_tags(state: &tauri::State<'_, AppState>) -> Result<(), Erro
         .collect();
 
     write_tags_toml_atomic(&scan_groups, &tag_configs)
-}
-
-#[derive(serde::Serialize)]
-struct TagsTomlFile {
-    #[serde(rename = "scan_group")]
-    scan_group: Vec<ScanGroupConfig>,
-    #[serde(rename = "tag")]
-    tag: Vec<TagConfig>,
-}
-
-fn write_tags_toml_atomic(
-    scan_groups: &[ScanGroupConfig],
-    tags: &[TagConfig],
-) -> Result<(), ErrorResponse> {
-    let config_dir = resolve_config_dir();
-    std::fs::create_dir_all(&config_dir).map_err(|e| ErrorResponse {
-        error: format!("Failed to create config directory: {}", e),
-        code: "IO_ERROR".to_string(),
-    })?;
-    let tags_path = config_dir.join("tags.toml");
-    let tmp_path = config_dir.join("tags.toml.tmp");
-
-    let toml_text = toml::to_string_pretty(&TagsTomlFile {
-        scan_group: scan_groups.to_vec(),
-        tag: tags.to_vec(),
-    })
-    .map_err(|e| ErrorResponse {
-        error: format!("Failed to serialize tags.toml: {}", e),
-        code: "SERIALIZE_ERROR".to_string(),
-    })?;
-
-    std::fs::write(&tmp_path, &toml_text).map_err(|e| ErrorResponse {
-        error: format!("Failed to write tags.toml.tmp: {}", e),
-        code: "IO_ERROR".to_string(),
-    })?;
-
-    if tags_path.exists() {
-        let _ = std::fs::remove_file(&tags_path);
-    }
-
-    if let Err(rename_error) = std::fs::rename(&tmp_path, &tags_path) {
-        std::fs::write(&tags_path, &toml_text).map_err(|write_error| ErrorResponse {
-            error: format!(
-                "Failed to replace tags.toml (rename: {}; write fallback: {})",
-                rename_error, write_error
-            ),
-            code: "IO_ERROR".to_string(),
-        })?;
-        let _ = std::fs::remove_file(&tmp_path);
-    }
-
-    Ok(())
-}
-
-fn resolve_config_dir() -> std::path::PathBuf {
-    let relative = std::path::PathBuf::from("../config");
-    if relative.exists() {
-        return relative;
-    }
-    std::path::PathBuf::from("config")
 }
