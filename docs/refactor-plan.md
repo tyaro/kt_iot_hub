@@ -661,6 +661,13 @@ components/
   - `cargo fmt -- --check` (`src-tauri`): ✅ 通過
   - `cargo clippy --all-targets --all-features -- -D warnings` (`src-tauri`): ✅ 通過
   - `cargo test` (`src-tauri`): ✅ 通過（17 passed, 0 failed）
+- 2026-05-18 再検証（ローカル）
+  - `npm run check`: ✅ 通過（0 errors / 0 warnings）
+  - `npm run lint`: ✅ 通過（flat config 移行に伴う `/* eslint-env */` 警告のみ）
+  - `npm run build`: ✅ 通過
+  - `cargo fmt -- --check` (`src-tauri`): ✅ 通過
+  - `cargo clippy --all-targets --all-features -- -D warnings` (`src-tauri`): ✅ 通過
+  - `cargo test` (`src-tauri`): ✅ 通過（17 passed, 0 failed）
 
 ---
 
