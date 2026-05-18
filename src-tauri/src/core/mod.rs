@@ -8,18 +8,24 @@ pub use tag_bus::TagBus;
 
 use std::collections::HashMap;
 
+type Shared<T> = std::sync::Arc<tokio::sync::RwLock<T>>;
+
+fn shared<T>(value: T) -> Shared<T> {
+    std::sync::Arc::new(tokio::sync::RwLock::new(value))
+}
+
 /// インメモリタグレジストリ
 /// タグIDからタグ定義へのマッピングを管理
 #[derive(Clone)]
 pub struct TagRegistry {
-    tags: std::sync::Arc<tokio::sync::RwLock<HashMap<TagId, Tag>>>,
+    tags: Shared<HashMap<TagId, Tag>>,
 }
 
 impl TagRegistry {
     /// 新規レジストリ生成
     pub fn new() -> Self {
         Self {
-            tags: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
+            tags: shared(HashMap::new()),
         }
     }
 

@@ -17,6 +17,12 @@ use crate::publishers::PublisherManager;
 use crate::subscribers::mqtt_monitor::MqttMonitor;
 use std::collections::{HashMap, HashSet, VecDeque};
 
+pub type Shared<T> = std::sync::Arc<tokio::sync::RwLock<T>>;
+
+fn shared<T>(value: T) -> Shared<T> {
+    std::sync::Arc::new(tokio::sync::RwLock::new(value))
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct RuntimeStatusState {
     pub drivers_running: bool,
@@ -30,30 +36,24 @@ pub struct RuntimeStatusState {
 pub struct AppState {
     pub registry: TagRegistry,
     pub tag_bus: TagBus,
-    pub drivers: std::sync::Arc<tokio::sync::RwLock<DriverProcessManager>>,
-    pub publishers: std::sync::Arc<tokio::sync::RwLock<PublisherManager>>,
-    pub driver_configs: std::sync::Arc<tokio::sync::RwLock<Vec<DriverConfig>>>,
-    pub publisher_configs: std::sync::Arc<tokio::sync::RwLock<Vec<PublisherConfig>>>,
-    pub scan_groups: std::sync::Arc<tokio::sync::RwLock<Vec<ScanGroupConfig>>>,
+    pub drivers: Shared<DriverProcessManager>,
+    pub publishers: Shared<PublisherManager>,
+    pub driver_configs: Shared<Vec<DriverConfig>>,
+    pub publisher_configs: Shared<Vec<PublisherConfig>>,
+    pub scan_groups: Shared<Vec<ScanGroupConfig>>,
     /// session_id -> driver ui session context
-    pub active_driver_ui_sessions:
-        std::sync::Arc<tokio::sync::RwLock<HashMap<String, DriverUiSessionState>>>,
+    pub active_driver_ui_sessions: Shared<HashMap<String, DriverUiSessionState>>,
     /// 重複取込防止用 session_id 集合
-    pub imported_driver_ui_sessions: std::sync::Arc<tokio::sync::RwLock<HashSet<String>>>,
-    pub driver_ui_base_dir: std::sync::Arc<tokio::sync::RwLock<Option<String>>>,
-    pub grpc_shutdown_tx:
-        std::sync::Arc<tokio::sync::RwLock<Option<tokio::sync::oneshot::Sender<()>>>>,
-    pub runtime_status: std::sync::Arc<tokio::sync::RwLock<RuntimeStatusState>>,
+    pub imported_driver_ui_sessions: Shared<HashSet<String>>,
+    pub driver_ui_base_dir: Shared<Option<String>>,
+    pub grpc_shutdown_tx: Shared<Option<tokio::sync::oneshot::Sender<()>>>,
+    pub runtime_status: Shared<RuntimeStatusState>,
     pub mqtt_monitor: std::sync::Arc<tokio::sync::Mutex<MqttMonitor>>,
-    pub mqtt_monitor_status: std::sync::Arc<tokio::sync::RwLock<MqttMonitorStatusState>>,
-    pub mqtt_monitor_messages:
-        std::sync::Arc<tokio::sync::RwLock<VecDeque<MqttMonitorMessageState>>>,
-    pub mqtt_monitor_topics:
-        std::sync::Arc<tokio::sync::RwLock<HashMap<String, MqttMonitorMessageState>>>,
-    pub scan_group_runtime_metrics:
-        std::sync::Arc<tokio::sync::RwLock<HashMap<String, ScanGroupRuntimeMetricState>>>,
-    pub runtime_metrics_cache:
-        std::sync::Arc<tokio::sync::RwLock<RuntimeMetricsCacheState>>,
+    pub mqtt_monitor_status: Shared<MqttMonitorStatusState>,
+    pub mqtt_monitor_messages: Shared<VecDeque<MqttMonitorMessageState>>,
+    pub mqtt_monitor_topics: Shared<HashMap<String, MqttMonitorMessageState>>,
+    pub scan_group_runtime_metrics: Shared<HashMap<String, ScanGroupRuntimeMetricState>>,
+    pub runtime_metrics_cache: Shared<RuntimeMetricsCacheState>,
 }
 
 impl AppState {
@@ -69,22 +69,22 @@ impl AppState {
         Self {
             registry,
             tag_bus,
-            drivers: std::sync::Arc::new(tokio::sync::RwLock::new(drivers)),
-            publishers: std::sync::Arc::new(tokio::sync::RwLock::new(publishers)),
-            driver_configs: std::sync::Arc::new(tokio::sync::RwLock::new(driver_configs)),
-            publisher_configs: std::sync::Arc::new(tokio::sync::RwLock::new(publisher_configs)),
-            scan_groups: std::sync::Arc::new(tokio::sync::RwLock::new(scan_groups)),
-            active_driver_ui_sessions: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-            imported_driver_ui_sessions: std::sync::Arc::new(tokio::sync::RwLock::new(HashSet::new())),
-            driver_ui_base_dir: std::sync::Arc::new(tokio::sync::RwLock::new(None)),
-            grpc_shutdown_tx: std::sync::Arc::new(tokio::sync::RwLock::new(None)),
-            runtime_status: std::sync::Arc::new(tokio::sync::RwLock::new(RuntimeStatusState::default())),
+            drivers: shared(drivers),
+            publishers: shared(publishers),
+            driver_configs: shared(driver_configs),
+            publisher_configs: shared(publisher_configs),
+            scan_groups: shared(scan_groups),
+            active_driver_ui_sessions: shared(HashMap::new()),
+            imported_driver_ui_sessions: shared(HashSet::new()),
+            driver_ui_base_dir: shared(None),
+            grpc_shutdown_tx: shared(None),
+            runtime_status: shared(RuntimeStatusState::default()),
             mqtt_monitor: std::sync::Arc::new(tokio::sync::Mutex::new(MqttMonitor::new())),
-            mqtt_monitor_status: std::sync::Arc::new(tokio::sync::RwLock::new(MqttMonitorStatusState::default())),
-            mqtt_monitor_messages: std::sync::Arc::new(tokio::sync::RwLock::new(VecDeque::new())),
-            mqtt_monitor_topics: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-            scan_group_runtime_metrics: std::sync::Arc::new(tokio::sync::RwLock::new(HashMap::new())),
-            runtime_metrics_cache: std::sync::Arc::new(tokio::sync::RwLock::new(RuntimeMetricsCacheState::default())),
+            mqtt_monitor_status: shared(MqttMonitorStatusState::default()),
+            mqtt_monitor_messages: shared(VecDeque::new()),
+            mqtt_monitor_topics: shared(HashMap::new()),
+            scan_group_runtime_metrics: shared(HashMap::new()),
+            runtime_metrics_cache: shared(RuntimeMetricsCacheState::default()),
         }
     }
 }
