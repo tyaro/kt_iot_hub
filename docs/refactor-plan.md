@@ -633,7 +633,7 @@ components/
 | R-DEDUP-03 | Copilot | 完了（ローカル） | - | 2026-05-18: `ErrorResponse` コンストラクタ共通化と `commands` 側置換 |
 | R-DEDUP-04 | Copilot | 完了（ローカル） | - | 2026-05-18: `Shared<T>` / `shared()` を導入し `Arc<RwLock<...>>` の直書きを削減 |
 | R-DEDUP-05 | Copilot | 完了（ローカル） | - | 2026-05-18: DTO の serde 規約を明示統一し、JSON 互換スナップショットテスト追加 |
-| R-DEDUP-06 | - | 未着手 | - | R-FE-02 と並行可 |
+| R-DEDUP-06 | Copilot | 完了（ローカル） | - | 2026-05-18: `src/lib/utils/format.ts` へフォーマッタを抽出し Dashboard から参照化 |
 | R-DEDUP-07 | - | 未着手 | - | R-FE-09 と並行可 |
 | R-DEDUP-08 | Copilot | 完了（ローカル） | - | 2026-05-18: `normalize_optional_string` を `commands/util.rs` へ一本化 |
 | R-DEDUP-09 | Copilot | 完了（ローカル） | - | 2026-05-18: JoyWatcher 探索ロジックを `apps/joywatcher/common/path_utils.rs` へ集約 |
