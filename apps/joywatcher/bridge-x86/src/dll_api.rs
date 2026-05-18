@@ -6,6 +6,7 @@ use anyhow::{anyhow, Context, Result};
 use tracing::{debug, info};
 
 use crate::connection::{JoyWatcherBridgeApi, JoyWatcherConnectionOptions};
+use crate::path_utils::DLL_FILE_NAME;
 use crate::protocol::{MockValue, ReadValuePayload, ResolvedTag};
 
 type DisconnectNetForceFn = unsafe extern "C" fn();
@@ -412,96 +413,16 @@ fn resolve_dll_path(explicit_path: Option<PathBuf>) -> Result<PathBuf> {
         }
 
         return Err(anyhow!(
-            "JoyWaApi.dll not found at explicit path: {}",
+            "{} not found at explicit path: {}",
+            DLL_FILE_NAME,
             path.display()
         ));
     }
 
-    if let Ok(configured_path) = std::env::var("JOYWATCHER_DLL_PATH") {
-        let path = PathBuf::from(configured_path);
-        if path.exists() {
-            return Ok(path);
-        }
-    }
-
-    let candidates = default_dll_candidates();
-    candidates
+    crate::path_utils::dll_file_candidates()
         .into_iter()
         .find(|path| path.exists())
-        .ok_or_else(|| anyhow!("JoyWaApi.dll not found in known search roots"))
-}
-
-fn default_dll_candidates() -> Vec<PathBuf> {
-    let mut candidates = Vec::new();
-
-    if let Ok(dir) = std::env::var("JOYWATCHER_DLL_DIR") {
-        push_unique(&mut candidates, PathBuf::from(dir).join("JoyWaApi.dll"));
-    }
-
-    if let Ok(current_dir) = std::env::current_dir() {
-        push_unique(&mut candidates, current_dir.join("JoyWaApi.dll"));
-        if let Some(parent) = current_dir.parent() {
-            push_unique(&mut candidates, parent.join("JoyWaApi.dll"));
-        }
-    }
-
-    if let Ok(current_exe) = std::env::current_exe() {
-        if let Some(exe_dir) = current_exe.parent() {
-            push_unique(&mut candidates, exe_dir.join("JoyWaApi.dll"));
-            if let Some(parent) = exe_dir.parent() {
-                push_unique(&mut candidates, parent.join("JoyWaApi.dll"));
-            }
-        }
-    }
-
-    if let Some(repo_root) = find_repo_root() {
-        push_unique(&mut candidates, repo_root.join("参考").join("JoyWaApi.dll"));
-        push_unique(
-            &mut candidates,
-            repo_root.join("参考").join("JoyWaApi").join("JoyWaApi.dll"),
-        );
-        push_unique(
-            &mut candidates,
-            repo_root
-                .join("参考")
-                .join("JoyWaApi")
-                .join("BC")
-                .join("JoyWaApi.dll"),
-        );
-    }
-
-    if cfg!(windows) {
-        if let Ok(windir) = std::env::var("WINDIR").or_else(|_| std::env::var("SystemRoot")) {
-            push_unique(
-                &mut candidates,
-                PathBuf::from(windir).join("SysWOW64").join("JoyWaApi.dll"),
-            );
-        }
-    }
-
-    candidates
-}
-
-fn push_unique(vec: &mut Vec<PathBuf>, path: PathBuf) {
-    if !vec.contains(&path) {
-        vec.push(path);
-    }
-}
-
-fn find_repo_root() -> Option<PathBuf> {
-    let current_dir = std::env::current_dir().ok()?;
-    find_ancestor_with(&current_dir, |dir| dir.join("Cargo.toml").exists())
-}
-
-fn find_ancestor_with(start: &Path, predicate: impl Fn(&Path) -> bool) -> Option<PathBuf> {
-    let mut cursor = Some(start);
-    while let Some(path) = cursor {
-        if predicate(path) {
-            return Some(path.to_path_buf());
-        }
-        cursor = path.parent();
-    }
-    None
+        .ok_or_else(|| anyhow!("{} not found in known search roots", DLL_FILE_NAME))
 }
 
 #[cfg(windows)]

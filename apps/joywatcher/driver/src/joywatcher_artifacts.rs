@@ -1,6 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-const DLL_FILE_NAME: &str = "JoyWaApi.dll";
+use crate::path_utils::{find_repo_root, push_unique, DLL_FILE_NAME};
+
 const LIB_FILE_NAME: &str = "JoyWaApi.lib";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -126,28 +127,6 @@ fn default_search_roots() -> Vec<PathBuf> {
     }
 
     roots
-}
-
-fn find_repo_root() -> Option<PathBuf> {
-    let current_dir = std::env::current_dir().ok()?;
-    find_ancestor_with(&current_dir, |dir| dir.join("Cargo.toml").exists())
-}
-
-fn find_ancestor_with(start: &Path, predicate: impl Fn(&Path) -> bool) -> Option<PathBuf> {
-    let mut cursor = Some(start);
-    while let Some(path) = cursor {
-        if predicate(path) {
-            return Some(path.to_path_buf());
-        }
-        cursor = path.parent();
-    }
-    None
-}
-
-fn push_unique(vec: &mut Vec<PathBuf>, path: PathBuf) {
-    if !vec.contains(&path) {
-        vec.push(path);
-    }
 }
 
 #[cfg(test)]

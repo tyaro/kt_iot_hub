@@ -4,6 +4,9 @@ mod joywatcher_bridge;
 mod joywatcher_connection;
 mod joywatcher_ffi;
 mod joywatcher_runtime;
+#[allow(dead_code)]
+#[path = "../../common/path_utils.rs"]
+mod path_utils;
 
 use anyhow::Result;
 use clap::Parser;

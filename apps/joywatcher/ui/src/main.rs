@@ -5,6 +5,9 @@
 //! 本体との launch context / 保存導線を扱う。
 
 mod joywatcher_bridge_client;
+#[allow(dead_code)]
+#[path = "../../common/path_utils.rs"]
+mod path_utils;
 
 use kt_driver_ui_host::bridge;
 
