@@ -632,7 +632,7 @@ components/
 | R-DEDUP-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/config_io` へ TOML I/O 共通化 |
 | R-DEDUP-03 | Copilot | 完了（ローカル） | - | 2026-05-18: `ErrorResponse` コンストラクタ共通化と `commands` 側置換 |
 | R-DEDUP-04 | - | 未着手 | - | R-BE-07 後 |
-| R-DEDUP-05 | - | 未着手 | - | R-BE-01 後 |
+| R-DEDUP-05 | Copilot | 完了（ローカル） | - | 2026-05-18: DTO の serde 規約を明示統一し、JSON 互換スナップショットテスト追加 |
 | R-DEDUP-06 | - | 未着手 | - | R-FE-02 と並行可 |
 | R-DEDUP-07 | - | 未着手 | - | R-FE-09 と並行可 |
 | R-DEDUP-08 | Copilot | 完了（ローカル） | - | 2026-05-18: `normalize_optional_string` を `commands/util.rs` へ一本化 |
