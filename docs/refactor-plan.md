@@ -613,7 +613,7 @@ components/
 | R-BE-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/driver/ui_launcher.rs` を `ui_launcher/` へ分割 |
 | R-BE-03 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/driver/import.rs` を `import/` へ分割 |
 | R-BE-04 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/driver/crud.rs` を `crud/` へ分割 |
-| R-BE-05 | - | 未着手 | - | - |
+| R-BE-05 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/subscriber/monitor.rs` を `monitor/` へ分割（treeテスト追加） |
 | R-BE-06 | - | 未着手 | - | 任意 |
 | R-BE-07 | - | 未着手 | - | - |
 | R-FE-01 | - | 未着手 | - | - |
