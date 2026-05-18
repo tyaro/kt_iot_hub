@@ -1,8 +1,10 @@
-//! ドライバ設定の CRUD コマンド (list / save / delete)。
-
-use super::runtime_sync::sync_driver_runtime;
-use super::toml_io::{write_drivers_toml_atomic, write_tags_toml_atomic};
-use super::ui_launcher::paths::resolve_driver_ui_path;
+use super::logic::{
+    build_driver_config, build_renamed_scan_groups, build_renamed_tags,
+    ensure_non_empty_driver_id, merge_driver_configs_for_rename, normalize_optional_string,
+};
+use super::super::runtime_sync::sync_driver_runtime;
+use super::super::toml_io::{write_drivers_toml_atomic, write_tags_toml_atomic};
+use super::super::ui_launcher::paths::resolve_driver_ui_path;
 use crate::app_state::AppState;
 use crate::commands::dto::{DriverDto, ErrorResponse, SaveDriverRequest};
 use crate::config::{DriverConfig, ScanGroupConfig, TagConfig};
@@ -53,15 +55,10 @@ pub async fn save_driver(
     req: SaveDriverRequest,
 ) -> Result<(), ErrorResponse> {
     let driver_id = req.id.trim().to_string();
-    if driver_id.is_empty() {
-        return Err(ErrorResponse {
-            error: "Driver ID cannot be empty".to_string(),
-            code: "INVALID_INPUT".to_string(),
-        });
-    }
+    ensure_non_empty_driver_id(&driver_id)?;
 
     let original_driver_id =
-        normalize_optional_string(req.original_id).unwrap_or_else(|| driver_id.clone());
+        normalize_optional_string(req.original_id.clone()).unwrap_or_else(|| driver_id.clone());
     let renaming = original_driver_id != driver_id;
 
     let existing_configs = state.driver_configs.read().await.clone();
@@ -81,37 +78,7 @@ pub async fn save_driver(
         });
     }
 
-    // パスワード空白時は既存値を維持する (UI で空入力された場合の保護)。
-    let password = if req.password.trim().is_empty() {
-        existing
-            .as_ref()
-            .and_then(|cfg| cfg.settings.get("password"))
-            .cloned()
-            .unwrap_or_else(|| serde_json::Value::String(String::new()))
-    } else {
-        serde_json::Value::String(req.password.clone())
-    };
-
-    let settings = serde_json::Map::from_iter([
-        ("host".to_string(), serde_json::Value::String(req.host.clone())),
-        ("port".to_string(), serde_json::Value::from(req.port)),
-        (
-            "database".to_string(),
-            serde_json::Value::String(req.database.clone()),
-        ),
-        (
-            "username".to_string(),
-            serde_json::Value::String(req.username.clone()),
-        ),
-        ("password".to_string(), password),
-    ]);
-
-    let config = DriverConfig {
-        id: driver_id.clone(),
-        driver_type: req.driver_type.clone(),
-        enabled: Some(req.enabled),
-        settings: serde_json::Value::Object(settings),
-    };
+    let config = build_driver_config(&req, driver_id.clone(), existing.as_ref());
 
     if renaming {
         apply_driver_id_rename(&state, &original_driver_id, &config, existing_configs).await?;
@@ -131,17 +98,6 @@ pub async fn save_driver(
     }
 
     Ok(())
-}
-
-fn normalize_optional_string(value: Option<String>) -> Option<String> {
-    value.and_then(|v| {
-        let trimmed = v.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    })
 }
 
 async fn ensure_driver_ui_session_not_active(
@@ -171,51 +127,15 @@ async fn apply_driver_id_rename(
     existing_configs: Vec<DriverConfig>,
 ) -> Result<(), ErrorResponse> {
     let existing_registry_tags = state.registry.list_all().await;
-    let final_tags_for_file: Vec<TagConfig> = existing_registry_tags
-        .iter()
-        .map(|tag| TagConfig {
-            id: tag.id.0.clone(),
-            name: tag.name.clone(),
-            data_type: tag.data_type.as_str().to_string(),
-            driver: if tag.driver_id == original_driver_id {
-                new_config.id.clone()
-            } else {
-                tag.driver_id.clone()
-            },
-            scan_group: tag.scan_group_id.clone(),
-            driver_spec: tag.driver_spec.clone(),
-            enabled: Some(true),
-            metadata: tag.metadata.clone(),
-        })
-        .collect();
+    let final_tags_for_file =
+        build_renamed_tags(&existing_registry_tags, original_driver_id, &new_config.id);
 
-    let final_scan_groups: Vec<ScanGroupConfig> = state
-        .scan_groups
-        .read()
-        .await
-        .clone()
-        .into_iter()
-        .map(|mut scan_group| {
-            if scan_group.driver == original_driver_id {
-                scan_group.driver = new_config.id.clone();
-            }
-            scan_group
-        })
-        .collect();
+    let existing_scan_groups = state.scan_groups.read().await.clone();
+    let final_scan_groups =
+        build_renamed_scan_groups(existing_scan_groups, original_driver_id, &new_config.id);
 
-    let mut final_driver_configs = Vec::with_capacity(existing_configs.len() + 1);
-    let mut replaced = false;
-    for config in existing_configs {
-        if config.id == original_driver_id {
-            final_driver_configs.push(new_config.clone());
-            replaced = true;
-        } else if config.id != new_config.id {
-            final_driver_configs.push(config);
-        }
-    }
-    if !replaced {
-        final_driver_configs.push(new_config.clone());
-    }
+    let final_driver_configs =
+        merge_driver_configs_for_rename(existing_configs, original_driver_id, new_config);
 
     write_drivers_toml_atomic(&final_driver_configs)?;
     write_tags_toml_atomic(&final_scan_groups, &final_tags_for_file)?;
@@ -271,15 +191,16 @@ pub async fn delete_driver(
         });
     }
 
-    // 実行中のドライバUI セッションがある場合は削除を拒否する。
     {
         let mut sessions = state.active_driver_ui_sessions.write().await;
         sessions.retain(|_, session| {
-            session.process_active || session.target_driver_id.as_deref() != Some(driver_id.as_str())
+            session.process_active
+                || session.target_driver_id.as_deref() != Some(driver_id.as_str())
         });
 
         if sessions.values().any(|session| {
-            session.process_active && session.target_driver_id.as_deref() == Some(driver_id.as_str())
+            session.process_active
+                && session.target_driver_id.as_deref() == Some(driver_id.as_str())
         }) {
             return Err(ErrorResponse {
                 error: format!(
@@ -354,7 +275,9 @@ pub async fn delete_driver(
 
     {
         let mut sessions = state.active_driver_ui_sessions.write().await;
-        sessions.retain(|_, session| session.target_driver_id.as_deref() != Some(driver_id.as_str()));
+        sessions.retain(|_, session| {
+            session.target_driver_id.as_deref() != Some(driver_id.as_str())
+        });
     }
 
     Ok(())
