@@ -630,7 +630,7 @@ components/
 | R-RS-03 | - | 未着手 | - | - |
 | R-DEDUP-01 | Copilot | 完了（ローカル） | - | 2026-05-18: `write_tags_toml_atomic` 重複定義を排除 |
 | R-DEDUP-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/config_io` へ TOML I/O 共通化 |
-| R-DEDUP-03 | - | 未着手 | - | R-BE-01 後 |
+| R-DEDUP-03 | Copilot | 完了（ローカル） | - | 2026-05-18: `ErrorResponse` コンストラクタ共通化と `commands` 側置換 |
 | R-DEDUP-04 | - | 未着手 | - | R-BE-07 後 |
 | R-DEDUP-05 | - | 未着手 | - | R-BE-01 後 |
 | R-DEDUP-06 | - | 未着手 | - | R-FE-02 と並行可 |
