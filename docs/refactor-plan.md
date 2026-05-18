@@ -638,7 +638,7 @@ components/
 | R-DEDUP-08 | Copilot | 完了（ローカル） | - | 2026-05-18: `normalize_optional_string` を `commands/util.rs` へ一本化 |
 | R-DEDUP-09 | Copilot | 完了（ローカル） | - | 2026-05-18: JoyWatcher 探索ロジックを `apps/joywatcher/common/path_utils.rs` へ集約 |
 | R-DEDUP-10 | Copilot | 完了（ローカル） | - | 2026-05-18: `apps/common/driver_runtime_grpc_client.rs` に統合し重複 `grpc_client.rs` を削除 |
-| R-DEDUP-11 | - | 未着手 | - | - |
+| R-DEDUP-11 | Copilot | 完了（ローカル） | - | 2026-05-18: `reloadAllRegistry()` を追加し三連リロード重複を解消 |
 | R-DEDUP-12 | - | 未着手 | - | 任意（YAGNI 注意） |
 
 ---
