@@ -1,62 +1,6 @@
 <script lang="ts">
   import type { AppMetricsDto, DriverMetricsDto, RuntimeStatusDto } from '$lib/ipc';
-
-  function formatBytes(value?: number | null): string {
-    if (value == null || !Number.isFinite(value)) {
-      return '-';
-    }
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let size = value;
-    let index = 0;
-    while (size >= 1024 && index < units.length - 1) {
-      size /= 1024;
-      index += 1;
-    }
-    return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
-  }
-
-  function formatPercent(value?: number | null): string {
-    if (value == null || !Number.isFinite(value)) {
-      return '-';
-    }
-    return `${value.toFixed(1)}%`;
-  }
-
-  function formatByteRate(value?: number | null): string {
-    if (value == null || !Number.isFinite(value)) {
-      return '-';
-    }
-    if (value < 1024) {
-      return `${value.toFixed(1)} B`;
-    }
-    return formatBytes(value);
-  }
-
-  function cpuLevel(value?: number | null): 'normal' | 'warn' | 'danger' {
-    if (value == null || !Number.isFinite(value)) {
-      return 'normal';
-    }
-    if (value >= 90) {
-      return 'danger';
-    }
-    if (value >= 70) {
-      return 'warn';
-    }
-    return 'normal';
-  }
-
-  function ioLevel(value?: number | null): 'normal' | 'warn' | 'danger' {
-    if (value == null || !Number.isFinite(value)) {
-      return 'normal';
-    }
-    if (value >= 10 * 1024 * 1024) {
-      return 'danger';
-    }
-    if (value >= 1024 * 1024) {
-      return 'warn';
-    }
-    return 'normal';
-  }
+  import { cpuLevel, formatByteRate, formatBytes, formatPercent, ioLevel } from '$lib/utils/format';
 
   type MetricItem = {
     icon?: string;
