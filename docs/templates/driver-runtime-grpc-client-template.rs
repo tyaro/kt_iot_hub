@@ -38,6 +38,8 @@ impl DriverRuntimeGrpcClient {
         mut self,
         rx: mpsc::Receiver<TagValueMessage>,
     ) -> Result<StreamTagValuesAck> {
+        // NOTE: TagValueMessage には tag 値だけでなく、
+        //       io_rx_bytes_total / io_tx_bytes_total（累積I/O）も含めて送る。
         let stream = ReceiverStream::new(rx);
         let response = self.client.stream_tag_values(stream).await?;
         let ack = response.into_inner();

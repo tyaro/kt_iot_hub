@@ -70,6 +70,7 @@
 - DriverDefinition を取得できる
 - poller / client を組める
 - タグ値送信ができる
+- `TagValueMessage.io_rx_bytes_total` / `io_tx_bytes_total` を累積値で送れている
 
 確認:
 
@@ -98,6 +99,7 @@
 - 新規 / 編集の両モードが動く
 - JSON 取り込みが成功する
 - 通信ランタイムが値送信できる
+- 通信ドライバ別 I/O がダッシュボードで 0 固定にならず更新される
 - 次セッション向けの引き継ぎメモが残っている
 
 ## 8. 引き継ぎ

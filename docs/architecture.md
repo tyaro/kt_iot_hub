@@ -115,7 +115,7 @@ pub struct TagValue {
 - `UpsertTagRegistration`: スキャングループとタグ定義の一括登録
 - `DriverRuntimeService`: 通信ランタイムプロセス ↔ 本体
 - `GetDriverDefinition`: ドライバ起動時に接続設定・タグ定義を取得
-- `StreamTagValues`: タグ値をストリーム送信
+- `StreamTagValues`: タグ値をストリーム送信（`TagValueMessage.io_rx_bytes_total` / `io_tx_bytes_total` にドライバ観測の累積受信/送信バイトを含める）
 
 ### Publisher trait
 
@@ -139,7 +139,7 @@ pub trait Publisher: Send + Sync {
 1. 起動時に TOML ファイルからタグ定義・ドライバ設定・パブリッシャ設定をロードする。
 2. DriverProcessManager が `driver-{type}` 実行ファイルを子プロセス起動する。
 3. ドライバプロセスが `GetDriverDefinition` で定義を取得し、外部機器/DBをポーリングする。
-4. ドライバプロセスが `StreamTagValues` で値を本体へ送信し、本体が Tag Bus に publish する。
+4. ドライバプロセスが `StreamTagValues` で値を本体へ送信し、本体が Tag Bus に publish する（I/O はドライバ報告の累積送受信バイト差分から B/s を算出する）。
 5. PublisherManager 配下の各 Publisher が購読し、MQTT 等へ送出する。
 6. UI は Tauri Event または購読型 store で最新値を表示する。
 

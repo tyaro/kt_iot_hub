@@ -69,6 +69,7 @@
 - **ドライバランタイムの責務**:
   - 起動時に `GetDriverDefinition` で接続設定・タグ定義を取得
   - ポーリング/収集した値を `StreamTagValues` で送信
+  - `TagValueMessage` に累積 `io_rx_bytes_total` / `io_tx_bytes_total` を同梱し、本体は差分から通信ドライバ別 I/O（B/s）を算出
 - **採用理由**:
   - ドライバ追加時に本体のコード変更を最小化できる
   - ドライバ障害を本体プロセスから分離しやすい

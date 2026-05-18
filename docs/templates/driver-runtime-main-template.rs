@@ -9,6 +9,12 @@ pub mod proto {
     tonic::include_proto!("kt_iot_hub.driver_runtime");
 }
 
+#[derive(Debug, Default, Clone, Copy)]
+struct DriverIoTotals {
+    rx_bytes_total: u64,
+    tx_bytes_total: u64,
+}
+
 #[derive(Debug, Parser)]
 #[command(author, version, about = "Runtime driver process")]
 struct Args {
@@ -75,6 +81,10 @@ async fn run() -> Result<()> {
         );
 
         // TODO: ここで definition から poller / client を構築し、タグ値送信へ接続する
+        // NOTE: TagValueMessage 送信時は io_rx_bytes_total / io_tx_bytes_total に
+        //       ドライバで観測した累積受信/送信バイトを設定すること。
+        //       （本体はこの累積値の差分から B/s を算出する）
+        let _io_totals = DriverIoTotals::default();
         tokio::time::sleep(Duration::from_secs(2)).await;
     }
 }

@@ -369,7 +369,7 @@ driver-ui/
 1. gRPC 接続
 2. DriverDefinition 取得
 3. 定義から poller / client を組み立て
-4. タグ値を本体へ送信
+4. タグ値を本体へ送信（`TagValueMessage.io_rx_bytes_total` / `io_tx_bytes_total` にドライバ側累積I/Oを設定）
 5. エラー時は待機後に再試行
 
 #### 実装上の注意
@@ -534,6 +534,7 @@ PowerShell スクリプトで配置できるようにする。
 - [ ] `--driver-id` / `--driver-kind` / `--grpc-addr` を受け取る
 - [ ] DriverDefinition を取得している
 - [ ] タグ値を gRPC で stream している
+- [ ] `TagValueMessage.io_rx_bytes_total` / `io_tx_bytes_total` を単調増加する累積値で送っている（再起動時リセットは許容）
 - [ ] 再接続 / 再試行がある
 - [ ] `tracing` でログを出している
 
