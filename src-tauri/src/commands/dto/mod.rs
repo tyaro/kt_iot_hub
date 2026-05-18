@@ -10,6 +10,9 @@ mod runtime;
 mod subscriber;
 mod tag;
 
+#[cfg(test)]
+mod serde_snapshot_tests;
+
 pub use common::*;
 pub use driver::*;
 pub use driver_ui::*;

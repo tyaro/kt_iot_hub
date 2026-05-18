@@ -12,11 +12,15 @@ pub struct LaunchDriverUiRequest {
 
 /// ドライバUI起動レスポンス DTO
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(crate = "serde")]
+#[serde(crate = "serde", rename_all = "camelCase")]
 pub struct LaunchDriverUiResponse {
+    #[serde(rename = "session_id")]
     pub session_id: String,
+    #[serde(rename = "output_json_path")]
     pub output_json_path: String,
+    #[serde(rename = "driver_id")]
     pub driver_id: Option<String>,
+    #[serde(rename = "driver_type")]
     pub driver_type: String,
 }
 

@@ -31,8 +31,9 @@ pub struct ScanGroupDto {
 
 /// タグ値レスポンス DTO
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(crate = "serde")]
+#[serde(crate = "serde", rename_all = "camelCase")]
 pub struct TagValueDto {
+    #[serde(rename = "tag_id")]
     pub tag_id: String,
     pub value: serde_json::Value,
     pub quality: String,
