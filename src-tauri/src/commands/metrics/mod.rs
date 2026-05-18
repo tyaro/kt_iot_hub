@@ -1,129 +1,18 @@
 use super::dto::{AppMetricsDto, DriverMetricsDto, ErrorResponse};
-use crate::app_state::{AppCpuSampleState, AppState, DriverIoSampleState, RuntimeMetricsCacheState};
+use crate::app_state::{AppState, DriverIoSampleState};
 use chrono::Utc;
 use std::collections::{HashMap, HashSet};
 use sysinfo::{Networks, Pid, ProcessesToUpdate, System};
-#[cfg(target_os = "windows")]
-use windows_sys::Win32::{
-    Foundation::FILETIME,
-    System::{
-    ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS},
-    Threading::{GetCurrentProcess, GetProcessTimes},
-    },
-};
-
-#[cfg(target_os = "windows")]
-fn filetime_to_u64(value: FILETIME) -> u64 {
-    ((value.dwHighDateTime as u64) << 32) | value.dwLowDateTime as u64
-}
-
-#[cfg(target_os = "windows")]
-fn get_windows_process_metrics(
-    cache: &mut RuntimeMetricsCacheState,
-    logical_cpu_count: usize,
-) -> Result<(Option<f32>, Option<u64>), ErrorResponse> {
-    unsafe {
-        let process_handle = GetCurrentProcess();
-
-        let mut creation_time = FILETIME {
-            dwLowDateTime: 0,
-            dwHighDateTime: 0,
-        };
-        let mut exit_time = FILETIME {
-            dwLowDateTime: 0,
-            dwHighDateTime: 0,
-        };
-        let mut process_kernel_time = FILETIME {
-            dwLowDateTime: 0,
-            dwHighDateTime: 0,
-        };
-        let mut process_user_time = FILETIME {
-            dwLowDateTime: 0,
-            dwHighDateTime: 0,
-        };
-
-        if GetProcessTimes(
-            process_handle,
-            &mut creation_time,
-            &mut exit_time,
-            &mut process_kernel_time,
-            &mut process_user_time,
-        ) == 0
-        {
-            return Err(ErrorResponse::new(
-                "METRICS_PROCESS_TIMES_ERROR",
-                "GetProcessTimes failed",
-            ));
-        }
-
-        let current_sample = AppCpuSampleState {
-            process_kernel_time: filetime_to_u64(process_kernel_time),
-            process_user_time: filetime_to_u64(process_user_time),
-            sampled_at: Utc::now(),
-        };
-
-        let process_cpu_percent = cache.last_app_cpu_sample.as_ref().and_then(|previous| {
-            let process_delta = current_sample
-                .process_kernel_time
-                .saturating_sub(previous.process_kernel_time)
-                + current_sample
-                    .process_user_time
-                    .saturating_sub(previous.process_user_time);
-            let elapsed_100ns = current_sample
-                .sampled_at
-                .signed_duration_since(previous.sampled_at)
-                .num_nanoseconds()
-                .map(|ns| (ns / 100) as u64)
-                .unwrap_or(0);
-
-            if elapsed_100ns == 0 || logical_cpu_count == 0 {
-                None
-            } else {
-                let normalized = (process_delta as f64)
-                    / (elapsed_100ns as f64 * logical_cpu_count as f64)
-                    * 100.0;
-                Some(normalized.clamp(0.0, 100.0) as f32)
-            }
-        });
-
-        cache.last_app_cpu_sample = Some(current_sample);
-
-        let mut counters = PROCESS_MEMORY_COUNTERS {
-            cb: std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32,
-            PageFaultCount: 0,
-            PeakWorkingSetSize: 0,
-            WorkingSetSize: 0,
-            QuotaPeakPagedPoolUsage: 0,
-            QuotaPagedPoolUsage: 0,
-            QuotaPeakNonPagedPoolUsage: 0,
-            QuotaNonPagedPoolUsage: 0,
-            PagefileUsage: 0,
-            PeakPagefileUsage: 0,
-        };
-
-        if GetProcessMemoryInfo(
-            process_handle,
-            &mut counters as *mut PROCESS_MEMORY_COUNTERS,
-            std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32,
-        ) == 0
-        {
-            return Err(ErrorResponse::new(
-                "METRICS_PROCESS_MEMORY_ERROR",
-                "GetProcessMemoryInfo failed",
-            ));
-        }
-
-        Ok((process_cpu_percent, Some(counters.WorkingSetSize as u64)))
-    }
-}
 
 #[cfg(not(target_os = "windows"))]
-fn get_windows_process_metrics(
-    _cache: &mut RuntimeMetricsCacheState,
-    _logical_cpu_count: usize,
-) -> Result<(Option<f32>, Option<u64>), ErrorResponse> {
-    Ok((None, None))
-}
+mod fallback;
+#[cfg(target_os = "windows")]
+mod windows;
+
+#[cfg(not(target_os = "windows"))]
+use fallback::get_process_metrics;
+#[cfg(target_os = "windows")]
+use windows::get_process_metrics;
 
 #[tauri::command]
 pub async fn get_app_metrics(
@@ -136,7 +25,7 @@ pub async fn get_app_metrics(
 
     let (process_cpu_percent, process_memory_bytes) = {
         let mut cache = state.runtime_metrics_cache.write().await;
-        get_windows_process_metrics(&mut cache, logical_cpu_count)?
+        get_process_metrics(&mut cache, logical_cpu_count)?
     };
 
     let system_cpu_percent = Some(system.global_cpu_usage());
@@ -153,19 +42,13 @@ pub async fn get_app_metrics(
     let (network_rx_bytes_per_sec, network_tx_bytes_per_sec) = {
         let mut cache = state.runtime_metrics_cache.write().await;
 
-        let rates = if let (
-            Some(last_rx),
-            Some(last_tx),
-            Some(last_sampled_at),
-        ) = (
+        let rates = if let (Some(last_rx), Some(last_tx), Some(last_sampled_at)) = (
             cache.last_network_rx_bytes,
             cache.last_network_tx_bytes,
             cache.last_sampled_at,
         ) {
-            let elapsed_sec = sampled_at
-                .signed_duration_since(last_sampled_at)
-                .num_milliseconds() as f64
-                / 1000.0;
+            let elapsed_sec =
+                sampled_at.signed_duration_since(last_sampled_at).num_milliseconds() as f64 / 1000.0;
 
             if elapsed_sec > 0.0 {
                 let rx_bps = (total_rx.saturating_sub(last_rx) as f64) / elapsed_sec;
@@ -218,29 +101,25 @@ pub async fn get_driver_metrics(
         .map(|cfg| (cfg.id.clone(), cfg.driver_type.clone()))
         .collect();
 
-    let pids: Vec<Pid> = running
-        .iter()
-        .map(|(_, pid)| Pid::from_u32(*pid))
-        .collect();
+    let pids: Vec<Pid> = running.iter().map(|(_, pid)| Pid::from_u32(*pid)).collect();
 
     let mut system = System::new_all();
     system.refresh_cpu_usage();
     let _ = system.refresh_processes(ProcessesToUpdate::Some(&pids), true);
     let logical_cpu_count = system.cpus().len().max(1) as f32;
 
-    let process_stats: Vec<(String, u32, Option<f32>, Option<u64>)> =
-        running
-            .iter()
-            .map(|(driver_id, pid_u32)| {
-                let process = system.process(Pid::from_u32(*pid_u32));
-                (
-                    driver_id.clone(),
-                    *pid_u32,
-                    process.map(|p| (p.cpu_usage() / logical_cpu_count).clamp(0.0, 100.0)),
-                    process.map(|p| p.memory()),
-                )
-            })
-            .collect();
+    let process_stats: Vec<(String, u32, Option<f32>, Option<u64>)> = running
+        .iter()
+        .map(|(driver_id, pid_u32)| {
+            let process = system.process(Pid::from_u32(*pid_u32));
+            (
+                driver_id.clone(),
+                *pid_u32,
+                process.map(|p| (p.cpu_usage() / logical_cpu_count).clamp(0.0, 100.0)),
+                process.map(|p| p.memory()),
+            )
+        })
+        .collect();
 
     let mut cache = state.runtime_metrics_cache.write().await;
     let active_driver_ids: HashSet<String> = process_stats
@@ -261,13 +140,7 @@ pub async fn get_driver_metrics(
                 if let Some((current_rx_total, current_tx_total, current_sampled_at)) = cache
                     .last_driver_reported_io_totals
                     .get(&driver_id)
-                    .map(|state| {
-                        (
-                            state.rx_bytes_total,
-                            state.tx_bytes_total,
-                            state.sampled_at,
-                        )
-                    })
+                    .map(|state| (state.rx_bytes_total, state.tx_bytes_total, state.sampled_at))
                 {
                     let rates = cache
                         .last_driver_reported_io_samples
@@ -284,8 +157,6 @@ pub async fn get_driver_metrics(
                             let rx_delta = if current_rx_total >= prev.read_bytes {
                                 current_rx_total - prev.read_bytes
                             } else {
-                                // ドライバ再起動や再接続で累積カウンタがリセットされた場合は
-                                // 現在値を差分として扱い、0固定化を防ぐ。
                                 current_rx_total
                             };
                             let tx_delta = if current_tx_total >= prev.write_bytes {
