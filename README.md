@@ -60,17 +60,21 @@
   - `npm run driver-runtime:install -- -DriverType postgres -SourcePath C:/tools/driver-postgres.exe`
 
 設定画面の「ドライバ設置ベースパス」は、登録UI と通信ランタイムの両方に使われます。
+同梱インストーラ版の既定値は通常 `<app-dir>/resources` です。
 たとえば以下のどちらでも動作します。
 
+- `<app-dir>/resources`
+  - `driver-ui/postgres/registration-ui.exe`
+  - `driver-ui/postgres/driver-postgres.exe`
+- `<app-dir>/resources/driver-ui`
+  - `postgres/registration-ui.exe`
+  - `postgres/driver-postgres.exe`
 - `<app-dir>`
   - `driver-ui/postgres/registration-ui.exe`
   - `driver-ui/postgres/driver-postgres.exe`
-- `<app-dir>/driver-ui`
-  - `postgres/registration-ui.exe`
-  - `postgres/driver-postgres.exe`
 
 ここで `<app-dir>` は本体実行ファイル `kt_iot_hub.exe` が置かれているディレクトリです。
-たとえば本体が `<app-dir>/kt_iot_hub.exe` にある場合、`<app-dir>` を設定すると
+同梱インストーラでは `<app-dir>/resources` を指定すると
 `driver-ui/<type>/registration-ui.exe` と `driver-ui/<type>/driver-<type>.exe` を探索します。
 
 本体は次の順にランタイム実行ファイルを探索します。
@@ -84,7 +88,7 @@ PostgreSQL ランタイム本体の crate は `apps/postgres/driver` です。
 
 見つからない場合は、ランタイム開始時にエラーを返します。
 
-## インストーラ同梱（v0.1.0）
+## インストーラ同梱（v0.2.0）
 
 本体インストーラには、以下の実行ファイルを同梱します。
 
@@ -96,11 +100,18 @@ PostgreSQL ランタイム本体の crate は `apps/postgres/driver` です。
 
 同梱ビルドは次の手順で実行します。
 
-- `npm run driver-suite:release`（同梱用成果物を `driver-ui/` へ配置）
+- `npm run driver-suite:release`（同梱用成果物を `driver-ui/` と `src-tauri/driver-ui/` へ配置）
 - `npm run tauri-build:bundle-drivers`（同梱済みで本体インストーラをビルド）
 
-本体は実行時に `resources/driver-ui/...` も探索対象に含めるため、
+本体は実行時に `resources/driver-ui/...` を探索対象に含めるため、
 インストール直後に driver-ui ベースパス未設定でも同梱実行ファイルを利用できます。
+設定画面の既定値も同梱配置先（通常は `<app-dir>/resources`）を指します。
+
+## JoyWatcher DLL の扱い
+
+- `JoyWaApi.dll` は JoyWatcher インストール環境の既定配置先である `C:\Windows\SysWOW64` を優先探索します。
+- `JoyWaApi.lib` は現行の x86 bridge 実行方式では不要です。
+- タグ管理画面では、接続先・スキャングループ・タグ定義を JSON でインポート / エクスポートできます。
 
 ## 補足
 

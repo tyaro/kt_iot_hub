@@ -17,6 +17,8 @@
     onRequestDeleteDriver,
     onRequestEditTag,
     onRequestDeleteTag,
+    onImportSettings,
+    onExportSettings,
   }: {
     driverUiPolling: boolean;
     tagActionMessage: string;
@@ -32,6 +34,8 @@
     onRequestDeleteDriver: (driverId: string) => void | Promise<void>;
     onRequestEditTag: (tag: TagDto) => void;
     onRequestDeleteTag: (tag: TagDto) => void | Promise<void>;
+    onImportSettings: () => void | Promise<void>;
+    onExportSettings: () => void | Promise<void>;
   } = $props();
 </script>
 
@@ -40,6 +44,8 @@
     <div class="content-header">
       <h2>タグ管理</h2>
       <div class="header-actions">
+        <button class="btn-outline" onclick={onImportSettings} disabled={driverUiPolling}>インポート</button>
+        <button class="btn-outline" onclick={onExportSettings} disabled={driverUiPolling}>エクスポート</button>
         <button class="btn-primary" onclick={onNewDriver} disabled={driverUiPolling}>＋ 接続先</button>
       </div>
     </div>
@@ -157,6 +163,21 @@
 
   .btn-primary:hover {
     background-color: #2471a3;
+  }
+
+  .btn-outline {
+    background: #fff;
+    color: #2e86c1;
+    border: 1px solid #2e86c1;
+    padding: 7px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .btn-outline:hover {
+    background: #ebf5fb;
   }
 
 </style>

@@ -4,6 +4,7 @@
 //! - `crud`        : 一覧/保存/削除コマンド
 //! - `ui_launcher` : ドライバUI 起動・結果ファイル確認
 //! - `import`      : ドライバUI 結果 JSON のバリデーションと取り込み
+//! - `transfer`    : タグ管理設定の JSON import/export と既定パス解決
 //! - `toml_io`     : drivers.toml / tags.toml のアトミック書き出し
 //! - `runtime_sync`: 設定変更後の DriverManager 反映処理
 
@@ -12,6 +13,7 @@
 // そのため main.rs からは `commands::driver::<submod>::<fn>` の形で参照すること。
 pub mod crud;
 pub mod import;
+pub mod transfer;
 pub mod ui_launcher;
 
 mod runtime_sync;

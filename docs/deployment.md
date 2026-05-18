@@ -2,8 +2,9 @@
 
 ## インストーラ構成
 
-- **方式**: Tauri 標準の MSI / NSIS インストーラを拡張、または別途 WiX で構成する。
+- **方式**: Tauri 標準の MSI / NSIS インストーラを利用する。
 - **対象 OS**: Windows。
+- **表示言語**: 日本語（WiX: `ja-JP`, NSIS: `Japanese`）。
 
 ## 同梱物
 
@@ -17,11 +18,11 @@
 
 ### 同梱用アーティファクト準備手順
 
-1. `npm run driver-suite:release` を実行し、`driver-ui/` 配下へ release 成果物を配置する。
+1. `npm run driver-suite:release` を実行し、`driver-ui/` と `src-tauri/driver-ui/` 配下へ release 成果物を配置する。
 2. `npm run tauri-build:bundle-drivers` を実行して本体インストーラをビルドする。
 
-`src-tauri/tauri.conf.json` の `bundle.resources` で上記実行ファイルを指定し、
-インストーラへ同梱する。
+`src-tauri/tauri.conf.json` の `bundle.resources` で `src-tauri/driver-ui/` 配下の実行ファイルを指定し、
+インストーラへ同梱する。インストール後の既定配置先は `<app-dir>/resources/driver-ui/`。
 
 ## インストール時の処理
 
@@ -52,6 +53,11 @@
 - 外部公開を有効化する際は TLS + 認証を要求する。
 - 認証情報・TLS 証明書のパスは `mosquitto.conf` に格納する。
 - パスワードは Mosquitto の `password_file` 機構で別ファイル化する。
+
+## JoyWatcher DLL の扱い
+
+- `JoyWaApi.dll` は JoyWatcher 製品インストールで既定配置される `C:\Windows\SysWOW64` を優先探索する。
+- 現行の x86 bridge 実装は `LoadLibraryW` / `GetProcAddress` による動的ロードのため、`JoyWaApi.lib` の配布は必須ではない。
 
 ## ライセンス確認
 

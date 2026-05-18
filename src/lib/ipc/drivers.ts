@@ -19,6 +19,13 @@ export interface SaveDriverRequest extends DriverCoreFields {
   password: string;
 }
 
+export interface TagManagementSettingsTransferResponse {
+  path: string;
+  driver_count: number;
+  scan_group_count: number;
+  tag_count: number;
+}
+
 /**
  * すべてのドライバ設定を取得する
  */
@@ -38,4 +45,29 @@ export async function saveDriver(req: SaveDriverRequest): Promise<void> {
  */
 export async function deleteDriver(driverId: string): Promise<void> {
   return ipcInvoke('delete_driver', { driverId });
+}
+
+/**
+ * タグ管理設定を JSON へエクスポートする
+ */
+export async function exportTagManagementSettings(
+  path: string,
+): Promise<TagManagementSettingsTransferResponse> {
+  return ipcInvoke('export_tag_management_settings', { req: { path } });
+}
+
+/**
+ * タグ管理設定を JSON からインポートする
+ */
+export async function importTagManagementSettings(
+  path: string,
+): Promise<TagManagementSettingsTransferResponse> {
+  return ipcInvoke('import_tag_management_settings', { req: { path } });
+}
+
+/**
+ * ドライバ配置の既定ベースパスを取得する
+ */
+export async function getDefaultDriverUiBaseDir(): Promise<string | null> {
+  return ipcInvoke('get_default_driver_ui_base_dir');
 }

@@ -23,18 +23,18 @@
   <div class="settings-card">
     <h3>ドライバ実行ファイル配置</h3>
     <p class="settings-help">
-      登録UI と通信ドライバを同じ場所に置く前提です。本体実行ファイル基準の例: <code>&lt;app-dir&gt;</code> または <code>&lt;app-dir&gt;\driver-ui</code>
+      登録UI と通信ドライバを同じ場所に置く前提です。既定値は同梱インストーラの配置先で、通常は <code>&lt;app-dir&gt;\resources</code> を使います。
     </p>
     <label>
       ドライバ設置ベースパス
       <input
         value={driverUiBaseDirInput}
         oninput={(event) => onDriverUiBaseDirInput((event.currentTarget as HTMLInputElement).value)}
-        placeholder="未指定時は自動探索（driver-ui/&lt;type&gt;/registration-ui.exe / driver-&lt;type&gt;.exe）"
+        placeholder="既定値は同梱インストーラの配置先（通常は &lt;app-dir&gt;\resources）"
       />
     </label>
     <p class="settings-help">
-      例: 本体が <code>&lt;app-dir&gt;\kt_iot_hub.exe</code> の場合、<code>&lt;app-dir&gt;</code> を指定すると <code>driver-ui\postgres\registration-ui.exe</code> と <code>driver-ui\postgres\driver-postgres.exe</code> を探索します。
+      例: 本体が <code>&lt;app-dir&gt;\kt_iot_hub.exe</code> の場合、同梱インストーラの既定値は <code>&lt;app-dir&gt;\resources</code> です。ここから <code>driver-ui\postgres\registration-ui.exe</code> と <code>driver-ui\postgres\driver-postgres.exe</code> を探索します。
     </p>
     <div class="settings-actions">
       <button class="btn-outline" onclick={onPickDriverUiBaseDir}>フォルダ選択...</button>

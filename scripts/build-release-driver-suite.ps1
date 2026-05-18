@@ -7,6 +7,7 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $PSCommandPath
 $repoRoot = Resolve-Path (Join-Path $scriptDir "..")
 $targetTriple = "i686-pc-windows-msvc"
+$bundleRoot = Join-Path $repoRoot "src-tauri"
 
 function Invoke-CargoBuildRelease([string]$manifestPath, [string]$label) {
   Write-Host ">>> cargo build $label (release)..."
@@ -53,9 +54,14 @@ if (-not (Test-Path $joywatcherBridgeExe)) { throw "Build artifact not found: $j
 Write-Host ">>> installing release artifacts into driver-ui/..."
 & (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "postgres" -SourcePath $postgresUiExe
 & (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "postgres" -SourcePath $postgresDriverExe
+& (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "postgres" -SourcePath $postgresUiExe -AppRoot $bundleRoot
+& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "postgres" -SourcePath $postgresDriverExe -BinDir (Join-Path $bundleRoot "driver-ui\postgres")
 
 & (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "joywatcher" -SourcePath $joywatcherUiExe
 & (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherDriverExe
 & (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherBridgeExe -TargetFileName "joywatcher-bridge-x86.exe"
+& (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "joywatcher" -SourcePath $joywatcherUiExe -AppRoot $bundleRoot
+& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherDriverExe -BinDir (Join-Path $bundleRoot "driver-ui\joywatcher")
+& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherBridgeExe -TargetFileName "joywatcher-bridge-x86.exe" -BinDir (Join-Path $bundleRoot "driver-ui\joywatcher")
 
-Write-Host ">>> done: release artifacts are ready under driver-ui/ for installer bundling" -ForegroundColor Green
+Write-Host ">>> done: release artifacts are ready under driver-ui/ and src-tauri/driver-ui/ for installer bundling" -ForegroundColor Green

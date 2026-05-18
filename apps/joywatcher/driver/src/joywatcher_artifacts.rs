@@ -97,6 +97,12 @@ fn default_search_roots() -> Vec<PathBuf> {
         push_unique(&mut roots, PathBuf::from(configured));
     }
 
+    if cfg!(windows) {
+        if let Ok(windir) = std::env::var("WINDIR").or_else(|_| std::env::var("SystemRoot")) {
+            push_unique(&mut roots, PathBuf::from(windir).join("SysWOW64"));
+        }
+    }
+
     if let Ok(current_dir) = std::env::current_dir() {
         push_unique(&mut roots, current_dir.clone());
         if let Some(parent) = current_dir.parent() {
@@ -118,12 +124,6 @@ fn default_search_roots() -> Vec<PathBuf> {
         push_unique(&mut roots, repo_root.join("参考"));
         push_unique(&mut roots, repo_root.join("参考").join("JoyWaApi"));
         push_unique(&mut roots, repo_root.join("参考").join("JoyWaApi").join("BC"));
-    }
-
-    if cfg!(windows) {
-        if let Ok(windir) = std::env::var("WINDIR").or_else(|_| std::env::var("SystemRoot")) {
-            push_unique(&mut roots, PathBuf::from(windir).join("SysWOW64"));
-        }
     }
 
     roots

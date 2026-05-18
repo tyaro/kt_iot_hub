@@ -16,3 +16,6 @@ target/
 driver-ui/**/*.exe
 driver-ui/**/*.dll
 driver-ui/**/*.pdb
+src-tauri/driver-ui/**/*.exe
+src-tauri/driver-ui/**/*.dll
+src-tauri/driver-ui/**/*.pdb

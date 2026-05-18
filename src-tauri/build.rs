@@ -14,5 +14,30 @@ fn main() {
         )
         .expect("Failed to compile gRPC proto");
 
+    ensure_bundle_resource_placeholders();
     tauri_build::build()
+}
+
+fn ensure_bundle_resource_placeholders() {
+    let resource_paths = [
+        "driver-ui/postgres/registration-ui.exe",
+        "driver-ui/postgres/driver-postgres.exe",
+        "driver-ui/joywatcher/registration-ui.exe",
+        "driver-ui/joywatcher/driver-joywatcher.exe",
+        "driver-ui/joywatcher/joywatcher-bridge-x86.exe",
+    ];
+
+    for relative in resource_paths {
+        println!("cargo:rerun-if-changed={}", relative);
+        let path = std::path::Path::new(relative);
+        if path.exists() {
+            continue;
+        }
+
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).expect("Failed to create driver-ui placeholder dir");
+        }
+
+        std::fs::write(path, b"placeholder").expect("Failed to create resource placeholder");
+    }
 }

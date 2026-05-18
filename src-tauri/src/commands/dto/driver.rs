@@ -32,3 +32,39 @@ pub struct SaveDriverRequest {
     pub username: String,
     pub password: String,
 }
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(crate = "serde")]
+pub struct ExportTagManagementSettingsRequest {
+    pub path: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(crate = "serde")]
+pub struct ExportTagManagementSettingsResponse {
+    pub path: String,
+    #[serde(rename = "driver_count")]
+    pub driver_count: usize,
+    #[serde(rename = "scan_group_count")]
+    pub scan_group_count: usize,
+    #[serde(rename = "tag_count")]
+    pub tag_count: usize,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(crate = "serde")]
+pub struct ImportTagManagementSettingsRequest {
+    pub path: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(crate = "serde")]
+pub struct ImportTagManagementSettingsResponse {
+    pub path: String,
+    #[serde(rename = "driver_count")]
+    pub driver_count: usize,
+    #[serde(rename = "scan_group_count")]
+    pub scan_group_count: usize,
+    #[serde(rename = "tag_count")]
+    pub tag_count: usize,
+}

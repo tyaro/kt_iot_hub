@@ -67,6 +67,13 @@ pub fn dll_file_candidates() -> Vec<PathBuf> {
         push_unique(&mut candidates, PathBuf::from(configured_dir).join(DLL_FILE_NAME));
     }
 
+    if let Ok(windir) = std::env::var("WINDIR").or_else(|_| std::env::var("SystemRoot")) {
+        push_unique(
+            &mut candidates,
+            PathBuf::from(windir).join("SysWOW64").join(DLL_FILE_NAME),
+        );
+    }
+
     if let Ok(current_dir) = std::env::current_dir() {
         push_unique(&mut candidates, current_dir.join(DLL_FILE_NAME));
         if let Some(parent) = current_dir.parent() {
@@ -96,13 +103,6 @@ pub fn dll_file_candidates() -> Vec<PathBuf> {
                 .join("JoyWaApi")
                 .join("BC")
                 .join(DLL_FILE_NAME),
-        );
-    }
-
-    if let Ok(windir) = std::env::var("WINDIR").or_else(|_| std::env::var("SystemRoot")) {
-        push_unique(
-            &mut candidates,
-            PathBuf::from(windir).join("SysWOW64").join(DLL_FILE_NAME),
         );
     }
 

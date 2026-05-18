@@ -21,7 +21,7 @@
 <div class="left-pane">
   <div class="header">
     <h1>IoT Hub</h1>
-    <p class="version">v0.1.0</p>
+    <p class="version">v0.2.0</p>
   </div>
   <nav class="nav-menu">
     {#each pages as page (page.id)}

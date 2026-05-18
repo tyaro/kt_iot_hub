@@ -3,7 +3,8 @@
   次段の R-FE-02 以降で state/handler の責務単位分割を進め、300 行以内へ縮小予定です。
 -->
 <script lang="ts">
-  import { open } from '@tauri-apps/plugin-dialog';
+  import { onMount } from 'svelte';
+  import { open, save as saveDialog } from '@tauri-apps/plugin-dialog';
   import NavigationPane from './NavigationPane.svelte';
   import CenterPaneContent from './CenterPaneContent.svelte';
   import ThreePaneOverlays from './ThreePaneOverlays.svelte';
@@ -58,10 +59,13 @@
     checkDriverUiResult,
     deleteDriver,
     deleteTag,
+    exportTagManagementSettings,
+    getDefaultDriverUiBaseDir,
     getRuntimeStatus,
     getAppMetrics,
     getDriverMetrics,
     importDriverUiResult,
+    importTagManagementSettings,
     launchDriverUi,
     openMqttMonitorWindow,
     startRuntimeServices,
@@ -87,6 +91,59 @@
 
   async function reloadTagManagementData() {
     await reloadAllRegistry();
+  }
+
+  async function handleExportTagSettings() {
+    if (!ensureDriverUiNotBusy()) {
+      return;
+    }
+
+    try {
+      const selected = await saveDialog({
+        defaultPath: 'tag-management-settings.json',
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+      });
+      if (typeof selected !== 'string') {
+        return;
+      }
+
+      const exported = await exportTagManagementSettings(selected);
+      tagActionMessage = `接続先設定をエクスポートしました: ${exported.driver_count}件の接続先 / ${exported.scan_group_count}件のスキャングループ / ${exported.tag_count}件のタグ`;
+    } catch (error) {
+      const message = extractErrorMessage(error, '設定エクスポートに失敗しました');
+      tagActionMessage = message;
+      notify(message);
+    }
+  }
+
+  async function handleImportTagSettings() {
+    if (!ensureDriverUiNotBusy()) {
+      return;
+    }
+
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+      });
+      if (typeof selected !== 'string') {
+        return;
+      }
+
+      const imported = await importTagManagementSettings(selected);
+      await reloadTagManagementData();
+      selectedDriver = null;
+      selectedScanGroup = null;
+      selectedTag = null;
+      tagMode = 'detail';
+      editorDriverId = null;
+      tagActionMessage = `接続先設定をインポートしました: ${imported.driver_count}件の接続先 / ${imported.scan_group_count}件のスキャングループ / ${imported.tag_count}件のタグ`;
+    } catch (error) {
+      const message = extractErrorMessage(error, '設定インポートに失敗しました');
+      tagActionMessage = message;
+      notify(message);
+    }
   }
 
   async function handleDriverSaved(driverId?: string): Promise<DriverDto | null> {
@@ -122,6 +179,29 @@
   const loadedDriverUiBaseDir = loadDriverUiBaseDirFromStorage();
   let driverUiBaseDirInput = $state(loadedDriverUiBaseDir ?? '');
   let driverUiBaseDirSaved = $state<string | null>(loadedDriverUiBaseDir);
+
+  onMount(() => {
+    if (loadedDriverUiBaseDir) {
+      return;
+    }
+
+    let disposed = false;
+    void getDefaultDriverUiBaseDir()
+      .then((defaultBaseDir) => {
+        if (disposed || !defaultBaseDir) {
+          return;
+        }
+        driverUiBaseDirInput = defaultBaseDir;
+        driverUiBaseDirSaved = defaultBaseDir;
+      })
+      .catch(() => {
+        // 既定値取得に失敗しても手入力できるため黙って継続する
+      });
+
+    return () => {
+      disposed = true;
+    };
+  });
 
   let selectedDriver = $state<DriverDto | null>(null);
   let driverUiAvailableByType = $state<Record<string, boolean>>({});
@@ -365,6 +445,8 @@
     onRequestDeleteDriver: deletionController.requestDeleteDriver,
     onRequestEditTag: tagUiController.requestEditTag,
     onRequestDeleteTag: deletionController.requestDeleteTag,
+    onImportSettings: handleImportTagSettings,
+    onExportSettings: handleExportTagSettings,
     onDriverUiBaseDirInput: driverUiSettingsController.setInputValue,
     onPickDriverUiBaseDir: driverUiSettingsController.pick,
     onSaveDriverUiBaseDir: driverUiSettingsController.save,

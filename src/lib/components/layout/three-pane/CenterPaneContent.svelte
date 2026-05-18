@@ -49,6 +49,8 @@
     onRequestDeleteDriver: (driverId: string) => Promise<void>;
     onRequestEditTag: (tag: TagDto) => void;
     onRequestDeleteTag: (tag: TagDto) => Promise<void>;
+    onImportSettings: () => Promise<void>;
+    onExportSettings: () => Promise<void>;
     onDriverUiBaseDirInput: (value: string) => void;
     onPickDriverUiBaseDir: () => Promise<void>;
     onSaveDriverUiBaseDir: () => void;
@@ -87,6 +89,8 @@
     onRequestDeleteDriver,
     onRequestEditTag,
     onRequestDeleteTag,
+    onImportSettings,
+    onExportSettings,
     onDriverUiBaseDirInput,
     onPickDriverUiBaseDir,
     onSaveDriverUiBaseDir,
@@ -128,6 +132,8 @@
       onRequestDeleteDriver={onRequestDeleteDriver}
       onRequestEditTag={onRequestEditTag}
       onRequestDeleteTag={onRequestDeleteTag}
+      onImportSettings={onImportSettings}
+      onExportSettings={onExportSettings}
     />
 
   {:else if currentPage === 'publishers'}
