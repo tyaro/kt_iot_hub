@@ -36,33 +36,58 @@
 </script>
 
 <div class="content">
-  <div class="content-header">
-    <h2>タグ管理</h2>
-    <div class="header-actions">
-      <button class="btn-primary" onclick={onNewDriver} disabled={driverUiPolling}>＋ 接続先</button>
+  <div class="content-main">
+    <div class="content-header">
+      <h2>タグ管理</h2>
+      <div class="header-actions">
+        <button class="btn-primary" onclick={onNewDriver} disabled={driverUiPolling}>＋ 接続先</button>
+      </div>
+    </div>
+    <div class="tree-host">
+      <TagTree
+        onSelect={onSelectTag}
+        onSelectDriver={onSelectDriver}
+        onSelectScanGroup={onSelectScanGroup}
+        {selectedTagId}
+        {selectedDriverId}
+        {selectedScanGroupId}
+        onRequestNewTag={onRequestNewTag}
+        onRequestEditDriver={onRequestEditDriver}
+        onRequestDeleteDriver={onRequestDeleteDriver}
+        onRequestEditTag={onRequestEditTag}
+        onRequestDeleteTag={onRequestDeleteTag}
+      />
     </div>
   </div>
-  {#if tagActionMessage}
-    <p class="action-message">{tagActionMessage}</p>
-  {/if}
-  <TagTree
-    onSelect={onSelectTag}
-    onSelectDriver={onSelectDriver}
-    onSelectScanGroup={onSelectScanGroup}
-    {selectedTagId}
-    {selectedDriverId}
-    {selectedScanGroupId}
-    onRequestNewTag={onRequestNewTag}
-    onRequestEditDriver={onRequestEditDriver}
-    onRequestDeleteDriver={onRequestDeleteDriver}
-    onRequestEditTag={onRequestEditTag}
-    onRequestDeleteTag={onRequestDeleteTag}
-  />
+
+  <div class="message-dock">
+    <p class="action-message" class:visible={Boolean(tagActionMessage)} aria-live="polite">
+      {tagActionMessage || '　'}
+    </p>
+  </div>
 </div>
 
 <style>
   .content {
     padding: 24px 28px;
+    box-sizing: border-box;
+    min-height: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .content-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tree-host {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .content-header {
@@ -70,6 +95,7 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 16px;
+    flex: 0 0 auto;
   }
 
   .header-actions {
@@ -93,13 +119,29 @@
   }
 
   .action-message {
-    margin: 0 0 12px;
+    margin: 0;
     font-size: 0.82rem;
     color: #2563eb;
     background: #eff6ff;
     border: 1px solid #bfdbfe;
     border-radius: 6px;
     padding: 8px 10px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    visibility: hidden;
+  }
+
+  .action-message.visible {
+    visibility: visible;
+  }
+
+  .message-dock {
+    flex: 0 0 auto;
+    position: sticky;
+    bottom: 0;
+    background: #f4f6f9;
+    padding-top: 4px;
   }
 
   .btn-primary {

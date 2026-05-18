@@ -10,7 +10,7 @@ export const pages: Array<{ id: PageId; label: string; icon: string }> = [
   { id: 'settings', label: '設定', icon: '🔧' },
 ];
 
-export const knownDriverTypes = ['postgres'];
+export const knownDriverTypes = ['postgres', 'joywatcher'];
 
 export const defaultRuntimeStatus: RuntimeStatusDto = {
   drivers_running: false,

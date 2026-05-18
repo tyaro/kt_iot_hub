@@ -1,13 +1,36 @@
 <script lang="ts">
-  import type { RuntimeStatusDto } from '$lib/ipc';
+  import type { AppMetricsDto, RuntimeStatusDto } from '$lib/ipc';
+
+  function formatBytes(value?: number | null): string {
+    if (value == null || !Number.isFinite(value)) {
+      return '-';
+    }
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let size = value;
+    let index = 0;
+    while (size >= 1024 && index < units.length - 1) {
+      size /= 1024;
+      index += 1;
+    }
+    return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+  }
+
+  function formatPercent(value?: number | null): string {
+    if (value == null || !Number.isFinite(value)) {
+      return '-';
+    }
+    return `${value.toFixed(1)}%`;
+  }
 
   let {
     tagCount,
     driverCount,
     enabledDriverCount,
     runtimeStatus,
+    appMetrics,
     runtimeBusy,
     dashboardMessage,
+    scanCycleHealthSummary,
     onNavigateTags,
     onOpenMqttMonitor,
     onStartServers,
@@ -17,8 +40,20 @@
     driverCount: number;
     enabledDriverCount: number;
     runtimeStatus: RuntimeStatusDto;
+    appMetrics: AppMetricsDto & {
+      webview_memory_used_bytes: number | null;
+      webview_memory_total_bytes: number | null;
+      webview_memory_limit_bytes: number | null;
+    };
     runtimeBusy: boolean;
     dashboardMessage: string;
+    scanCycleHealthSummary: {
+      observedGroupCount: number;
+      delayedGroupCount: number;
+      avgDeltaRatio: number | null;
+      worstGroupLabel: string | null;
+      worstDeltaRatio: number | null;
+    };
     onNavigateTags: () => void;
     onOpenMqttMonitor: () => void;
     onStartServers: () => void;
@@ -61,7 +96,46 @@
       <ul class="runtime-list">
         <li>Drivers: {runtimeStatus.drivers_running ? 'ON' : 'OFF'}</li>
         <li>MQTT: {runtimeStatus.publishers_running ? 'ON' : 'OFF'}</li>
+        <li>実測グループ: {scanCycleHealthSummary.observedGroupCount}</li>
+        <li>遅延グループ: {scanCycleHealthSummary.delayedGroupCount}</li>
+        <li>
+          平均乖離:
+          {scanCycleHealthSummary.avgDeltaRatio == null
+            ? '-'
+            : `${(scanCycleHealthSummary.avgDeltaRatio * 100).toFixed(1)}%`}
+        </li>
+        <li>
+          最遅:
+          {scanCycleHealthSummary.worstGroupLabel == null
+            ? '-'
+            : `${scanCycleHealthSummary.worstGroupLabel} (${((scanCycleHealthSummary.worstDeltaRatio ?? 0) * 100).toFixed(1)}%)`}
+        </li>
       </ul>
+    </div>
+    <div class="card runtime-card">
+      <span class="card-icon">📈</span>
+      <h3>本体メトリクス</h3>
+      <ul class="runtime-list">
+        <li>CPU(プロセス): {formatPercent(appMetrics.process_cpu_percent)}</li>
+        <li>CPU(システム): {formatPercent(appMetrics.system_cpu_percent)}</li>
+        <li>メモリ(プロセス): {formatBytes(appMetrics.process_memory_bytes)}</li>
+        <li>
+          メモリ(システム):
+          {formatBytes(appMetrics.system_memory_used_bytes)} / {formatBytes(appMetrics.system_memory_total_bytes)}
+        </li>
+        <li>ネット受信: {formatBytes(appMetrics.network_rx_bytes_per_sec)}/s</li>
+        <li>ネット送信: {formatBytes(appMetrics.network_tx_bytes_per_sec)}/s</li>
+      </ul>
+    </div>
+    <div class="card runtime-card">
+      <span class="card-icon">🧠</span>
+      <h3>WebViewメモリ</h3>
+      <ul class="runtime-list">
+        <li>usedJSHeapSize: {formatBytes(appMetrics.webview_memory_used_bytes)}</li>
+        <li>totalJSHeapSize: {formatBytes(appMetrics.webview_memory_total_bytes)}</li>
+        <li>jsHeapSizeLimit: {formatBytes(appMetrics.webview_memory_limit_bytes)}</li>
+      </ul>
+      <p class="sub">※ 取得不可環境では「-」表示</p>
     </div>
   </div>
   {#if dashboardMessage}

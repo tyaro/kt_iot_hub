@@ -1,0 +1,2 @@
+{"type":"connected","active_connections":1,"mode":"dll"}
+{"type":"error","code":"INVALID_REQUEST","message":"missing field `request_id`"}

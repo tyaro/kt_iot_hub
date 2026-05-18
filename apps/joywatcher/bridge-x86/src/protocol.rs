@@ -61,11 +61,16 @@ pub struct ReadValuePayload {
     pub tag_id: i32,
     pub quality: String,
     pub value: MockValue,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dtype: Option<i8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum MockValue {
+    // JoyWatcher は読取時に dtype が確定する。
+    // 現行 bridge では数値系の元型名（SHORT / LONG / SINGLE / DOUBLE / USHORT / ULONG）を
+    // 区別せず f64 ベースの Number へ集約して runtime へ返す。
     Bool(bool),
     Number(f64),
     String(String),

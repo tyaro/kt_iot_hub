@@ -44,6 +44,7 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 
 # Other utilities
 chrono = { version = "0.4", features = ["serde"] }
+sysinfo = "0.33"
 kt_driver_ui_protocol = { path = "../packages/protocol-rs" }
 kt_driver_ui_host = { path = "../packages/driver-ui-host" }
 

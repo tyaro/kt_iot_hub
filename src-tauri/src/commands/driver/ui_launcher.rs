@@ -14,7 +14,7 @@ use kt_driver_ui_protocol::{
     DriverUiLaunchSession, DriverUiLaunchTag,
 };
 use chrono::Utc;
-use tracing::warn;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 #[tauri::command]
@@ -167,6 +167,14 @@ pub async fn launch_driver_ui(
         command.arg("--driver-id").arg(driver_id);
     }
 
+    info!(
+        "Launching driver UI: session_id={} driver_type={} driver_id={} executable={}",
+        session_id,
+        driver_type,
+        driver_id.clone().unwrap_or_else(|| "<new>".to_string()),
+        executable_path
+    );
+
     let state_for_spawn = state.clone();
     let mut child = command.spawn().map_err(|e| {
         let session_id_clone = session_id.clone();
@@ -192,6 +200,10 @@ pub async fn launch_driver_ui(
         let wait_result = child.wait();
         let session_id_for_log = session_id_for_wait.clone();
         let output_exists = std::path::Path::new(&output_json_path_for_wait).exists();
+        let wait_status_text = wait_result
+            .as_ref()
+            .map(|status| status.to_string())
+            .unwrap_or_else(|error| format!("wait-failed:{}", error));
 
         tauri::async_runtime::block_on(async move {
             let mut sessions = app_state_for_wait.active_driver_ui_sessions.write().await;
@@ -208,6 +220,13 @@ pub async fn launch_driver_ui(
             warn!(
                 "driver ui process wait failed: session_id={}, error={}",
                 session_id_for_log, error
+            );
+        } else {
+            info!(
+                "Driver UI process exited: session_id={} status={} output_exists={}",
+                session_id_for_log,
+                wait_status_text,
+                output_exists
             );
         }
     });

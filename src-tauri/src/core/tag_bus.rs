@@ -7,7 +7,7 @@ use tokio::sync::broadcast;
 
 /// タグバスの容量（バッファサイズ）
 /// 複数のサブスクライバが遅延することを想定
-const TAG_BUS_CAPACITY: usize = 1024;
+const TAG_BUS_CAPACITY: usize = 8192;
 
 /// タグバスハンドル
 /// ドライバが値を発行し、パブリッシャが購読する

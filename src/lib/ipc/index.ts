@@ -6,5 +6,6 @@ export * from './drivers';
 export * from './publishers';
 export * from './subscriber';
 export * from './driverUi';
+export * from './logs';
 export * from './runtime';
 export * from './postgres';

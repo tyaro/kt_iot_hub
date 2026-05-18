@@ -11,6 +11,28 @@ export type DriverTypeOption = {
   description: string;
 };
 
+function driverTypeLabel(driverType: string): string {
+  switch (driverType) {
+    case 'postgres':
+      return 'PostgreSQL 接続先';
+    case 'joywatcher':
+      return 'JoyWatcher 接続先';
+    default:
+      return driverType;
+  }
+}
+
+function driverTypeDescription(driverType: string): string {
+  switch (driverType) {
+    case 'postgres':
+      return '接続先情報、テーブル由来の Scan グループ、タグを専用UIで一括登録します。';
+    case 'joywatcher':
+      return 'TagSel2 でタグを取り込み、接続先・Scan グループ・タグを専用UIでまとめて登録します。';
+    default:
+      return '専用UIで接続先・Scanグループ・タグを登録します。';
+  }
+}
+
 export type MonitorDriverUiImportDeps = {
   result: LaunchDriverUiResponse;
   token: number;
@@ -136,12 +158,9 @@ export function buildDriverTypeOptions(
 
     return {
       driverType,
-      label: driverType === 'postgres' ? 'PostgreSQL 接続先' : driverType,
+      label: driverTypeLabel(driverType),
       available,
-      description:
-        driverType === 'postgres'
-          ? '接続先情報、テーブル由来の Scan グループ、タグを専用UIで一括登録します。'
-          : '専用UIで接続先・Scanグループ・タグを登録します。',
+      description: driverTypeDescription(driverType),
     };
   });
 }

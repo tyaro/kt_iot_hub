@@ -2,6 +2,7 @@
 #![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
 mod app_state;
+mod app_logs;
 mod commands;
 mod config;
 mod core;
@@ -32,6 +33,8 @@ fn main() {
     tracing_subscriber::fmt()
         .with_target(true)
         .with_level(true)
+        .with_ansi(false)
+        .with_writer(app_logs::AppLogMakeWriter)
         .init();
 
     info!("kt_iot_hub starting...");
@@ -70,6 +73,9 @@ fn main() {
             commands::runtime::get_runtime_status,
             commands::runtime::start_runtime_services,
             commands::runtime::stop_runtime_services,
+            commands::metrics::get_app_metrics,
+            commands::logs::list_app_logs,
+            commands::logs::clear_app_logs,
         ])
         .setup(|app| {
             info!("Tauri setup beginning");

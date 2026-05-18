@@ -42,6 +42,7 @@
     deleteDriver,
     deleteTag,
     getRuntimeStatus,
+    getAppMetrics,
     importDriverUiResult,
     launchDriverUi,
     openMqttMonitorWindow,
@@ -49,9 +50,24 @@
     stopRuntimeServices,
     type DriverDto,
     type RuntimeStatusDto,
+    type AppMetricsDto,
     type ScanGroupDto,
     type TagDto,
   } from '$lib/ipc/index';
+
+  type ScanCycleHealthSummary = {
+    observedGroupCount: number;
+    delayedGroupCount: number;
+    avgDeltaRatio: number | null;
+    worstGroupLabel: string | null;
+    worstDeltaRatio: number | null;
+  };
+
+  type DashboardMetrics = AppMetricsDto & {
+    webview_memory_used_bytes: number | null;
+    webview_memory_total_bytes: number | null;
+    webview_memory_limit_bytes: number | null;
+  };
 
   let currentPage = $state<PageId>('dashboard');
 
@@ -104,6 +120,19 @@
   let tagMode = $state<'detail' | 'new' | 'edit'>('detail');
   let editorDriverId = $state<string | null>(null);
   let runtimeStatus = $state<RuntimeStatusDto>({ ...defaultRuntimeStatus });
+  let appMetrics = $state<DashboardMetrics>({
+    sampled_at: new Date().toISOString(),
+    process_cpu_percent: null,
+    process_memory_bytes: null,
+    system_cpu_percent: null,
+    system_memory_used_bytes: null,
+    system_memory_total_bytes: null,
+    network_rx_bytes_per_sec: null,
+    network_tx_bytes_per_sec: null,
+    webview_memory_used_bytes: null,
+    webview_memory_total_bytes: null,
+    webview_memory_limit_bytes: null,
+  });
   let runtimeBusy = $state(false);
   let dashboardMessage = $state('');
   let settingsMessage = $state('');
@@ -296,6 +325,37 @@
     buildDriverTypeOptions($driversStore.items, knownDriverTypes, driverUiAvailableByType),
   );
 
+  const scanCycleHealthSummary = $derived.by<ScanCycleHealthSummary>(() => {
+    const observed = $scanGroupsStore.items.filter((group) => group.cycle_delta_ratio != null);
+    if (observed.length === 0) {
+      return {
+        observedGroupCount: 0,
+        delayedGroupCount: 0,
+        avgDeltaRatio: null,
+        worstGroupLabel: null,
+        worstDeltaRatio: null,
+      };
+    }
+
+    const delayed = observed.filter((group) => (group.cycle_delta_ratio ?? 0) > 0.30);
+    let worst = observed[0];
+    for (const item of observed) {
+      if ((item.cycle_delta_ratio ?? 0) > (worst.cycle_delta_ratio ?? 0)) {
+        worst = item;
+      }
+    }
+    const avgDeltaRatio =
+      observed.reduce((sum, group) => sum + (group.cycle_delta_ratio ?? 0), 0) / observed.length;
+
+    return {
+      observedGroupCount: observed.length,
+      delayedGroupCount: delayed.length,
+      avgDeltaRatio,
+      worstGroupLabel: `${worst.driver_id} / ${worst.id}`,
+      worstDeltaRatio: worst.cycle_delta_ratio ?? null,
+    };
+  });
+
   $effect(() => {
     if (currentPage === 'dashboard' || currentPage === 'tags') {
       void reloadTagManagementData();
@@ -309,6 +369,23 @@
         return;
       }
       await runtimeController.refreshStatus(getRuntimeStatus);
+      try {
+        const metrics = await getAppMetrics();
+        const perf = (globalThis.performance as unknown as { memory?: {
+          usedJSHeapSize?: number;
+          totalJSHeapSize?: number;
+          jsHeapSizeLimit?: number;
+        } }).memory;
+
+        appMetrics = {
+          ...metrics,
+          webview_memory_used_bytes: perf?.usedJSHeapSize ?? null,
+          webview_memory_total_bytes: perf?.totalJSHeapSize ?? null,
+          webview_memory_limit_bytes: perf?.jsHeapSizeLimit ?? null,
+        };
+      } catch {
+        // ダッシュボード表示に影響しないよう、メトリクス取得失敗は握りつぶす
+      }
     };
 
     void refresh();
@@ -337,8 +414,10 @@
     driverCount={$driversStore.items.length}
     enabledDriverCount={$driversStore.items.filter((d: DriverDto) => d.enabled).length}
     {runtimeStatus}
+    {appMetrics}
     {runtimeBusy}
     {dashboardMessage}
+    {scanCycleHealthSummary}
     {driverUiPolling}
     {tagActionMessage}
     selectedTagId={selectedTag?.id ?? null}

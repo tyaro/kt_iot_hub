@@ -79,6 +79,7 @@ pub async fn list_scan_groups(
     driver_id: Option<String>,
 ) -> Result<Vec<ScanGroupDto>, ErrorResponse> {
     let scan_groups = state.scan_groups.read().await;
+    let metrics = state.scan_group_runtime_metrics.read().await;
     Ok(scan_groups
         .iter()
         .filter(|group| {
@@ -87,12 +88,31 @@ pub async fn list_scan_groups(
                 .map(|target| &group.driver == target)
                 .unwrap_or(true)
         })
-        .map(|group| ScanGroupDto {
-            id: group.id.clone(),
-            driver_id: group.driver.clone(),
-            table: group.table.clone(),
-            timestamp_column: group.timestamp_column.clone(),
-            scan_rate_ms: Some(group.scan_rate_ms),
+        .map(|group| {
+            let key = format!("{}::{}", group.driver, group.id);
+            let metric = metrics.get(&key);
+            let cycle_delta_ratio = metric.and_then(|m| m.cycle_delta_ratio);
+            let cycle_status = cycle_delta_ratio.map(|ratio| {
+                if ratio <= 0.10 {
+                    "ok".to_string()
+                } else if ratio <= 0.30 {
+                    "warn".to_string()
+                } else {
+                    "danger".to_string()
+                }
+            });
+
+            ScanGroupDto {
+                id: group.id.clone(),
+                driver_id: group.driver.clone(),
+                table: group.table.clone(),
+                timestamp_column: group.timestamp_column.clone(),
+                scan_rate_ms: Some(group.scan_rate_ms),
+                observed_cycle_ms: metric.and_then(|m| m.last_cycle_ms),
+                observed_p95_cycle_ms: metric.and_then(|m| m.p95_cycle_ms),
+                cycle_delta_ratio,
+                cycle_status,
+            }
         })
         .collect())
 }

@@ -12,6 +12,7 @@ use crate::proto::{GetDriverDefinitionResponse, TagValueMessage};
 
 const BASE_TICK_MS: u64 = 100;
 const DEFAULT_SCAN_RATE_MS: u32 = 1_000;
+const DEFAULT_CONNECTION_USER_ID: i32 = 1;
 const CONNECTION_ENDPOINT_KEYS: &[&str] = &["endpoint", "host", "address"];
 const CONNECTION_USER_ID_KEYS: &[&str] = &["user_id", "userId", "uid"];
 const CONNECTION_PASSWORD_KEYS: &[&str] = &["password", "passwd"];
@@ -96,7 +97,7 @@ impl JoyWatcherPollPlan {
             user_id: settings
                 .and_then(|map| get_setting(map, CONNECTION_USER_ID_KEYS))
                 .and_then(|value| value.parse::<i32>().ok())
-                .unwrap_or_default(),
+                .unwrap_or(DEFAULT_CONNECTION_USER_ID),
             password: settings
                 .and_then(|map| get_setting(map, CONNECTION_PASSWORD_KEYS))
                 .unwrap_or_default(),

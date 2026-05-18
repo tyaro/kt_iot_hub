@@ -4,8 +4,9 @@ use crate::publishers::Publisher;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use rumqttc::{AsyncClient, EventLoop, MqttOptions, QoS};
+use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::oneshot;
-use tokio::time::{timeout, Duration};
+use tokio::time::{timeout, Duration, Instant};
 use tracing::{info, warn};
 
 pub struct MqttPublisher {
@@ -130,6 +131,9 @@ impl Publisher for MqttPublisher {
                 }
             });
 
+            let mut lagged_total: u64 = 0;
+            let mut lagged_last_log = Instant::now();
+
             loop {
                 tokio::select! {
                     _ = &mut stop_rx => {
@@ -155,8 +159,22 @@ impl Publisher for MqttPublisher {
                                     warn!("MQTT publish failed: {}", e);
                                 }
                             }
-                            Err(e) => {
-                                warn!("TagBus receive error: {}", e);
+                            Err(RecvError::Lagged(skipped)) => {
+                                lagged_total = lagged_total.saturating_add(skipped as u64);
+                                if lagged_last_log.elapsed() >= Duration::from_secs(2) {
+                                    warn!(
+                                        "TagBus lag detected: skipped={} (accumulated={})",
+                                        skipped,
+                                        lagged_total
+                                    );
+                                    lagged_last_log = Instant::now();
+                                }
+                            }
+                            Err(RecvError::Closed) => {
+                                info!("TagBus is closed, stopping MqttPublisher {}", publisher_id);
+                                event_loop_task.abort();
+                                let _ = event_loop_task.await;
+                                break;
                             }
                         }
                     }
@@ -173,12 +191,16 @@ impl Publisher for MqttPublisher {
             let _ = tx.send(());
         }
         if let Some(mut task) = self.task.take() {
-            if timeout(Duration::from_secs(2), &mut task).await.is_err() {
-                warn!("MqttPublisher {} stop timed out; aborting task", self.id);
-                task.abort();
+            match timeout(Duration::from_secs(2), &mut task).await {
+                Ok(join_result) => {
+                    let _ = join_result;
+                }
+                Err(_) => {
+                    warn!("MqttPublisher {} stop timed out; aborting task", self.id);
+                    task.abort();
+                    let _ = task.await;
+                }
             }
-
-            let _ = task.await;
         }
         Ok(())
     }

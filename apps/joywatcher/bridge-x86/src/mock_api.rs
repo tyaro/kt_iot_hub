@@ -42,6 +42,7 @@ impl MockJoyWatcherApi {
                 tag_id: *tag_id,
                 quality: "good".to_string(),
                 value: MockValue::Number(*tag_id as f64 / 10.0),
+                dtype: Some(2),
             })
             .collect()
     }

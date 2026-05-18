@@ -17,6 +17,10 @@ export interface ScanGroupDto {
   table?: string;
   timestamp_column?: string;
   scan_rate_ms?: number;
+  observed_cycle_ms?: number;
+  observed_p95_cycle_ms?: number;
+  cycle_delta_ratio?: number;
+  cycle_status?: string;
 }
 
 export type CreateTagRequest = TagShape;
@@ -36,6 +40,10 @@ type ApiScanGroupDto = {
   table?: string;
   timestampColumn?: string;
   scanRateMs?: number;
+  observedCycleMs?: number;
+  observedP95CycleMs?: number;
+  cycleDeltaRatio?: number;
+  cycleStatus?: string;
 };
 
 type ApiCreateTagRequest = {
@@ -65,6 +73,10 @@ function mapScanGroupFromApi(api: ApiScanGroupDto): ScanGroupDto {
     table: api.table,
     timestamp_column: api.timestampColumn,
     scan_rate_ms: api.scanRateMs,
+    observed_cycle_ms: api.observedCycleMs,
+    observed_p95_cycle_ms: api.observedP95CycleMs,
+    cycle_delta_ratio: api.cycleDeltaRatio,
+    cycle_status: api.cycleStatus,
   };
 }
 

@@ -11,11 +11,33 @@ export interface RuntimeStatusDto {
   last_error?: string | null;
 }
 
+export interface AppMetricsDto {
+  process_cpu_percent?: number | null;
+  process_memory_bytes?: number | null;
+  system_cpu_percent?: number | null;
+  system_memory_used_bytes?: number | null;
+  system_memory_total_bytes?: number | null;
+  network_rx_bytes_per_sec?: number | null;
+  network_tx_bytes_per_sec?: number | null;
+  sampled_at: string;
+}
+
 type RuntimeStatusDtoRaw = {
   driversRunning: boolean;
   publishersRunning: boolean;
   grpcRunning: boolean;
   lastError?: string | null;
+};
+
+type AppMetricsDtoRaw = {
+  processCpuPercent?: number | null;
+  processMemoryBytes?: number | null;
+  systemCpuPercent?: number | null;
+  systemMemoryUsedBytes?: number | null;
+  systemMemoryTotalBytes?: number | null;
+  networkRxBytesPerSec?: number | null;
+  networkTxBytesPerSec?: number | null;
+  sampledAt: string;
 };
 
 function normalizeRuntimeStatus(raw: RuntimeStatusDtoRaw): RuntimeStatusDto {
@@ -24,6 +46,19 @@ function normalizeRuntimeStatus(raw: RuntimeStatusDtoRaw): RuntimeStatusDto {
     publishers_running: raw.publishersRunning,
     grpc_running: raw.grpcRunning,
     last_error: raw.lastError ?? null,
+  };
+}
+
+function normalizeAppMetrics(raw: AppMetricsDtoRaw): AppMetricsDto {
+  return {
+    process_cpu_percent: raw.processCpuPercent ?? null,
+    process_memory_bytes: raw.processMemoryBytes ?? null,
+    system_cpu_percent: raw.systemCpuPercent ?? null,
+    system_memory_used_bytes: raw.systemMemoryUsedBytes ?? null,
+    system_memory_total_bytes: raw.systemMemoryTotalBytes ?? null,
+    network_rx_bytes_per_sec: raw.networkRxBytesPerSec ?? null,
+    network_tx_bytes_per_sec: raw.networkTxBytesPerSec ?? null,
+    sampled_at: raw.sampledAt,
   };
 }
 
@@ -57,4 +92,12 @@ export async function startRuntimeServices(
 export async function stopRuntimeServices(): Promise<RuntimeStatusDto> {
   const raw = await invoke<RuntimeStatusDtoRaw>('stop_runtime_services');
   return normalizeRuntimeStatus(raw);
+}
+
+/**
+ * アプリメトリクスを取得する
+ */
+export async function getAppMetrics(): Promise<AppMetricsDto> {
+  const raw = await invoke<AppMetricsDtoRaw>('get_app_metrics');
+  return normalizeAppMetrics(raw);
 }

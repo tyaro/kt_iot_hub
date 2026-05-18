@@ -51,6 +51,28 @@
     return `${driver.id} (${driver.driver_type})`;
   }
 
+  function formatCycleSummary(scanGroup: ScanGroupDto) {
+    const configured = scanGroup.scan_rate_ms;
+    const observed = scanGroup.observed_cycle_ms;
+    if (!configured && !observed) {
+      return '周期: -';
+    }
+    if (configured && !observed) {
+      return `設定 ${configured}ms / 実測 -`;
+    }
+    if (!configured && observed) {
+      return `実測 ${observed}ms`;
+    }
+    return `設定 ${configured}ms / 実測 ${observed}ms`;
+  }
+
+  function formatDeltaRatio(scanGroup: ScanGroupDto) {
+    if (scanGroup.cycle_delta_ratio == null) {
+      return null;
+    }
+    return `乖離 ${(scanGroup.cycle_delta_ratio * 100).toFixed(1)}%`;
+  }
+
   let groupedTree = $derived.by(() => {
     const tagsByScanGroup = new Map<string, TagDto[]>();
 
@@ -258,6 +280,7 @@
             {@const scanGroupId = scanGroup.id}
             {@const isGroupExpanded = expandedScanGroups.has(scanGroupId)}
             {@const tags = scanNode.tags}
+            {@const deltaLabel = formatDeltaRatio(scanGroup)}
 
             <div class="tree-node scan-group-node">
               <div class="indent-1">
@@ -276,6 +299,10 @@
                 >
                   📊 {scanGroupId}
                 </button>
+                <span class="scan-meta">{formatCycleSummary(scanGroup)}</span>
+                {#if deltaLabel}
+                  <span class={`scan-badge ${scanGroup.cycle_status ?? 'unknown'}`}>{deltaLabel}</span>
+                {/if}
               </div>
             </div>
 
@@ -471,6 +498,42 @@
     background: transparent;
     font-weight: 500;
     color: #555;
+  }
+
+  .scan-meta {
+    margin-left: 0.35rem;
+    color: #64748b;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .scan-badge {
+    margin-left: 0.35rem;
+    border-radius: 999px;
+    padding: 0.05rem 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .scan-badge.ok {
+    color: #166534;
+    background: #dcfce7;
+  }
+
+  .scan-badge.warn {
+    color: #92400e;
+    background: #fef3c7;
+  }
+
+  .scan-badge.danger {
+    color: #991b1b;
+    background: #fee2e2;
+  }
+
+  .scan-badge.unknown {
+    color: #334155;
+    background: #e2e8f0;
   }
 
   .tree-label-btn.selected {

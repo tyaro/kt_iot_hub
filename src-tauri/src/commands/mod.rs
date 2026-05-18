@@ -4,6 +4,8 @@
 
 pub mod dto;
 pub mod driver;
+pub mod logs;
+pub mod metrics;
 pub mod publisher;
 pub mod runtime;
 pub mod subscriber;

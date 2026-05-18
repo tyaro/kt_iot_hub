@@ -3,12 +3,11 @@ use std::mem::size_of;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
+use tracing::{debug, info};
 
 use crate::connection::{JoyWatcherBridgeApi, JoyWatcherConnectionOptions};
 use crate::protocol::{MockValue, ReadValuePayload, ResolvedTag};
 
-type ConnectNetFn = unsafe extern "C" fn() -> i32;
-type DisconnectNetFn = unsafe extern "C" fn() -> i32;
 type DisconnectNetForceFn = unsafe extern "C" fn();
 type JwGetTagIds2Fn = unsafe extern "C" fn(
     n_tag: i32,
@@ -30,28 +29,52 @@ type JwReadFn = unsafe extern "C" fn(
 ) -> i32;
 
 const TAG_NAME_SLOT_SIZE: usize = 256;
-const TAGSEL2_BUFFER_SIZE: usize = 64 * 1024;
+const TAGSEL2_BUFFER_SIZE: usize = 1024 * 1024;
+const DEFAULT_READ_USER_ID: i32 = 1;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JoyWatcherConnectConvention {
+    Cdecl,
+    Stdcall,
+}
+
+impl JoyWatcherConnectConvention {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Cdecl => "cdecl",
+            Self::Stdcall => "stdcall",
+        }
+    }
+}
+
+type ConnectNetCdeclFn = unsafe extern "C" fn() -> isize;
+type DisconnectNetCdeclFn = unsafe extern "C" fn() -> isize;
+type ConnectNetStdcallFn = unsafe extern "system" fn() -> isize;
+type DisconnectNetStdcallFn = unsafe extern "system" fn() -> isize;
 
 pub struct JoyWatcherDllApi {
     _library: LibraryHandle,
     dll_path: PathBuf,
-    connect_net_fn: ConnectNetFn,
-    disconnect_net_fn: DisconnectNetFn,
+    connect_net_addr: *mut c_void,
+    disconnect_net_addr: *mut c_void,
     disconnect_net_force_fn: DisconnectNetForceFn,
     jw_get_tag_ids2_fn: JwGetTagIds2Fn,
     tag_sel2_fn: TagSel2Fn,
     jw_read_fn: JwReadFn,
     read_user_id: i32,
     read_password: String,
+    connect_convention: JoyWatcherConnectConvention,
 }
 
 impl JoyWatcherDllApi {
-    pub fn new(explicit_path: Option<PathBuf>) -> Result<Self> {
+    pub fn new(
+        explicit_path: Option<PathBuf>,
+        connect_convention: JoyWatcherConnectConvention,
+    ) -> Result<Self> {
         let dll_path = resolve_dll_path(explicit_path)?;
         let library = unsafe { LibraryHandle::load(&dll_path)? };
-        let connect_net_fn = unsafe { library.load_symbol::<ConnectNetFn>("ConnectNet")? };
-        let disconnect_net_fn =
-            unsafe { library.load_symbol::<DisconnectNetFn>("DisconnectNet")? };
+        let connect_net_addr = unsafe { library.load_raw_symbol("ConnectNet")? };
+        let disconnect_net_addr = unsafe { library.load_raw_symbol("DisconnectNet")? };
         let disconnect_net_force_fn = unsafe {
             library.load_symbol::<DisconnectNetForceFn>("DisconnectNetForce")?
         };
@@ -59,22 +82,61 @@ impl JoyWatcherDllApi {
         let tag_sel2_fn = unsafe { library.load_symbol::<TagSel2Fn>("TagSel2")? };
         let jw_read_fn = unsafe { library.load_symbol::<JwReadFn>("JWRead")? };
 
+        info!(
+            dll = %dll_path.display(),
+            connect_convention = connect_convention.as_str(),
+            connect_symbol = ?connect_net_addr,
+            disconnect_symbol = ?disconnect_net_addr,
+            "JoyWatcher DLL symbols loaded"
+        );
+
         Ok(Self {
             _library: library,
             dll_path,
-            connect_net_fn,
-            disconnect_net_fn,
+            connect_net_addr,
+            disconnect_net_addr,
             disconnect_net_force_fn,
             jw_get_tag_ids2_fn,
             tag_sel2_fn,
             jw_read_fn,
-            read_user_id: 0,
+            read_user_id: DEFAULT_READ_USER_ID,
             read_password: String::new(),
+            connect_convention,
         })
     }
 
     pub fn dll_path(&self) -> &Path {
         &self.dll_path
+    }
+
+    fn call_connect_net(&self) -> isize {
+        unsafe {
+            match self.connect_convention {
+                JoyWatcherConnectConvention::Cdecl => {
+                    let func: ConnectNetCdeclFn = std::mem::transmute_copy(&self.connect_net_addr);
+                    func()
+                }
+                JoyWatcherConnectConvention::Stdcall => {
+                    let func: ConnectNetStdcallFn = std::mem::transmute_copy(&self.connect_net_addr);
+                    func()
+                }
+            }
+        }
+    }
+
+    fn call_disconnect_net(&self) -> isize {
+        unsafe {
+            match self.connect_convention {
+                JoyWatcherConnectConvention::Cdecl => {
+                    let func: DisconnectNetCdeclFn = std::mem::transmute_copy(&self.disconnect_net_addr);
+                    func()
+                }
+                JoyWatcherConnectConvention::Stdcall => {
+                    let func: DisconnectNetStdcallFn = std::mem::transmute_copy(&self.disconnect_net_addr);
+                    func()
+                }
+            }
+        }
     }
 }
 
@@ -87,16 +149,35 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
         let password = options.password.clone().unwrap_or_default();
         let _ = CString::new(password.as_str()).context("JoyWatcher password contains NUL")?;
 
-        let result = unsafe { (self.connect_net_fn)() };
-        ensure_bool_like_success("ConnectNet", result)?;
-        self.read_user_id = options.user_id.unwrap_or_default();
+        info!(
+            connect_convention = self.connect_convention.as_str(),
+            endpoint = ?options.endpoint,
+            user_id = ?options.user_id,
+            password_len = password.len(),
+            "Calling JoyWatcher ConnectNet"
+        );
+        let result = self.call_connect_net();
+        info!(
+            connect_convention = self.connect_convention.as_str(),
+            raw_result = result,
+            raw_result_hex = format!("0x{result:08X}"),
+            "JoyWatcher ConnectNet returned"
+        );
+        ensure_pointer_like_success("ConnectNet", result)?;
+        self.read_user_id = options.user_id.unwrap_or(DEFAULT_READ_USER_ID);
         self.read_password = password;
         Ok(())
     }
 
     fn disconnect_net(&mut self) -> Result<()> {
-        let result = unsafe { (self.disconnect_net_fn)() };
-        ensure_bool_like_success("DisconnectNet", result)
+        let result = self.call_disconnect_net();
+        info!(
+            connect_convention = self.connect_convention.as_str(),
+            raw_result = result,
+            raw_result_hex = format!("0x{result:08X}"),
+            "JoyWatcher DisconnectNet returned"
+        );
+        ensure_pointer_like_success("DisconnectNet", result)
     }
 
     fn disconnect_net_force(&mut self) -> Result<()> {
@@ -149,15 +230,19 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
             return Ok(Vec::new());
         }
 
+        info!(
+            user_id = self.read_user_id,
+            password_len = self.read_password.len(),
+            tag_count = tag_ids.len(),
+            tag_ids = ?tag_ids,
+            "Calling JoyWatcher JWRead"
+        );
+
         let password = CString::new(self.read_password.as_str())
             .context("JoyWatcher password contains NUL")?;
         let mut rows = tag_ids
             .iter()
-            .map(|tag_id| JoyWatcherComData1 {
-                col_id: *tag_id,
-                raw_value: [0u8; 16],
-                dtype: 0,
-            })
+            .map(|tag_id| JoyWatcherComData1::new(*tag_id))
             .collect::<Vec<_>>();
 
         let result = unsafe {
@@ -168,7 +253,13 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
                 rows.as_mut_ptr(),
             )
         };
-        ensure_bool_like_success("JWRead", result)?;
+        info!(
+            raw_result = result,
+            raw_result_hex = format!("0x{result:08X}"),
+            "JoyWatcher JWRead returned"
+        );
+        debug!(rows = ?rows, "JoyWatcher JWRead raw rows after call");
+        ensure_jwread_success(result)?;
 
         rows.into_iter()
             .map(|row| row.into_payload())
@@ -180,8 +271,10 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct JoyWatcherComData1 {
     col_id: i32,
+    _padding0: i32,
     raw_value: [u8; 16],
     dtype: i8,
+    _padding1: [u8; 7],
 }
 
 impl JoyWatcherComData1 {
@@ -189,6 +282,16 @@ impl JoyWatcherComData1 {
     const TYPE_BIT: i8 = 4;
     const TYPE_STRING: i8 = 5;
     const TYPE_LSTRING: i8 = 8;
+
+    fn new(col_id: i32) -> Self {
+        Self {
+            col_id,
+            _padding0: 0,
+            raw_value: [0u8; 16],
+            dtype: 0,
+            _padding1: [0u8; 7],
+        }
+    }
 
     fn into_payload(self) -> Result<ReadValuePayload> {
         let (quality, value) = match self.decode_value() {
@@ -200,6 +303,7 @@ impl JoyWatcherComData1 {
             tag_id: self.col_id,
             quality,
             value,
+            dtype: Some(self.dtype),
         })
     }
 
@@ -261,6 +365,28 @@ fn ensure_bool_like_success(function_name: &str, result: i32) -> Result<()> {
         return Err(anyhow!(
             "{} returned 0 (treated as failure in current bridge implementation)",
             function_name
+        ));
+    }
+
+    Ok(())
+}
+
+fn ensure_pointer_like_success(function_name: &str, result: isize) -> Result<()> {
+    if result == 0 {
+        return Err(anyhow!(
+            "{} returned NULL/0 (treated as failure in current bridge implementation)",
+            function_name
+        ));
+    }
+
+    Ok(())
+}
+
+fn ensure_jwread_success(result: i32) -> Result<()> {
+    if result < 0 {
+        return Err(anyhow!(
+            "JWRead returned negative status {} (treated as failure in current bridge implementation)",
+            result
         ));
     }
 
@@ -399,6 +525,11 @@ impl LibraryHandle {
     }
 
     unsafe fn load_symbol<T: Copy>(&self, symbol_name: &str) -> Result<T> {
+        let address = self.load_raw_symbol(symbol_name)?;
+        Ok(std::mem::transmute_copy(&address))
+    }
+
+    unsafe fn load_raw_symbol(&self, symbol_name: &str) -> Result<*mut c_void> {
         let symbol = CString::new(symbol_name).context("symbol name contains NUL")?;
         let address = GetProcAddress(self.0, symbol.as_ptr());
         if address.is_null() {
@@ -410,7 +541,7 @@ impl LibraryHandle {
             ));
         }
 
-        Ok(std::mem::transmute_copy(&address))
+        Ok(address)
     }
 
 }
@@ -454,6 +585,10 @@ impl LibraryHandle {
         Err(anyhow!("JoyWatcher DLL loading is only supported on Windows"))
     }
 
+    unsafe fn load_raw_symbol(&self, _symbol_name: &str) -> Result<*mut c_void> {
+        Err(anyhow!("JoyWatcher DLL loading is only supported on Windows"))
+    }
+
 }
 
 #[cfg(test)]
@@ -484,9 +619,8 @@ mod tests {
         raw_value[..8].copy_from_slice(&42.25f64.to_le_bytes());
 
         let payload = JoyWatcherComData1 {
-            col_id: 77,
             raw_value,
-            dtype: 0,
+            ..JoyWatcherComData1::new(77)
         }
         .into_payload()
         .unwrap();
@@ -499,9 +633,8 @@ mod tests {
     #[test]
     fn com_data_converts_error_dtype_to_bad_quality() {
         let payload = JoyWatcherComData1 {
-            col_id: 90,
-            raw_value: [0u8; 16],
             dtype: JoyWatcherComData1::TYPE_ERROR,
+            ..JoyWatcherComData1::new(90)
         }
         .into_payload()
         .unwrap();
@@ -523,6 +656,22 @@ mod tests {
             items,
             vec!["Line1/Tank/Level".to_string(), "Line1/Tank/Temp".to_string()]
         );
+    }
+
+    #[test]
+    fn com_data_layout_matches_vendor_x86_definition() {
+        use std::mem::{MaybeUninit, size_of};
+
+        let value = MaybeUninit::<JoyWatcherComData1>::uninit();
+        let base = value.as_ptr();
+        let col_id_offset = unsafe { std::ptr::addr_of!((*base).col_id) as usize - base as usize };
+        let raw_value_offset = unsafe { std::ptr::addr_of!((*base).raw_value) as usize - base as usize };
+        let dtype_offset = unsafe { std::ptr::addr_of!((*base).dtype) as usize - base as usize };
+
+        assert_eq!(col_id_offset, 0);
+        assert_eq!(raw_value_offset, 8);
+        assert_eq!(dtype_offset, 24);
+        assert_eq!(size_of::<JoyWatcherComData1>(), 32);
     }
 
 }

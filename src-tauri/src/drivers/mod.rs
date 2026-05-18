@@ -6,6 +6,7 @@ use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::process::Child;
+use tokio::time::{timeout, Duration};
 use tracing::{error, info, warn};
 
 /// ドライバ種別からプロセス実行ファイル名を決定する
@@ -87,8 +88,26 @@ impl DriverProcessManager {
     pub async fn stop_driver(&mut self, driver_id: &str) -> Result<()> {
         if let Some(mut child) = self.processes.remove(driver_id) {
             info!("Stopping driver process: {}", driver_id);
-            if let Err(e) = child.kill().await {
-                warn!("Failed to kill driver process {}: {}", driver_id, e);
+            if let Err(e) = child.start_kill() {
+                warn!("Failed to send kill signal to driver process {}: {}", driver_id, e);
+            }
+
+            match timeout(Duration::from_secs(3), child.wait()).await {
+                Ok(Ok(status)) => {
+                    info!("Driver process stopped: {} (status={})", driver_id, status);
+                }
+                Ok(Err(e)) => {
+                    warn!("Failed while waiting driver process {}: {}", driver_id, e);
+                }
+                Err(_) => {
+                    warn!(
+                        "Timed out waiting driver process {} to stop; forcing kill",
+                        driver_id
+                    );
+                    if let Err(e) = child.kill().await {
+                        warn!("Forced kill failed for driver process {}: {}", driver_id, e);
+                    }
+                }
             }
         } else {
             warn!("Driver process not found: {}", driver_id);

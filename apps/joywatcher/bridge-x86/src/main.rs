@@ -7,9 +7,9 @@ mod service;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::Parser;
-use dll_api::JoyWatcherDllApi;
+use dll_api::{JoyWatcherConnectConvention, JoyWatcherDllApi};
 use mock_api::MockJoyWatcherApi;
 use protocol::{BridgeRequest, BridgeResponse};
 use service::JoyWatcherBridgeService;
@@ -23,6 +23,9 @@ struct Args {
 
     #[arg(long)]
     dll_path: Option<PathBuf>,
+
+    #[arg(long, default_value = "cdecl")]
+    connect_convention: String,
 }
 
 fn main() {
@@ -41,16 +44,18 @@ fn main() {
 
 fn run() -> Result<()> {
     let args = Args::parse();
+    let connect_convention = parse_connect_convention(&args.connect_convention)?;
     let api: Box<dyn connection::JoyWatcherBridgeApi> = match args.mode.as_str() {
         "mock" => {
             info!("joywatcher-bridge-x86 starting in mock mode");
             Box::new(MockJoyWatcherApi::default())
         }
         "dll" => {
-            let api = JoyWatcherDllApi::new(args.dll_path.clone())?;
+            let api = JoyWatcherDllApi::new(args.dll_path.clone(), connect_convention)?;
             info!(
-                "joywatcher-bridge-x86 starting in dll mode: dll={}",
-                api.dll_path().display()
+                "joywatcher-bridge-x86 starting in dll mode: dll={}, connect_convention={}",
+                api.dll_path().display(),
+                connect_convention.as_str()
             );
             Box::new(api)
         }
@@ -84,6 +89,17 @@ fn run() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn parse_connect_convention(raw: &str) -> Result<JoyWatcherConnectConvention> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "cdecl" => Ok(JoyWatcherConnectConvention::Cdecl),
+        "stdcall" => Ok(JoyWatcherConnectConvention::Stdcall),
+        other => Err(anyhow!(
+            "unsupported connect convention: {} (expected cdecl or stdcall)",
+            other
+        )),
+    }
 }
 
 fn write_response(stdout: &mut dyn Write, response: &BridgeResponse) -> Result<()> {

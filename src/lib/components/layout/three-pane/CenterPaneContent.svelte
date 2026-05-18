@@ -1,10 +1,10 @@
 <script lang="ts">
   import DashboardContent from './DashboardContent.svelte';
+  import LogsContent from './LogsContent.svelte';
   import PublishersContent from './PublishersContent.svelte';
   import TagsContent from './TagsContent.svelte';
   import SettingsContent from './SettingsContent.svelte';
-  import PlaceholderContent from './PlaceholderContent.svelte';
-  import type { DriverDto, RuntimeStatusDto, ScanGroupDto, TagDto } from '$lib/ipc';
+  import type { AppMetricsDto, DriverDto, RuntimeStatusDto, ScanGroupDto, TagDto } from '$lib/ipc';
   import type { PageId } from './constants';
 
   type Props = {
@@ -13,8 +13,20 @@
     driverCount: number;
     enabledDriverCount: number;
     runtimeStatus: RuntimeStatusDto;
+    appMetrics: AppMetricsDto & {
+      webview_memory_used_bytes: number | null;
+      webview_memory_total_bytes: number | null;
+      webview_memory_limit_bytes: number | null;
+    };
     runtimeBusy: boolean;
     dashboardMessage: string;
+    scanCycleHealthSummary: {
+      observedGroupCount: number;
+      delayedGroupCount: number;
+      avgDeltaRatio: number | null;
+      worstGroupLabel: string | null;
+      worstDeltaRatio: number | null;
+    };
     driverUiPolling: boolean;
     tagActionMessage: string;
     selectedTagId: string | null;
@@ -48,8 +60,10 @@
     driverCount,
     enabledDriverCount,
     runtimeStatus,
+    appMetrics,
     runtimeBusy,
     dashboardMessage,
+    scanCycleHealthSummary,
     driverUiPolling,
     tagActionMessage,
     selectedTagId,
@@ -85,8 +99,10 @@
       {driverCount}
       {enabledDriverCount}
       {runtimeStatus}
+      {appMetrics}
       {runtimeBusy}
       {dashboardMessage}
+      {scanCycleHealthSummary}
       {onNavigateTags}
       {onOpenMqttMonitor}
       onStartServers={onStartServers}
@@ -115,10 +131,7 @@
     <PublishersContent />
 
   {:else if currentPage === 'logs'}
-    <PlaceholderContent
-      title="ログ"
-      message="ログビューワは今後実装予定です。"
-    />
+    <LogsContent />
 
   {:else if currentPage === 'settings'}
     <SettingsContent

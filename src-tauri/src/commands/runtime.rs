@@ -1,6 +1,7 @@
 use super::dto::{ErrorResponse, RuntimeStatusDto, StartRuntimeServicesRequest};
 use crate::app_state::AppState;
 use crate::grpc;
+use tracing::info;
 
 const GRPC_ADDR: &str = grpc::tag_registration::DEFAULT_GRPC_ADDR;
 
@@ -16,6 +17,7 @@ pub async fn start_runtime_services(
     state: tauri::State<'_, AppState>,
     req: Option<StartRuntimeServicesRequest>,
 ) -> Result<RuntimeStatusDto, ErrorResponse> {
+    info!("Runtime start requested");
     clear_last_error(state.inner()).await;
     let driver_ui_base_dir = req.and_then(|req| normalize_optional_string(req.driver_ui_base_dir));
 
@@ -30,16 +32,31 @@ pub async fn start_runtime_services(
         let _ = stop_drivers(state.inner()).await;
         return Err(e);
     }
-    Ok(read_runtime_status(state.inner()).await)
+    let status = read_runtime_status(state.inner()).await;
+    info!(
+        "Runtime started: drivers_running={} publishers_running={} grpc_running={}",
+        status.drivers_running,
+        status.publishers_running,
+        status.grpc_running
+    );
+    Ok(status)
 }
 
 #[tauri::command]
 pub async fn stop_runtime_services(
     state: tauri::State<'_, AppState>,
 ) -> Result<RuntimeStatusDto, ErrorResponse> {
+    info!("Runtime stop requested");
     stop_publishers(state.inner()).await?;
     stop_drivers(state.inner()).await?;
-    Ok(read_runtime_status(state.inner()).await)
+    let status = read_runtime_status(state.inner()).await;
+    info!(
+        "Runtime stopped: drivers_running={} publishers_running={} grpc_running={}",
+        status.drivers_running,
+        status.publishers_running,
+        status.grpc_running
+    );
+    Ok(status)
 }
 
 pub async fn auto_start_runtime_services(state: &AppState) -> Result<(), ErrorResponse> {

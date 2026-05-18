@@ -5,6 +5,14 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 const BRIDGE_EXE_NAME: &str = "joywatcher-bridge-x86.exe";
 const DLL_FILE_NAME: &str = "JoyWaApi.dll";
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProbedTagType {
+    pub tag_id: i32,
+    pub value_kind: String,
+    pub quality: String,
+    pub dtype: Option<i32>,
+}
+
 pub fn resolve_single_tag(
     endpoint: &str,
     user_id: i32,
@@ -21,7 +29,32 @@ pub fn browse_tags(endpoint: &str, user_id: i32, password: &str) -> Result<Vec<S
     let mut bridge = JoyWatcherUiBridgeClient::start()?;
     bridge.ping()?;
     bridge.connect(endpoint, user_id, password)?;
-    bridge.browse_tags()
+    let tag_paths = bridge.browse_tags()?;
+    if tag_paths.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let resolved = bridge.resolve_tags(&tag_paths)?;
+    Ok(resolved
+        .into_iter()
+        .map(|(tag_path, tag_id)| format!("{}|{}", tag_path, tag_id))
+        .collect())
+}
+
+pub fn probe_tag_types(
+    endpoint: &str,
+    user_id: i32,
+    password: &str,
+    tag_ids: &[i32],
+) -> Result<Vec<ProbedTagType>, String> {
+    if tag_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut bridge = JoyWatcherUiBridgeClient::start()?;
+    bridge.ping()?;
+    bridge.connect(endpoint, user_id, password)?;
+    bridge.read_tag_types(tag_ids)
 }
 
 struct JoyWatcherUiBridgeClient {
@@ -110,7 +143,7 @@ impl JoyWatcherUiBridgeClient {
             return Err(describe_bridge_response("resolveTags", &response));
         }
 
-        extract_i32_field(&response, r#""tagId":"#)
+        extract_i32_field(&response, "\"tagId\":")
             .ok_or_else(|| format!("tagId not found in bridge response: {response}"))
     }
 
@@ -123,6 +156,44 @@ impl JoyWatcherUiBridgeClient {
 
         extract_string_array_field(&response, r#""items":["#)
             .ok_or_else(|| format!("items not found in bridge response: {response}"))
+    }
+
+    fn resolve_tags(&mut self, tag_paths: &[String]) -> Result<Vec<(String, i32)>, String> {
+        let joined = tag_paths
+            .iter()
+            .map(|tag_path| format!("\"{}\"", escape_json(tag_path)))
+            .collect::<Vec<_>>()
+            .join(",");
+        let response = self.send_request(&format!(
+            "{{\"type\":\"resolveTags\",\"tags\":[{}]}}",
+            joined
+        ))?;
+
+        if !response.contains(r#""type":"resolvedTags""#) {
+            return Err(describe_bridge_response("resolveTags", &response));
+        }
+
+        extract_resolved_tags(&response)
+            .ok_or_else(|| format!("resolved tag items not found in bridge response: {response}"))
+    }
+
+    fn read_tag_types(&mut self, tag_ids: &[i32]) -> Result<Vec<ProbedTagType>, String> {
+        let joined = tag_ids
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+        let response = self.send_request(&format!(
+            "{{\"type\":\"read\",\"request_id\":\"ui-type-probe\",\"tag_ids\":[{}]}}",
+            joined
+        ))?;
+
+        if !response.contains(r#""type":"readResult""#) {
+            return Err(describe_bridge_response("read", &response));
+        }
+
+        extract_probed_tag_types(&response)
+            .ok_or_else(|| format!("read values not found in bridge response: {response}"))
     }
 
     fn send_request(&mut self, request: &str) -> Result<String, String> {
@@ -200,6 +271,178 @@ fn extract_string_array_field(text: &str, key: &str) -> Option<Vec<String>> {
             .filter(|item| !item.is_empty())
             .collect(),
     )
+}
+
+fn extract_resolved_tags(text: &str) -> Option<Vec<(String, i32)>> {
+    let marker = r#""items":[{"#;
+    let start = text.find(marker)? + marker.len() - 1;
+    let end = text[start..].rfind(']')? + start;
+    let body = &text[start..end];
+
+    let mut items = Vec::new();
+    for chunk in body.split("},{") {
+        let tag_path = extract_string_field(chunk, r#""tagPath":"#)?;
+        let tag_id = extract_i32_field(chunk, "\"tagId\":")?;
+        items.push((tag_path, tag_id));
+    }
+
+    Some(items)
+}
+
+fn extract_probed_tag_types(text: &str) -> Option<Vec<ProbedTagType>> {
+    let values = extract_field_value(text, "values")?;
+    let mut items = Vec::new();
+
+    for chunk in split_top_level_objects(values)? {
+        let tag_id = extract_i32_field(chunk, "\"tagId\":")?;
+        let quality = extract_string_field(chunk, r#""quality":"#)?;
+        let value = extract_field_value(chunk, "value")?;
+        let value_kind = infer_value_kind(value)?;
+        let dtype = extract_i32_field(chunk, "\"dtype\":");
+        items.push(ProbedTagType {
+            tag_id,
+            quality,
+            value_kind,
+            dtype,
+        });
+    }
+
+    Some(items)
+}
+
+fn extract_field_value<'a>(source: &'a str, field_name: &str) -> Option<&'a str> {
+    let needle = format!("\"{}\"", field_name);
+    let field_start = source.find(&needle)?;
+    let colon = source[field_start + needle.len()..].find(':')? + field_start + needle.len();
+    let whitespace_len = source[colon + 1..]
+        .chars()
+        .take_while(|ch| ch.is_whitespace())
+        .map(char::len_utf8)
+        .sum::<usize>();
+    let value_start = colon + 1 + whitespace_len;
+    let first = source[value_start..].chars().next()?;
+
+    match first {
+        '"' => {
+            let mut escaped = false;
+            for (offset, ch) in source[value_start + 1..].char_indices() {
+                if escaped {
+                    escaped = false;
+                    continue;
+                }
+                match ch {
+                    '\\' => escaped = true,
+                    '"' => return Some(&source[value_start..=value_start + 1 + offset]),
+                    _ => {}
+                }
+            }
+            None
+        }
+        '[' => extract_bracketed_value(source, value_start, '[', ']'),
+        '{' => extract_bracketed_value(source, value_start, '{', '}'),
+        _ => {
+            let end = source[value_start..]
+                .find([',', '}', ']'])
+                .map(|offset| value_start + offset)
+                .unwrap_or(source.len());
+            Some(source[value_start..end].trim())
+        }
+    }
+}
+
+fn split_top_level_objects(values: &str) -> Option<Vec<&str>> {
+    let trimmed = values.trim();
+    if !trimmed.starts_with('[') || !trimmed.ends_with(']') {
+        return None;
+    }
+
+    let mut objects = Vec::new();
+    let mut start = None;
+    let mut depth = 0usize;
+    let mut in_string = false;
+    let mut escape = false;
+    for (index, ch) in trimmed.char_indices() {
+        if in_string {
+            if escape {
+                escape = false;
+                continue;
+            }
+            match ch {
+                '\\' => escape = true,
+                '"' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+
+        match ch {
+            '"' => in_string = true,
+            '{' => {
+                if depth == 0 {
+                    start = Some(index);
+                }
+                depth += 1;
+            }
+            '}' => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    if let Some(start) = start.take() {
+                        objects.push(&trimmed[start..=index]);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Some(objects)
+}
+
+fn extract_bracketed_value<'a>(source: &'a str, start: usize, open: char, close: char) -> Option<&'a str> {
+    let mut depth = 0usize;
+    let mut in_string = false;
+    let mut escape = false;
+    for (offset, ch) in source[start..].char_indices() {
+        if in_string {
+            if escape {
+                escape = false;
+                continue;
+            }
+            match ch {
+                '\\' => escape = true,
+                '"' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+
+        match ch {
+            '"' => in_string = true,
+            c if c == open => depth += 1,
+            c if c == close => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Some(&source[start..=start + offset]);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn infer_value_kind(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.starts_with('"') {
+        return Some("string".to_string());
+    }
+    if trimmed.eq_ignore_ascii_case("true") || trimmed.eq_ignore_ascii_case("false") {
+        return Some("bool".to_string());
+    }
+    if trimmed.parse::<f64>().is_ok() {
+        return Some("number".to_string());
+    }
+    None
 }
 
 fn escape_json(value: &str) -> String {
@@ -356,7 +599,7 @@ mod tests {
     #[test]
     fn extract_tag_id_from_resolved_response() {
         let response = r#"{"type":"resolvedTags","items":[{"tagPath":"Line1/Tank/Level","tagId":101}]}"#;
-        assert_eq!(extract_i32_field(response, r#""tagId":"#), Some(101));
+        assert_eq!(extract_i32_field(response, "\"tagId\":"), Some(101));
     }
 
     #[test]
@@ -376,6 +619,46 @@ mod tests {
             Some(vec![
                 "Line1/Tank/Level".to_string(),
                 "Line1/Tank/Temp".to_string()
+            ])
+        );
+    }
+
+    #[test]
+    fn extract_resolved_tags_reads_items() {
+        let response = r#"{"type":"resolvedTags","items":[{"tagPath":"LOCAL$REPORT.NONAME4$VALUE","tagId":101},{"tagPath":"LOCAL$BTE1B.B0408$VALUE","tagId":102}]}"#;
+        assert_eq!(
+            extract_resolved_tags(response),
+            Some(vec![
+                ("LOCAL$REPORT.NONAME4$VALUE".to_string(), 101),
+                ("LOCAL$BTE1B.B0408$VALUE".to_string(), 102),
+            ])
+        );
+    }
+
+    #[test]
+    fn extract_probed_tag_types_reads_bool_string_and_number() {
+        let response = r#"{"type":"readResult","request_id":"ui-type-probe","values":[{"tagId":1,"quality":"good","value":true},{"tagId":2,"quality":"good","value":"ABC"},{"tagId":3,"quality":"good","value":12.5}]}"#;
+        assert_eq!(
+            extract_probed_tag_types(response),
+            Some(vec![
+                ProbedTagType {
+                    tag_id: 1,
+                    quality: "good".to_string(),
+                    value_kind: "bool".to_string(),
+                    dtype: None,
+                },
+                ProbedTagType {
+                    tag_id: 2,
+                    quality: "good".to_string(),
+                    value_kind: "string".to_string(),
+                    dtype: None,
+                },
+                ProbedTagType {
+                    tag_id: 3,
+                    quality: "good".to_string(),
+                    value_kind: "number".to_string(),
+                    dtype: None,
+                },
             ])
         );
     }

@@ -27,6 +27,10 @@ pub struct ScanGroupDto {
     pub table: Option<String>,
     pub timestamp_column: Option<String>,
     pub scan_rate_ms: Option<u32>,
+    pub observed_cycle_ms: Option<u64>,
+    pub observed_p95_cycle_ms: Option<u64>,
+    pub cycle_delta_ratio: Option<f64>,
+    pub cycle_status: Option<String>,
 }
 
 /// タグ値レスポンス DTO
@@ -240,6 +244,20 @@ pub struct RuntimeStatusDto {
     pub publishers_running: bool,
     pub grpc_running: bool,
     pub last_error: Option<String>,
+}
+
+/// アプリメトリクス DTO
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppMetricsDto {
+    pub process_cpu_percent: Option<f32>,
+    pub process_memory_bytes: Option<u64>,
+    pub system_cpu_percent: Option<f32>,
+    pub system_memory_used_bytes: Option<u64>,
+    pub system_memory_total_bytes: Option<u64>,
+    pub network_rx_bytes_per_sec: Option<f64>,
+    pub network_tx_bytes_per_sec: Option<f64>,
+    pub sampled_at: String,
 }
 
 /// ランタイム起動リクエスト DTO

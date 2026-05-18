@@ -35,6 +35,11 @@ OCX / ActiveX 経路は調査済みだが、最終実装ルートとしては採
 - 現在の実装:
   - x86 bridge 側で `TCOM_DATA1` を `bool | number | string` へ変換済み
   - `driver-joywatcher` 側で `TagValueMessage` に変換する導線あり
+- 補足:
+  - JoyWatcher のタグ型は登録時点では確定しない
+  - 実際の型は `JWRead` の戻り `TCOM_DATA1.dtype` を見て読取時に確定する
+  - 既知の型候補は `SHORT` / `LONG` / `SINGLE` / `DOUBLE` / `BIT` / `LSTRING` / `USHORT` / `ULONG`
+  - 現行 bridge では `BIT -> bool`、`LSTRING -> string`、それ以外の数値系は `number` へ集約して扱う
 
 ## ここまでで確認できたこと
 
@@ -70,6 +75,90 @@ OCX / ActiveX 経路は調査済みだが、最終実装ルートとしては採
 - DLL 実装として利用可能
 - x86 bridge 側で複数 ID をまとめて読み、値を JSON 応答へ変換する実装済み
 - 実タグ値の読取り経路まで確認済み
+- `TCOM_DATA1.dtype` により読取時の型判定を行う前提
+- 登録 UI の `dataType` は便宜上の仮置き値であり、JoyWatcher 側の実型を保証するものではない
+
+#### 2026-05-18 実機確認で確定したこと
+
+- `JWGetTagIDS2` で解決した `nativeTagId` を `JWRead` へ渡す経路は実機で動作する
+- x86 bridge からの `JWRead` は、`TCOM_DATA1` の ABI レイアウトが正しくないとメモリ崩れを起こす
+- `TCOM_DATA1` は vendor 定義どおり **x86 / MSVC レイアウトで 32 byte** として扱う必要がある
+- `JWRead` の戻り値は、少なくとも今回の実機確認では **0 を返しても結果行が有効** だった
+- したがって bridge 実装では、`JWRead` の成否を `0/1` の bool 的な値だけで決め打ちしない
+
+#### `TCOM_DATA1` 実装上の注意
+
+vendor の `common/com.h` では以下の形で定義されている。
+
+- `long col_id;`
+- `union { double dblVal; char pbVal[16]; };`
+- `char dtype;`
+
+x86 / MSVC では `double` を含む union により 8 byte alignment がかかるため、実メモリ配置は以下になる。
+
+- `col_id`: offset 0
+- padding: 4 byte
+- value union (`dblVal` / `pbVal[16]`): offset 8
+- `dtype`: offset 24
+- trailing padding: 7 byte
+- total size: 32 byte
+
+このレイアウトに合わせないと、`JWRead` 呼び出し後に `col_id` や `dtype` が崩れて見える。
+
+#### 実タグで確認した `dtype` 対応
+
+以下のタグを JoyWatcher サーバ側へ登録し、`JWRead` で実測確認した。
+
+- `LOCAL$TEST.WORD0$VALUE`
+- `LOCAL$TEST.DWORD0$VALUE`
+- `LOCAL$TEST.DWORD1$VALUE`
+- `LOCAL$TEST.SINGLE0$VALUE`
+- `LOCAL$TEST.DOUBLE0$VALUE`
+- `LOCAL$TEST.BIT0$VALUE`
+- `LOCAL$TEST.STR0$VALUE`
+- `LOCAL$TEST.UWORD0$VALUE`
+- `LOCAL$TEST.ULONG0$VALUE`
+
+実測できた `dtype` と bridge の現在の型マッピングは以下。
+
+| JoyWatcher テストタグ | `dtype` | 現行 bridge の返却型 |
+| --- | ---: | --- |
+| `WORD0` | 0 | `number` |
+| `DWORD0` | 1 | `number` |
+| `DWORD1` | 1 | `number` |
+| `SINGLE0` | 2 | `number` |
+| `DOUBLE0` | 3 | `number` |
+| `BIT0` | 4 | `bool` |
+| `STR0` | 5 | `string` |
+| `UWORD0` | 6 | `number` |
+| `ULONG0` | 7 | `number` |
+
+補足:
+
+- 2026-05-18 時点では、値そのものは `0.0` / `false` / `""` で返った
+- これは型判定失敗ではなく、JoyWatcher サーバ側の現在値がその状態である可能性が高い
+- 現行 bridge は `dtype` を JSON 応答へそのまま返さず、`bool | number | string` へ集約する
+
+### 型の扱い
+
+- 登録時:
+  - `TagSel2` / `JWGetTagIDS2` だけでは型は確定しない
+  - UI 上は互換性維持のため暫定 `dataType` を保存する
+- 読取時:
+  - `JWRead` の `TCOM_DATA1.dtype` を正とする
+  - 実運用上の型は読取時に確定する
+- 現行実装の扱い:
+  - `BIT` は `bool`
+  - `LSTRING` は `string`
+  - `SHORT` / `LONG` / `SINGLE` / `DOUBLE` / `USHORT` / `ULONG` は `number` として返す
+  - 数値系の厳密な元型名までは、現行 bridge の JSON 応答には保持していない
+
+#### 現時点の仕様として確定したこと
+
+- 登録 UI の「型確認 (`JWRead`)」で見るべき型は、保存済み `dataType` ではなく **読取時の `dtype` から導いた型** である
+- `dataType` は暫定値として保持してもよいが、JoyWatcher 実型の正本ではない
+- 実運用で UI / runtime が信頼すべき値は **`JWRead` の `dtype` に基づく型** である
+- ただし現行 bridge は数値系を `number` に集約するため、`WORD` / `DWORD` / `SINGLE` / `DOUBLE` / `UWORD` / `ULONG` の細分類は UI へ出していない
 
 ### OCX / ActiveX 調査結果
 

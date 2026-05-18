@@ -188,6 +188,9 @@ kt_iot_hub.exe
 - `driver-joywatcher` は `driverSpec.nativeTagId` を読んで bridge の `read` を呼び、結果を `StreamTagValues` 用 `TagValueMessage` へ変換する最小経路を実装済み
 - `driver-joywatcher` は `scan_group.scan_rate_ms` ごとにタグを束ね、継続ポーリングしながら gRPC ストリームへ値を流す実装へ更新済み
 - `scripts/build-dev-joywatcher-ui.ps1` / `scripts/build-dev-joywatcher-runtime.ps1` / `scripts/build-dev-joywatcher-suite.ps1` を追加し、`driver-ui/joywatcher/` へ UI / runtime / bridge を配置できるようにした
+- `JWRead` の `TCOM_DATA1` は x86 / MSVC レイアウト（32 byte）に合わせる必要があり、この修正後に実タグで `dtype` の取得が安定した
+- `JWRead` の戻り値は、少なくとも 2026-05-18 の実機確認では `0` を返しても行データが有効だったため、bridge では負値のみ失敗扱いとする暫定運用へ変更した
+- 実タグ検証では `dtype = 0..7` が取得でき、`BIT -> bool`、`STRING -> string`、その他は `number` として JSON 応答できることを確認した
 
 ### 理由
 
@@ -274,6 +277,45 @@ kt_iot_hub.exe
 3. `TCOM_DATA1` を `bool | number | string` へ変換する
 4. 応答 JSON として返す
 5. `driver-joywatcher` がタグ定義へ突き合わせて gRPC 送信する
+
+### `TCOM_DATA1` ABI メモ
+
+vendor の `common/com.h` 準拠で、bridge 側の `TCOM_DATA1` 相当構造体は以下のレイアウトを守る。
+
+- `col_id`: 4 byte
+- padding: 4 byte
+- value union (`double` / `char[16]`): 16 byte
+- `dtype`: 1 byte
+- trailing padding: 7 byte
+- total: 32 byte
+
+この ABI を崩すと、`JWRead` 後の `col_id` / `dtype` がずれて読まれ、複数タグ読取時に結果が壊れる。
+
+### `JWRead` の戻り値解釈メモ
+
+- vendor サンプル `DllApiSampleDlg.cpp` は `JWRead(...)` の戻り値を明示チェックしていない
+- 実機確認では `JWRead` が `0` を返しつつ、`TCOM_DATA1` 配列には有効な `dtype` / 値が格納された
+- このため current bridge では、`JWRead` の戻り値は **負値を失敗、0以上を成功** とみなす
+- もし vendor の正式なエラー規約が今後確認できた場合は、この判定は見直す
+
+### 2026-05-18 時点の `dtype` 対応（bridge / UI）
+
+| `dtype` | 想定元型 | bridge の `value` JSON 型 | UI 保存時の `dataType` |
+| ---: | --- | --- | --- |
+| 0 | WORD / SHORT 系 | `number` | `i32` |
+| 1 | DWORD / LONG 系 | `number` | `i64` |
+| 2 | SINGLE | `number` | `f32` |
+| 3 | DOUBLE | `number` | `f64` |
+| 4 | BIT | `bool` | `bool` |
+| 5 | STRING | `string` | `string` |
+| 6 | UWORD / USHORT 系 | `number` | `i32` |
+| 7 | ULONG 系 | `number` | `i64` |
+
+補足:
+
+- bridge の `value` は従来どおり `bool | number | string` へ集約する
+- 追加で `dtype` も応答へ含め、登録 UI 側で `dataType` を決定する
+- 本体の `DataType` 制約（`bool/i32/i64/f32/f64/string`）に合わせ、unsigned 系は `i32` / `i64` へ割り当てる
 
 ## 配置案
 
@@ -365,7 +407,8 @@ driver-ui/joywatcher/
 - UI から bridge を使って vendor の `TagSel2` ダイアログを開き、選択したタグパス一覧を取得する導線を追加済み
 - `JWRead` の実 DLL 化と gRPC 送信への最小統合は追加済み
 - scan group ごとの継続ポーリングと `driver-ui/joywatcher/` への dev 配置スクリプトは追加済み
-- 残タスクは UI の実機手動確認、`ConnectNet` / `DisconnectNet` 呼出規約の実機確定
+- `JWRead` の ABI 崩れ修正後、実タグで `dtype=0..7` の型取得確認まで完了した
+- 残タスクは UI の実機手動確認、`ConnectNet` / `DisconnectNet` 呼出規約の実機確定、必要なら `dtype` の細分類を JSON 応答へ昇格すること
 
 ## 次の最小タスク
 

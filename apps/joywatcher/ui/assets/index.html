@@ -7,186 +7,164 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="page-shell">
-      <header class="hero">
-        <div>
-          <div class="eyebrow" id="modeBadge">新規登録</div>
-          <h1 id="pageTitle">JoyWatcher 登録UI</h1>
-          <p id="pageDesc">接続先設定 → TagSel2 でタグ選択 → 確認して保存 の順で登録を進めます。</p>
+    <main class="wrap shell">
+      <header class="page-head">
+        <div class="page-head-main">
+          <div>
+            <h1 id="pageTitle">JoyWatcher 登録UI</h1>
+            <p class="desc" id="pageDesc">TagSel2 でタグを取り込み、グループ設定を確認して保存します。</p>
+          </div>
+          <div class="header-summary" id="summary"></div>
         </div>
-        <div class="hero-note warning">
-          <strong>DLL + x86 bridge 運用</strong>
-          <span>タグ選択は `TagSel2`、Tag ID 解決は `JWGetTagIDS2`、値取得は `JWRead` を使う前提です。</span>
-        </div>
+        <div class="mode-badge" id="modeBadge">新規登録</div>
       </header>
 
       <nav class="stepper" aria-label="登録ステップ">
-        <button type="button" class="step active" data-step="1">1. 接続先</button>
-        <button type="button" class="step" data-step="2">2. グループ / タグ</button>
-        <button type="button" class="step" data-step="3">3. 確認 / 保存</button>
+        <button type="button" class="step active" data-step="1">
+          <span class="step-index">1</span>
+          <span class="step-label">タグ取込 / グループ設定</span>
+        </button>
+        <button type="button" class="step" data-step="2">
+          <span class="step-index">2</span>
+          <span class="step-label">確認・保存</span>
+        </button>
       </nav>
 
-      <section class="messages">
-        <div class="message ok" id="msgOk"></div>
-        <div class="message err" id="msgErr"></div>
-        <div class="message ok" id="outOk"></div>
-        <div class="message err" id="outErr"></div>
-      </section>
+      <p class="msg ok" id="msgOk"></p>
+      <p class="msg err" id="msgErr"></p>
+      <p class="msg ok" id="outOk"></p>
+      <p class="msg err" id="outErr"></p>
+      <input id="driverId" type="hidden" />
 
-      <section class="panel-grid" data-step-panel="1">
+      <section class="step-stage" data-step-panel="1">
         <article class="panel">
-          <h2>接続先設定</h2>
-          <div class="form-grid two">
-            <label>
-              <span>接続先ID</span>
-              <input id="driverId" type="text" placeholder="joywatcher1" />
-            </label>
-            <label>
-              <span>エンドポイント</span>
-              <input id="endpoint" type="text" placeholder="localhost" />
-            </label>
-            <label>
-              <span>User ID (`user_id`)</span>
-              <input id="userId" type="number" min="0" value="0" />
-            </label>
-            <label>
-              <span>Password</span>
-              <input id="password" type="password" placeholder="空でも可" />
-            </label>
+          <div class="section-head">
+            <div class="section-head-main">
+              <h2>タグ取込 / グループ設定</h2>
+              <div class="section-subrow">
+                <p class="muted">左でグループを選び、右で周期を調整します。タグ一覧は選択グループごとに確認できます。</p>
+                <div class="section-inline-actions">
+                  <button id="btnBrowseTags" type="button" class="btn">タグ登録 (TagSel2)</button>
+                  <button id="btnProbeTypes" type="button" class="btn secondary">型確認 (JWRead)</button>
+                  <button id="btnStep2Next" type="button" class="btn">確認・保存へ進む</button>
+                </div>
+              </div>
+            </div>
           </div>
-          <label>
-            <span>メモ</span>
-            <textarea id="notes" rows="3" placeholder="DLL解析メモ、接続先用途など"></textarea>
-          </label>
-          <p class="muted">
-            設定保存時の正本キーは `endpoint` / `user_id` / `password` / `notes` としつつ、旧 `userId` も読めるよう互換を残します。
-          </p>
-          <div class="actions end">
-            <button id="btnStep1Next" type="button" class="btn primary">次へ</button>
-          </div>
-        </article>
 
-        <aside class="summary-panel">
-          <h2>概要</h2>
-          <div id="summary" class="summary-cards"></div>
-        </aside>
+          <div class="two-column-layout jw-two-column-layout">
+            <div class="column">
+              <div class="box inner-box table-panel">
+                <div class="field-head">
+                  <strong>グループ一覧</strong>
+                  <span class="muted compact-meta" id="groupsCountText">登録済み 0件</span>
+                </div>
+                <div class="jw-table-grid-shell">
+                  <div class="jw-table-head-region">
+                    <div class="jw-group-header" aria-hidden="true">
+                      <span class="jw-col-group">グループ</span>
+                      <span class="jw-col-status">状態</span>
+                      <span class="jw-col-rate">周期</span>
+                      <span class="jw-col-tag-count">タグ数</span>
+                      <span class="jw-col-actions">操作</span>
+                    </div>
+                  </div>
+                  <div class="jw-table-browser-wrap">
+                    <div id="groupsList" class="jw-table-browser"></div>
+                  </div>
+                </div>
+                <p class="msg muted" id="groupsHint">TagSel2 でタグを取り込むと、ここにグループが並びます。</p>
+              </div>
+            </div>
+
+            <div class="column">
+              <div class="box inner-box editor-panel">
+                <div class="field-head">
+                  <strong>選択グループ / 周期設定</strong>
+                  <span class="table-chip" id="activeGroupBadge">未選択</span>
+                </div>
+
+                <div class="editor-panel-toolbar">
+                  <button id="btnSaveGroup" type="button" class="btn secondary">選択グループ設定を更新</button>
+                  <button id="btnResetGroup" type="button" class="btn ghost">選択解除</button>
+                </div>
+
+                <div class="group-config-grid compact-grid">
+                  <label>選択グループ名<input id="groupId" type="text" placeholder="main_scan" /></label>
+                  <label>周期(ms)<input id="groupRate" type="number" min="100" value="1000" /></label>
+                </div>
+
+                <div class="box inner-box">
+                  <div class="field-head">
+                    <strong>選択グループのタグ一覧</strong>
+                    <span class="muted compact-meta" id="tagTableCountText">0件</span>
+                  </div>
+                  <div class="jw-table-grid-shell">
+                    <div class="jw-table-head-region">
+                      <div class="jw-tag-header" aria-hidden="true">
+                        <span class="jw-col-tag-name">タグ名</span>
+                        <span class="jw-col-tag-type">型</span>
+                        <span class="jw-col-tag-native">タグID</span>
+                        <span class="jw-col-actions">操作</span>
+                      </div>
+                    </div>
+                    <div class="jw-table-browser-wrap">
+                      <div id="tagsList" class="jw-table-browser"></div>
+                    </div>
+                  </div>
+                  <p class="msg muted" id="tagsHint">グループを選択すると、タグ一覧が表示されます。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <details class="advanced-settings latest-import-details">
+            <summary>最新の取込結果 <span id="browsedTagsBadge" class="badge neutral">0件</span></summary>
+            <div id="browsedTagsList" class="list-box compact-list"></div>
+          </details>
+        </article>
       </section>
 
-      <section class="panel-grid hidden" data-step-panel="2">
-        <article class="panel split-panel">
-          <div>
-            <div class="panel-head">
-              <h2>ScanGroup</h2>
-              <span id="groupsCountText" class="badge neutral">0件</span>
-            </div>
-            <div class="form-grid">
-              <label>
-                <span>ScanGroup ID</span>
-                <input id="groupId" type="text" placeholder="main_scan" />
-              </label>
-              <label>
-                <span>ノード</span>
-                <input id="groupNode" type="text" placeholder="PLC1" />
-              </label>
-              <label>
-                <span>読出し周期(ms)</span>
-                <input id="groupRate" type="number" min="100" value="1000" />
-              </label>
-            </div>
-            <div class="actions">
-              <button id="btnSaveGroup" type="button" class="btn secondary">グループ追加 / 更新</button>
-              <button id="btnResetGroup" type="button" class="btn ghost">入力クリア</button>
-            </div>
-            <div id="groupsList" class="list-box"></div>
-          </div>
-
-          <div>
-            <div class="panel-head">
-              <h2>タグ</h2>
-              <span id="activeGroupBadge" class="badge neutral">未選択</span>
-            </div>
-            <div class="form-grid two">
-              <label>
-                <span>タグID</span>
-                <input id="tagId" type="text" placeholder="jw-main-level" />
-              </label>
-              <label>
-                <span>表示名</span>
-                <input id="tagName" type="text" placeholder="Level" />
-              </label>
-              <label>
-                <span>データ型</span>
-                <select id="tagDataType">
-                  <option value="bool">bool</option>
-                  <option value="i32">i32</option>
-                  <option value="i64">i64</option>
-                  <option value="f32" selected>f32</option>
-                  <option value="f64">f64</option>
-                  <option value="string">string</option>
-                </select>
-              </label>
-              <label>
-                <span>タグパス</span>
-                <input id="tagPath" type="text" placeholder="Line1/Tank/Level" />
-              </label>
-              <label>
-                <span>JoyWatcher Tag ID</span>
-                <input id="tagNativeId" type="number" step="1" placeholder="JWGetTagIDS2 で解決した数値ID" />
-              </label>
-              <label>
-                <span>単位</span>
-                <input id="tagUnit" type="text" placeholder="% / mm / degC" />
-              </label>
-              <label>
-                <span>コメント</span>
-                <input id="tagComment" type="text" placeholder="任意" />
-              </label>
-            </div>
-            <div class="actions">
-              <button id="btnBrowseTags" type="button" class="btn secondary">JoyWatcher タグ参照</button>
-              <button id="btnResolveTag" type="button" class="btn secondary">Tag ID を解決</button>
-              <button id="btnSaveTag" type="button" class="btn secondary">タグ追加 / 更新</button>
-              <button id="btnResetTag" type="button" class="btn ghost">入力クリア</button>
-            </div>
-            <div class="panel-head">
-              <h3>参照結果</h3>
-              <span id="browsedTagsBadge" class="badge neutral">0件</span>
-            </div>
-            <div id="browsedTagsList" class="list-box"></div>
-            <div id="tagsList" class="list-box"></div>
-          </div>
-        </article>
-
-        <aside class="summary-panel">
-          <h2>段階メモ</h2>
-          <ul class="note-list">
-            <li>`JoyWatcher タグ参照` は vendor の `TagSel2` ダイアログを開き、選択済みタグパスを UI に戻します。</li>
-            <li>必要に応じて手動入力もできますが、基本は `TagSel2` → `JWGetTagIDS2` の順で確定します。</li>
-            <li>JoyWatcher DLL は x86 前提のため、登録 UI / runtime とも x86 bridge 経由で扱います。</li>
-          </ul>
-          <div class="actions between">
-            <button id="btnStep2Prev" type="button" class="btn ghost">戻る</button>
-            <button id="btnStep2Next" type="button" class="btn primary">確認へ</button>
-          </div>
-        </aside>
-      </section>
-
-      <section class="panel-grid hidden" data-step-panel="3">
+      <section class="step-stage hidden" data-step-panel="2">
         <article class="panel">
-          <h2>保存前レビュー</h2>
-          <div id="reviewConnection" class="review-grid"></div>
-          <div class="review-head">
-            <h3>ScanGroup / タグ一覧</h3>
-            <span id="reviewCounts" class="badge success">0件</span>
-          </div>
-          <div id="reviewGroups" class="review-list"></div>
-          <div class="actions between">
-            <button id="btnStep3Prev" type="button" class="btn ghost">戻る</button>
-            <div class="actions">
-              <button id="cancelButton" type="button" class="btn ghost">キャンセル</button>
-              <button id="saveButton" type="button" class="btn primary">保存</button>
+          <div class="section-head">
+            <div class="section-head-main">
+              <h2>確認して保存</h2>
+              <div class="section-subrow">
+                <p class="muted">接続先・グループ構成を確認して一括保存します。</p>
+                <div class="section-inline-actions">
+                  <button id="btnStepReviewPrev" type="button" class="btn ghost">グループ設定へ戻る</button>
+                  <button id="saveButton" type="button" class="btn confirm">確定してウィンドウを閉じる</button>
+                </div>
+              </div>
             </div>
           </div>
+
+          <div class="review-grid">
+            <div class="box inner-box" id="reviewConnection"></div>
+            <div class="box inner-box" id="reviewCounts"></div>
+          </div>
+
+          <div class="box inner-box review-warnings-box">
+            <div class="field-head">
+              <strong>保存前チェック</strong>
+              <span id="reviewWarningsCount" class="muted">0件</span>
+            </div>
+            <div id="reviewWarnings" class="review-warning-list"></div>
+          </div>
+
+          <div class="box inner-box review-groups-box">
+            <div class="field-head">
+              <strong>登録対象グループ</strong>
+              <span id="reviewGroupsCount" class="muted">0件</span>
+            </div>
+            <div class="review-groups-shell">
+              <div id="reviewGroups" class="groups-list"></div>
+            </div>
+          </div>
+
+          <p class="msg ok" id="outOkReview"></p>
+          <p class="msg err" id="outErrReview"></p>
         </article>
       </section>
     </main>
