@@ -14,8 +14,7 @@ pub mod proto {
 
 use proto::driver_runtime_service_server::{DriverRuntimeService, DriverRuntimeServiceServer};
 use proto::{
-    GetDriverDefinitionRequest, GetDriverDefinitionResponse,
-    StreamTagValuesAck, TagValueMessage,
+    GetDriverDefinitionRequest, GetDriverDefinitionResponse, StreamTagValuesAck, TagValueMessage,
 };
 
 #[derive(Clone)]
@@ -113,7 +112,8 @@ impl DriverRuntimeGrpcService {
                         .unwrap_or(true);
                     if should_warn {
                         entry.last_warn_at = Some(observed_at);
-                        warn_payload = Some((expected, cycle_ms, entry.consecutive_lag_count, ratio));
+                        warn_payload =
+                            Some((expected, cycle_ms, entry.consecutive_lag_count, ratio));
                     }
                 }
             }
@@ -142,16 +142,17 @@ impl DriverRuntimeService for DriverRuntimeGrpcService {
         request: Request<GetDriverDefinitionRequest>,
     ) -> Result<Response<GetDriverDefinitionResponse>, Status> {
         let req = request.into_inner();
-        info!("GetDriverDefinition: driver_id={} kind={}", req.driver_id, req.driver_kind);
+        info!(
+            "GetDriverDefinition: driver_id={} kind={}",
+            req.driver_id, req.driver_kind
+        );
 
         // ドライバ設定を検索
         let driver_configs = self.state.driver_configs.read().await;
         let driver_config = driver_configs
             .iter()
             .find(|d| d.id == req.driver_id && d.driver_type == req.driver_kind)
-            .ok_or_else(|| {
-                Status::not_found(format!("Driver not found: {}", req.driver_id))
-            })?;
+            .ok_or_else(|| Status::not_found(format!("Driver not found: {}", req.driver_id)))?;
 
         // 接続設定をstring mapに変換
         let mut settings = HashMap::new();
@@ -231,7 +232,10 @@ impl DriverRuntimeService for DriverRuntimeGrpcService {
             let value = match serde_json::from_str::<serde_json::Value>(&msg.value_json) {
                 Ok(v) => v,
                 Err(e) => {
-                    warn!("StreamTagValues: invalid value_json for {}: {}", msg.tag_id, e);
+                    warn!(
+                        "StreamTagValues: invalid value_json for {}: {}",
+                        msg.tag_id, e
+                    );
                     continue;
                 }
             };
@@ -268,9 +272,12 @@ impl DriverRuntimeService for DriverRuntimeGrpcService {
                     );
                 }
 
-                self
-                    .update_scan_group_runtime_metric(&tag.driver_id, &tag.scan_group_id, chrono::Utc::now())
-                    .await;
+                self.update_scan_group_runtime_metric(
+                    &tag.driver_id,
+                    &tag.scan_group_id,
+                    chrono::Utc::now(),
+                )
+                .await;
             }
 
             count += 1;

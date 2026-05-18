@@ -1,8 +1,10 @@
+use super::super::ui_launcher::paths::normalize_optional_string;
 use super::apply::apply_driver_import;
 use super::validate::{validate_and_convert_payload, validate_import_request};
-use super::super::ui_launcher::paths::normalize_optional_string;
 use crate::app_state::AppState;
-use crate::commands::dto::{ErrorResponse, ImportDriverUiResultRequest, ImportDriverUiResultResponse};
+use crate::commands::dto::{
+    ErrorResponse, ImportDriverUiResultRequest, ImportDriverUiResultResponse,
+};
 use kt_driver_ui_protocol::DriverUiImportPayload;
 
 #[tauri::command]

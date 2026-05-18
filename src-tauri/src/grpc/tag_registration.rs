@@ -14,7 +14,9 @@ pub mod proto {
     tonic::include_proto!("kt_iot_hub.registration");
 }
 
-use proto::tag_registration_service_server::{TagRegistrationService, TagRegistrationServiceServer};
+use proto::tag_registration_service_server::{
+    TagRegistrationService, TagRegistrationServiceServer,
+};
 use proto::{
     HealthRequest, HealthResponse, UpsertTagRegistrationRequest, UpsertTagRegistrationResponse,
 };
@@ -25,6 +27,7 @@ struct TagRegistrationGrpcService {
 }
 
 impl TagRegistrationGrpcService {
+    #[allow(clippy::result_large_err)]
     fn parse_optional_json(input: &str) -> Result<Option<serde_json::Value>, Status> {
         if input.trim().is_empty() {
             return Ok(None);
@@ -34,6 +37,7 @@ impl TagRegistrationGrpcService {
             .map_err(|e| Status::invalid_argument(format!("Invalid JSON: {}", e)))
     }
 
+    #[allow(clippy::result_large_err)]
     fn parse_required_json(input: &str) -> Result<serde_json::Value, Status> {
         if input.trim().is_empty() {
             return Ok(serde_json::json!({}));
@@ -92,7 +96,10 @@ impl TagRegistrationService for TagRegistrationGrpcService {
                 return Err(Status::invalid_argument("tag.id is required"));
             }
             if !tag_ids.insert(tag.id.clone()) {
-                return Err(Status::invalid_argument(format!("Duplicate tag.id: {}", tag.id)));
+                return Err(Status::invalid_argument(format!(
+                    "Duplicate tag.id: {}",
+                    tag.id
+                )));
             }
             if DataType::from_str(&tag.data_type).is_err() {
                 return Err(Status::invalid_argument(format!(
@@ -185,12 +192,21 @@ impl TagRegistrationService for TagRegistrationGrpcService {
     }
 }
 
-pub async fn serve(state: AppState, addr: &str, shutdown_rx: oneshot::Receiver<()>) -> anyhow::Result<()> {
+pub async fn serve(
+    state: AppState,
+    addr: &str,
+    shutdown_rx: oneshot::Receiver<()>,
+) -> anyhow::Result<()> {
     let addr: SocketAddr = addr.parse()?;
-    let registration_service = TagRegistrationGrpcService { state: state.clone() };
+    let registration_service = TagRegistrationGrpcService {
+        state: state.clone(),
+    };
     let runtime_service = crate::grpc::driver_runtime::build_server(state);
 
-    info!("Starting gRPC server on {} (TagRegistration + DriverRuntime)", addr);
+    info!(
+        "Starting gRPC server on {} (TagRegistration + DriverRuntime)",
+        addr
+    );
     tonic::transport::Server::builder()
         .add_service(TagRegistrationServiceServer::new(registration_service))
         .add_service(runtime_service)

@@ -34,8 +34,12 @@ impl MqttMonitor {
     pub async fn start(
         &mut self,
         status: std::sync::Arc<tokio::sync::RwLock<MqttMonitorStatusState>>,
-        messages: std::sync::Arc<tokio::sync::RwLock<std::collections::VecDeque<MqttMonitorMessageState>>>,
-        topics: std::sync::Arc<tokio::sync::RwLock<std::collections::HashMap<String, MqttMonitorMessageState>>>,
+        messages: std::sync::Arc<
+            tokio::sync::RwLock<std::collections::VecDeque<MqttMonitorMessageState>>,
+        >,
+        topics: std::sync::Arc<
+            tokio::sync::RwLock<std::collections::HashMap<String, MqttMonitorMessageState>>,
+        >,
         options: MqttMonitorStartOptions,
     ) -> Result<()> {
         self.stop(status.clone()).await?;

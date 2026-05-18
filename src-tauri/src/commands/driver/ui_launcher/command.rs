@@ -56,14 +56,21 @@ pub async fn launch_driver_ui(
     )
     .await?;
 
-    let launch_context_text = serde_json::to_string_pretty(&launch_context)
-        .map_err(|e| ErrorResponse::serialize_error(format!("Failed to serialize driver UI launch context: {}", e)))?;
+    let launch_context_text = serde_json::to_string_pretty(&launch_context).map_err(|e| {
+        ErrorResponse::serialize_error(format!(
+            "Failed to serialize driver UI launch context: {}",
+            e
+        ))
+    })?;
 
     let state_for_input_write = state.clone();
     std::fs::write(&input_json_path, launch_context_text).map_err(|e| {
         let session_id_clone = session_id.clone();
         tauri::async_runtime::block_on(async move {
-            let mut sessions = state_for_input_write.active_driver_ui_sessions.write().await;
+            let mut sessions = state_for_input_write
+                .active_driver_ui_sessions
+                .write()
+                .await;
             sessions.remove(&session_id_clone);
         });
         ErrorResponse::io_error(format!("Failed to write driver UI input JSON: {}", e))
@@ -187,7 +194,9 @@ pub async fn check_driver_ui_result(
     req: CheckDriverUiResultRequest,
 ) -> Result<CheckDriverUiResultResponse, ErrorResponse> {
     if req.output_json_path.trim().is_empty() {
-        return Err(ErrorResponse::invalid_input("output_json_path cannot be empty"));
+        return Err(ErrorResponse::invalid_input(
+            "output_json_path cannot be empty",
+        ));
     }
 
     let process_active = if let Some(session_id) = req.session_id.as_ref() {

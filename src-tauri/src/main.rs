@@ -1,8 +1,11 @@
 // Tauri 設定・ウィンドウ管理
-#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
 
-mod app_state;
 mod app_logs;
+mod app_state;
 mod commands;
 mod config;
 mod core;
@@ -17,8 +20,8 @@ use core::{DataType, Tag, TagBus, TagId, TagRegistry};
 use drivers::DriverProcessManager;
 use publishers::mqtt::MqttPublisher;
 use publishers::PublisherManager;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::str::FromStr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Manager;
 use tracing::info;
 
@@ -141,12 +144,11 @@ fn main() {
                         .await
                         .map_err(|e| std::io::Error::other(e.error.clone()))?;
 
-                    if let Err(e) = commands::runtime::auto_start_runtime_services(&app_state).await {
+                    if let Err(e) = commands::runtime::auto_start_runtime_services(&app_state).await
+                    {
                         tracing::error!("Failed to auto start runtime services: {}", e.error);
-                        app_state.runtime_status.write().await.last_error = Some(format!(
-                            "Auto start failed: {}",
-                            e.error
-                        ));
+                        app_state.runtime_status.write().await.last_error =
+                            Some(format!("Auto start failed: {}", e.error));
                     }
 
                     Ok::<(), std::io::Error>(())
@@ -162,20 +164,17 @@ fn main() {
         .expect("error while building tauri application");
 
     app.run(|app_handle, event| {
-        match event {
-            tauri::RunEvent::ExitRequested { api, .. } => {
-                if SHUTDOWN_IN_PROGRESS.load(Ordering::SeqCst) {
-                    return;
-                }
-                api.prevent_exit();
-                SHUTDOWN_IN_PROGRESS.store(true, Ordering::SeqCst);
-
-                let app_handle = app_handle.clone();
-                tauri::async_runtime::spawn(async move {
-                    graceful_shutdown(app_handle).await;
-                });
+        if let tauri::RunEvent::ExitRequested { api, .. } = event {
+            if SHUTDOWN_IN_PROGRESS.load(Ordering::SeqCst) {
+                return;
             }
-            _ => {}
+            api.prevent_exit();
+            SHUTDOWN_IN_PROGRESS.store(true, Ordering::SeqCst);
+
+            let app_handle = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                graceful_shutdown(app_handle).await;
+            });
         }
     });
 }

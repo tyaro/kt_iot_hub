@@ -35,6 +35,7 @@ impl TagBus {
     }
 
     /// 現在のサブスクライバ数を取得
+    #[allow(dead_code)]
     pub fn subscriber_count(&self) -> usize {
         self.tx.receiver_count()
     }

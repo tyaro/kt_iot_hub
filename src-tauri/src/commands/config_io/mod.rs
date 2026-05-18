@@ -17,8 +17,9 @@ pub(crate) fn write_toml_atomic<T: Serialize>(
     value: &T,
 ) -> Result<(), ErrorResponse> {
     let config_dir = resolve_config_dir();
-    std::fs::create_dir_all(&config_dir)
-        .map_err(|e| ErrorResponse::io_error(format!("Failed to create config directory: {}", e)))?;
+    std::fs::create_dir_all(&config_dir).map_err(|e| {
+        ErrorResponse::io_error(format!("Failed to create config directory: {}", e))
+    })?;
 
     let target_path = config_dir.join(file_name);
     let tmp_file_name = format!("{}.tmp", file_name);
@@ -28,8 +29,9 @@ pub(crate) fn write_toml_atomic<T: Serialize>(
         ErrorResponse::serialize_error(format!("Failed to serialize {}: {}", file_name, e))
     })?;
 
-    std::fs::write(&tmp_path, &toml_text)
-        .map_err(|e| ErrorResponse::io_error(format!("Failed to write {}: {}", tmp_file_name, e)))?;
+    std::fs::write(&tmp_path, &toml_text).map_err(|e| {
+        ErrorResponse::io_error(format!("Failed to write {}: {}", tmp_file_name, e))
+    })?;
 
     replace_file_atomically(&tmp_path, &target_path, &toml_text, file_name)
 }

@@ -160,7 +160,7 @@ impl Publisher for MqttPublisher {
                                 }
                             }
                             Err(RecvError::Lagged(skipped)) => {
-                                lagged_total = lagged_total.saturating_add(skipped as u64);
+                                lagged_total = lagged_total.saturating_add(skipped);
                                 if lagged_last_log.elapsed() >= Duration::from_secs(2) {
                                     warn!(
                                         "TagBus lag detected: skipped={} (accumulated={})",
@@ -237,12 +237,19 @@ fn build_topic(
     if topic_root.is_empty() {
         format!("{}/tags/{}/{}", driver_id, scan_group_id, tag_segment)
     } else {
-        format!("{}/{}/tags/{}/{}", topic_root, driver_id, scan_group_id, tag_segment)
+        format!(
+            "{}/{}/tags/{}/{}",
+            topic_root, driver_id, scan_group_id, tag_segment
+        )
     }
 }
 
 fn normalize_topic_segment(value: Option<&str>) -> Option<&str> {
-    value.map(str::trim).filter(|v| !v.is_empty()).map(|v| v.trim_matches('/')).filter(|v| !v.is_empty())
+    value
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(|v| v.trim_matches('/'))
+        .filter(|v| !v.is_empty())
 }
 
 fn build_payload(value: &serde_json::Value) -> String {
@@ -268,11 +275,23 @@ mod tests {
     #[test]
     fn topic_uses_driver_and_group_path() {
         assert_eq!(
-            build_topic("plant", Some("postgresql1"), Some("whr096"), Some("w0400"), "tag-001"),
+            build_topic(
+                "plant",
+                Some("postgresql1"),
+                Some("whr096"),
+                Some("w0400"),
+                "tag-001"
+            ),
             "plant/postgresql1/tags/whr096/w0400"
         );
         assert_eq!(
-            build_topic("", Some("postgresql1"), Some("whr096"), Some("w0400"), "tag-001"),
+            build_topic(
+                "",
+                Some("postgresql1"),
+                Some("whr096"),
+                Some("w0400"),
+                "tag-001"
+            ),
             "postgresql1/tags/whr096/w0400"
         );
     }
@@ -280,7 +299,13 @@ mod tests {
     #[test]
     fn topic_falls_back_to_tag_id_when_name_is_missing() {
         assert_eq!(
-            build_topic("plant", Some("postgresql1"), Some("whr096"), Some(""), "tag-001"),
+            build_topic(
+                "plant",
+                Some("postgresql1"),
+                Some("whr096"),
+                Some(""),
+                "tag-001"
+            ),
             "plant/postgresql1/tags/whr096/tag-001"
         );
     }

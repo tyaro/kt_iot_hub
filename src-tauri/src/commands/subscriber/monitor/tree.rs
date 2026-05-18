@@ -1,7 +1,5 @@
 use crate::app_state::MqttMonitorMessageState;
-use crate::commands::dto::{
-    MqttMonitorMessageDto, MqttMonitorTopicNodeDto,
-};
+use crate::commands::dto::{MqttMonitorMessageDto, MqttMonitorTopicNodeDto};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
@@ -67,9 +65,9 @@ pub(super) fn build_visible_topic_tree(
             }
             current_path.push_str(segment);
 
-            let node = current_map
-                .entry(segment.to_string())
-                .or_insert_with(|| MutableTopicNode::new(segment.to_string(), current_path.clone()));
+            let node = current_map.entry(segment.to_string()).or_insert_with(|| {
+                MutableTopicNode::new(segment.to_string(), current_path.clone())
+            });
             node.latest_message = Some(message_dto.clone());
             current_map = &mut node.children;
         }
@@ -89,7 +87,8 @@ fn freeze_visible_node(
     include_all: bool,
 ) -> MqttMonitorTopicNodeDto {
     let has_children = !node.children.is_empty();
-    let mut children = if has_children && (include_all || expanded_paths.contains(&node.full_path)) {
+    let mut children = if has_children && (include_all || expanded_paths.contains(&node.full_path))
+    {
         node.children
             .into_values()
             .map(|child| freeze_visible_node(child, expanded_paths, include_all))

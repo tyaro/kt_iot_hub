@@ -26,9 +26,7 @@ pub async fn start_runtime_services(
         *state.driver_ui_base_dir.write().await = Some(driver_ui_base_dir);
     }
 
-    if let Err(e) = start_drivers(state.inner(), driver_ui_base_dir.as_deref()).await {
-        return Err(e);
-    }
+    start_drivers(state.inner(), driver_ui_base_dir.as_deref()).await?;
     if let Err(e) = start_publishers(state.inner(), false).await {
         let _ = stop_drivers(state.inner()).await;
         return Err(e);
@@ -36,9 +34,7 @@ pub async fn start_runtime_services(
     let status = read_runtime_status(state.inner()).await;
     info!(
         "Runtime started: drivers_running={} publishers_running={} grpc_running={}",
-        status.drivers_running,
-        status.publishers_running,
-        status.grpc_running
+        status.drivers_running, status.publishers_running, status.grpc_running
     );
     Ok(status)
 }
@@ -53,9 +49,7 @@ pub async fn stop_runtime_services(
     let status = read_runtime_status(state.inner()).await;
     info!(
         "Runtime stopped: drivers_running={} publishers_running={} grpc_running={}",
-        status.drivers_running,
-        status.publishers_running,
-        status.grpc_running
+        status.drivers_running, status.publishers_running, status.grpc_running
     );
     Ok(status)
 }
@@ -74,9 +68,7 @@ pub async fn auto_start_runtime_services(state: &AppState) -> Result<(), ErrorRe
 
     clear_last_error(state).await;
 
-    if let Err(e) = start_drivers(state, None).await {
-        return Err(e);
-    }
+    start_drivers(state, None).await?;
     if let Err(e) = start_publishers(state, true).await {
         let _ = stop_drivers(state).await;
         return Err(e);
@@ -85,7 +77,10 @@ pub async fn auto_start_runtime_services(state: &AppState) -> Result<(), ErrorRe
     Ok(())
 }
 
-async fn start_drivers(state: &AppState, driver_ui_base_dir: Option<&str>) -> Result<(), ErrorResponse> {
+async fn start_drivers(
+    state: &AppState,
+    driver_ui_base_dir: Option<&str>,
+) -> Result<(), ErrorResponse> {
     let drivers: Vec<(String, String)> = state
         .driver_configs
         .read()
@@ -104,7 +99,8 @@ async fn start_drivers(state: &AppState, driver_ui_base_dir: Option<&str>) -> Re
             .map_err(ErrorResponse::from)?;
     }
 
-    state.runtime_status.write().await.drivers_running = has_drivers && !manager.running_driver_ids().is_empty();
+    state.runtime_status.write().await.drivers_running =
+        has_drivers && !manager.running_driver_ids().is_empty();
     Ok(())
 }
 
@@ -173,7 +169,9 @@ pub async fn start_grpc_server(state: &AppState) -> Result<(), ErrorResponse> {
 
     let app_state = state.clone();
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = grpc::tag_registration::serve(app_state.clone(), GRPC_ADDR, shutdown_rx).await {
+        if let Err(e) =
+            grpc::tag_registration::serve(app_state.clone(), GRPC_ADDR, shutdown_rx).await
+        {
             tracing::error!("gRPC server stopped with error: {}", e);
             let mut runtime_status = app_state.runtime_status.write().await;
             runtime_status.last_error = Some(format!("gRPC transport error: {}", e));
@@ -196,13 +194,9 @@ async fn clear_last_error(state: &AppState) {
 
 async fn read_runtime_status(state: &AppState) -> RuntimeStatusDto {
     let runtime_status = state.runtime_status.read().await.clone();
-    let grpc_running = if runtime_status.grpc_running {
-        true
-    } else if state.grpc_shutdown_tx.read().await.is_some() {
-        true
-    } else {
-        tokio::net::TcpStream::connect(GRPC_ADDR).await.is_ok()
-    };
+    let grpc_running = runtime_status.grpc_running
+        || state.grpc_shutdown_tx.read().await.is_some()
+        || tokio::net::TcpStream::connect(GRPC_ADDR).await.is_ok();
 
     if grpc_running && !runtime_status.grpc_running {
         state.runtime_status.write().await.grpc_running = true;

@@ -30,6 +30,7 @@ pub struct ScanGroupDto {
 }
 
 /// タグ値レスポンス DTO
+#[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(crate = "serde", rename_all = "camelCase")]
 pub struct TagValueDto {

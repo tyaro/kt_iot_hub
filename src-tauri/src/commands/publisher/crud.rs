@@ -69,7 +69,9 @@ pub async fn save_publisher(
         return Err(ErrorResponse::invalid_input("Publisher ID cannot be empty"));
     }
     if req.publisher_type.trim() != "mqtt" {
-        return Err(ErrorResponse::invalid_input("Only mqtt publisher is supported"));
+        return Err(ErrorResponse::invalid_input(
+            "Only mqtt publisher is supported",
+        ));
     }
     if req.broker.trim().is_empty() {
         return Err(ErrorResponse::invalid_input("Broker cannot be empty"));
@@ -82,7 +84,10 @@ pub async fn save_publisher(
     }
 
     let existing_configs = state.publisher_configs.read().await.clone();
-    let existing = existing_configs.iter().find(|cfg| cfg.id == publisher_id).cloned();
+    let existing = existing_configs
+        .iter()
+        .find(|cfg| cfg.id == publisher_id)
+        .cloned();
 
     let password = if req.password.trim().is_empty() {
         existing

@@ -21,7 +21,10 @@ pub(super) fn build_driver_config(
     };
 
     let settings = serde_json::Map::from_iter([
-        ("host".to_string(), serde_json::Value::String(req.host.clone())),
+        (
+            "host".to_string(),
+            serde_json::Value::String(req.host.clone()),
+        ),
         ("port".to_string(), serde_json::Value::from(req.port)),
         (
             "database".to_string(),

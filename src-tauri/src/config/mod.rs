@@ -199,7 +199,10 @@ driver_spec = { value_column = "temperature" }
         let config: TagConfig = toml::from_str(toml_str).expect("parse failed");
         assert_eq!(config.scan_group, "sensors-fast");
         assert_eq!(
-            config.driver_spec.get("value_column").and_then(|v| v.as_str()),
+            config
+                .driver_spec
+                .get("value_column")
+                .and_then(|v| v.as_str()),
             Some("temperature")
         );
     }

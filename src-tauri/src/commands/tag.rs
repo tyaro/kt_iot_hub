@@ -118,7 +118,10 @@ pub async fn delete_tag(
 ) -> Result<(), ErrorResponse> {
     let removed = state.registry.remove(&TagId(tag_id.clone())).await;
     if removed.is_none() {
-        return Err(ErrorResponse::not_found(format!("Tag not found: {}", tag_id)));
+        return Err(ErrorResponse::not_found(format!(
+            "Tag not found: {}",
+            tag_id
+        )));
     }
 
     persist_all_tags(&state).await?;

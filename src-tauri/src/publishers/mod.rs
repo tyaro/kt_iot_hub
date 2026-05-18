@@ -16,9 +16,11 @@ pub trait Publisher: Send + Sync {
     fn id(&self) -> &str;
 
     /// パブリッシャの種類（"mqtt", "rest" など）
+    #[allow(dead_code)]
     fn publisher_type(&self) -> &str;
 
     /// 設定スキーマ
+    #[allow(dead_code)]
     fn settings_schema(&self) -> serde_json::Value {
         json!({
             "type": "object",
@@ -34,6 +36,7 @@ pub trait Publisher: Send + Sync {
     async fn stop(&mut self) -> Result<()>;
 
     /// 接続テスト
+    #[allow(dead_code)]
     async fn test_connection(&self) -> Result<()>;
 }
 
@@ -77,6 +80,7 @@ impl PublisherManager {
     }
 
     /// すべてのパブリッシャを起動
+    #[allow(dead_code)]
     pub async fn start_all(&mut self, registry: &TagRegistry, bus: &TagBus) -> Result<()> {
         for publisher in self.publishers.values_mut() {
             if let Err(e) = publisher.start(registry, bus).await {
@@ -108,11 +112,13 @@ impl PublisherManager {
     }
 
     /// パブリッシャを取得
-    pub fn get(&self, id: &str) -> Option<&Box<dyn Publisher>> {
-        self.publishers.get(id)
+    #[allow(dead_code)]
+    pub fn get(&self, id: &str) -> Option<&dyn Publisher> {
+        self.publishers.get(id).map(|p| p.as_ref())
     }
 
     /// 登録済みパブリッシャのID一覧
+    #[allow(dead_code)]
     pub fn list_publisher_ids(&self) -> Vec<&str> {
         self.publishers.keys().map(|s| s.as_str()).collect()
     }

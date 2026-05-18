@@ -28,6 +28,7 @@ pub enum DataType {
 
 impl DataType {
     /// JSON スキーマ型文字列を返す（UI 検証用）
+    #[allow(dead_code)]
     pub fn json_schema_type(&self) -> &'static str {
         match self {
             DataType::Bool => "boolean",
@@ -81,6 +82,7 @@ pub enum Quality {
 
 /// スキャングループ（テーブル/デバイス単位の周期管理単位）
 /// 同一グループのタグは1クエリでまとめて取得される
+#[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ScanGroup {
     /// グループの一意識別子
@@ -131,6 +133,7 @@ pub struct TagValue {
 
 impl TagValue {
     /// 新規 TagValue を生成
+    #[allow(dead_code)]
     pub fn new(tag_id: TagId, value: serde_json::Value, quality: Quality) -> Self {
         Self {
             tag_id,
@@ -141,11 +144,13 @@ impl TagValue {
     }
 
     /// Good 品質の値を生成
+    #[allow(dead_code)]
     pub fn good(tag_id: TagId, value: serde_json::Value) -> Self {
         Self::new(tag_id, value, Quality::Good)
     }
 
     /// Bad 品質の値を生成（エラー時用）
+    #[allow(dead_code)]
     pub fn bad(tag_id: TagId, value: serde_json::Value) -> Self {
         Self::new(tag_id, value, Quality::Bad)
     }

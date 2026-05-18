@@ -13,7 +13,9 @@ pub(super) fn validate_import_request(
         return Err(ErrorResponse::invalid_input("session_id cannot be empty"));
     }
     if req.output_json_path.trim().is_empty() {
-        return Err(ErrorResponse::invalid_input("output_json_path cannot be empty"));
+        return Err(ErrorResponse::invalid_input(
+            "output_json_path cannot be empty",
+        ));
     }
     Ok(())
 }
@@ -24,7 +26,10 @@ pub(super) async fn validate_and_convert_payload(
     payload: DriverUiImportPayload,
 ) -> Result<(DriverConfig, Vec<ScanGroupConfig>, Vec<TagConfig>), ErrorResponse> {
     if payload.schema_version.unwrap_or(1) != 1 {
-        return Err(ErrorResponse::new("SCHEMA_MISMATCH", "Unsupported schemaVersion"));
+        return Err(ErrorResponse::new(
+            "SCHEMA_MISMATCH",
+            "Unsupported schemaVersion",
+        ));
     }
 
     let driver_payload = payload.driver;
@@ -40,8 +45,11 @@ pub(super) async fn validate_and_convert_payload(
     }
 
     let effective_driver_type = driver_payload.driver_type.clone();
-    let driver_config =
-        build_import_driver_config(&effective_driver_id, &effective_driver_type, &driver_payload)?;
+    let driver_config = build_import_driver_config(
+        &effective_driver_id,
+        &effective_driver_type,
+        &driver_payload,
+    )?;
 
     let mut scan_group_ids = HashSet::new();
     let mut new_scan_groups = Vec::new();
@@ -156,7 +164,10 @@ fn build_import_driver_config(
         )));
     }
 
-    let settings = merge_driver_settings(driver_payload.settings.clone(), driver_payload.extra.clone());
+    let settings = merge_driver_settings(
+        driver_payload.settings.clone(),
+        driver_payload.extra.clone(),
+    );
     Ok(DriverConfig {
         id: driver_payload.id.clone(),
         driver_type: driver_payload.driver_type.clone(),

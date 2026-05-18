@@ -26,7 +26,10 @@ pub(super) fn resolve_launch_target(
             .iter()
             .find(|cfg| cfg.id == driver_id)
             .cloned()
-            .ok_or(ErrorResponse::not_found(format!("Driver not found: {}", driver_id)))?;
+            .ok_or(ErrorResponse::not_found(format!(
+                "Driver not found: {}",
+                driver_id
+            )))?;
 
         let executable_path = resolve_driver_ui_path_with_base(
             &driver_config,
@@ -47,8 +50,9 @@ pub(super) fn resolve_launch_target(
         });
     }
 
-    let driver_type = requested_driver_type
-        .ok_or(ErrorResponse::invalid_input("driver_type is required when driver_id is omitted"))?;
+    let driver_type = requested_driver_type.ok_or(ErrorResponse::invalid_input(
+        "driver_type is required when driver_id is omitted",
+    ))?;
 
     let executable_path = resolve_driver_ui_path_for_type(
         driver_configs,
@@ -78,13 +82,15 @@ pub(super) async fn register_active_session(
 ) -> Result<(), ErrorResponse> {
     let mut sessions = state.active_driver_ui_sessions.write().await;
     if let Some(existing_driver_id) = driver_id.as_ref() {
-        if sessions
-            .values()
-            .any(|session| session.process_active && session.target_driver_id.as_ref() == Some(existing_driver_id))
-        {
+        if sessions.values().any(|session| {
+            session.process_active && session.target_driver_id.as_ref() == Some(existing_driver_id)
+        }) {
             return Err(ErrorResponse::new(
                 "ALREADY_RUNNING",
-                format!("Driver UI is already active for driver {}", existing_driver_id),
+                format!(
+                    "Driver UI is already active for driver {}",
+                    existing_driver_id
+                ),
             ));
         }
     }
@@ -99,9 +105,4 @@ pub(super) async fn register_active_session(
     );
 
     Ok(())
-}
-
-pub(super) async fn remove_session(state: &tauri::State<'_, AppState>, session_id: &str) {
-    let mut sessions = state.active_driver_ui_sessions.write().await;
-    sessions.remove(session_id);
 }

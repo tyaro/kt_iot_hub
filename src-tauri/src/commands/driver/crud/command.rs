@@ -1,10 +1,10 @@
-use super::logic::{
-    build_driver_config, build_renamed_scan_groups, build_renamed_tags,
-    ensure_non_empty_driver_id, merge_driver_configs_for_rename, normalize_optional_string,
-};
 use super::super::runtime_sync::sync_driver_runtime;
 use super::super::toml_io::{write_drivers_toml_atomic, write_tags_toml_atomic};
 use super::super::ui_launcher::paths::resolve_driver_ui_path;
+use super::logic::{
+    build_driver_config, build_renamed_scan_groups, build_renamed_tags, ensure_non_empty_driver_id,
+    merge_driver_configs_for_rename, normalize_optional_string,
+};
 use crate::app_state::AppState;
 use crate::commands::dto::{DriverDto, ErrorResponse, SaveDriverRequest};
 use crate::config::{DriverConfig, ScanGroupConfig, TagConfig};
@@ -210,8 +210,14 @@ pub async fn delete_driver(
     }
 
     let existing_driver_configs = state.driver_configs.read().await.clone();
-    if !existing_driver_configs.iter().any(|cfg| cfg.id == driver_id) {
-        return Err(ErrorResponse::not_found(format!("Driver not found: {}", driver_id)));
+    if !existing_driver_configs
+        .iter()
+        .any(|cfg| cfg.id == driver_id)
+    {
+        return Err(ErrorResponse::not_found(format!(
+            "Driver not found: {}",
+            driver_id
+        )));
     }
 
     let final_driver_configs: Vec<DriverConfig> = existing_driver_configs
@@ -269,9 +275,8 @@ pub async fn delete_driver(
 
     {
         let mut sessions = state.active_driver_ui_sessions.write().await;
-        sessions.retain(|_, session| {
-            session.target_driver_id.as_deref() != Some(driver_id.as_str())
-        });
+        sessions
+            .retain(|_, session| session.target_driver_id.as_deref() != Some(driver_id.as_str()));
     }
 
     Ok(())

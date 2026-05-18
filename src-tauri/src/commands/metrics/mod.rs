@@ -47,8 +47,10 @@ pub async fn get_app_metrics(
             cache.last_network_tx_bytes,
             cache.last_sampled_at,
         ) {
-            let elapsed_sec =
-                sampled_at.signed_duration_since(last_sampled_at).num_milliseconds() as f64 / 1000.0;
+            let elapsed_sec = sampled_at
+                .signed_duration_since(last_sampled_at)
+                .num_milliseconds() as f64
+                / 1000.0;
 
             if elapsed_sec > 0.0 {
                 let rx_bps = (total_rx.saturating_sub(last_rx) as f64) / elapsed_sec;
@@ -148,7 +150,8 @@ pub async fn get_driver_metrics(
                         .and_then(|prev| {
                             let elapsed_sec = current_sampled_at
                                 .signed_duration_since(prev.sampled_at)
-                                .num_milliseconds() as f64
+                                .num_milliseconds()
+                                as f64
                                 / 1000.0;
                             if elapsed_sec <= 0.0 {
                                 return None;

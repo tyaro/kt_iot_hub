@@ -90,7 +90,8 @@ fn save_driver_request_deserializes_existing_snake_case_keys() {
         "password": "secret"
     });
 
-    let req: SaveDriverRequest = serde_json::from_value(value).expect("deserialize SaveDriverRequest");
+    let req: SaveDriverRequest =
+        serde_json::from_value(value).expect("deserialize SaveDriverRequest");
 
     assert_eq!(req.id, "drv-1");
     assert_eq!(req.original_id.as_deref(), Some("drv-old"));

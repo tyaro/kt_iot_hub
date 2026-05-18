@@ -25,7 +25,7 @@ fn push_line(line: String) {
 }
 
 pub fn list_logs(limit: usize) -> Vec<String> {
-    let limit = limit.max(1).min(APP_LOG_MAX_LINES);
+    let limit = limit.clamp(1, APP_LOG_MAX_LINES);
     if let Ok(logs) = log_buffer().lock() {
         let total = logs.len();
         let start = total.saturating_sub(limit);

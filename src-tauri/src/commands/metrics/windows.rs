@@ -74,8 +74,9 @@ pub(super) fn get_process_metrics(
             if elapsed_100ns == 0 || logical_cpu_count == 0 {
                 None
             } else {
-                let normalized =
-                    (process_delta as f64) / (elapsed_100ns as f64 * logical_cpu_count as f64) * 100.0;
+                let normalized = (process_delta as f64)
+                    / (elapsed_100ns as f64 * logical_cpu_count as f64)
+                    * 100.0;
                 Some(normalized.clamp(0.0, 100.0) as f32)
             }
         });

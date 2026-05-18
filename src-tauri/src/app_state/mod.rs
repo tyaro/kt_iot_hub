@@ -6,9 +6,7 @@ mod scan_metrics;
 pub use app_cpu::{AppCpuSampleState, RuntimeMetricsCacheState};
 pub use driver_ui_session::DriverUiSessionState;
 pub use mqtt_monitor::{MqttMonitorMessageState, MqttMonitorStatusState};
-pub use scan_metrics::{
-    DriverIoSampleState, DriverIoTotalState, ScanGroupRuntimeMetricState,
-};
+pub use scan_metrics::{DriverIoSampleState, DriverIoTotalState, ScanGroupRuntimeMetricState};
 
 use crate::config::{DriverConfig, PublisherConfig, ScanGroupConfig};
 use crate::core::{TagBus, TagRegistry};

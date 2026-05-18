@@ -89,7 +89,10 @@ impl DriverProcessManager {
         if let Some(mut child) = self.processes.remove(driver_id) {
             info!("Stopping driver process: {}", driver_id);
             if let Err(e) = child.start_kill() {
-                warn!("Failed to send kill signal to driver process {}: {}", driver_id, e);
+                warn!(
+                    "Failed to send kill signal to driver process {}: {}",
+                    driver_id, e
+                );
             }
 
             match timeout(Duration::from_secs(3), child.wait()).await {
@@ -250,7 +253,10 @@ mod tests {
 
         assert_eq!(
             candidates[0],
-            PathBuf::from(r"D:\develop\kt_iot_hub").join("driver-ui").join("postgres").join("driver-postgres.exe")
+            PathBuf::from(r"D:\develop\kt_iot_hub")
+                .join("driver-ui")
+                .join("postgres")
+                .join("driver-postgres.exe")
         );
     }
 
@@ -264,7 +270,9 @@ mod tests {
 
         assert_eq!(
             candidates[1],
-            PathBuf::from(r"D:\develop\kt_iot_hub\driver-ui").join("postgres").join("driver-postgres.exe")
+            PathBuf::from(r"D:\develop\kt_iot_hub\driver-ui")
+                .join("postgres")
+                .join("driver-postgres.exe")
         );
     }
 }
