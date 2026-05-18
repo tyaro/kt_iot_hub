@@ -22,6 +22,16 @@ export interface AppMetricsDto {
   sampled_at: string;
 }
 
+export interface DriverMetricsDto {
+  driver_id: string;
+  driver_type: string;
+  pid: number;
+  cpu_percent?: number | null;
+  memory_bytes?: number | null;
+  network_rx_bytes_per_sec?: number | null;
+  network_tx_bytes_per_sec?: number | null;
+}
+
 type RuntimeStatusDtoRaw = {
   driversRunning: boolean;
   publishersRunning: boolean;
@@ -38,6 +48,16 @@ type AppMetricsDtoRaw = {
   networkRxBytesPerSec?: number | null;
   networkTxBytesPerSec?: number | null;
   sampledAt: string;
+};
+
+type DriverMetricsDtoRaw = {
+  driverId: string;
+  driverType: string;
+  pid: number;
+  cpuPercent?: number | null;
+  memoryBytes?: number | null;
+  networkRxBytesPerSec?: number | null;
+  networkTxBytesPerSec?: number | null;
 };
 
 function normalizeRuntimeStatus(raw: RuntimeStatusDtoRaw): RuntimeStatusDto {
@@ -59,6 +79,18 @@ function normalizeAppMetrics(raw: AppMetricsDtoRaw): AppMetricsDto {
     network_rx_bytes_per_sec: raw.networkRxBytesPerSec ?? null,
     network_tx_bytes_per_sec: raw.networkTxBytesPerSec ?? null,
     sampled_at: raw.sampledAt,
+  };
+}
+
+function normalizeDriverMetrics(raw: DriverMetricsDtoRaw): DriverMetricsDto {
+  return {
+    driver_id: raw.driverId,
+    driver_type: raw.driverType,
+    pid: raw.pid,
+    cpu_percent: raw.cpuPercent ?? null,
+    memory_bytes: raw.memoryBytes ?? null,
+    network_rx_bytes_per_sec: raw.networkRxBytesPerSec ?? null,
+    network_tx_bytes_per_sec: raw.networkTxBytesPerSec ?? null,
   };
 }
 
@@ -100,4 +132,12 @@ export async function stopRuntimeServices(): Promise<RuntimeStatusDto> {
 export async function getAppMetrics(): Promise<AppMetricsDto> {
   const raw = await invoke<AppMetricsDtoRaw>('get_app_metrics');
   return normalizeAppMetrics(raw);
+}
+
+/**
+ * ドライバ別メトリクスを取得する
+ */
+export async function getDriverMetrics(): Promise<DriverMetricsDto[]> {
+  const raw = await invoke<DriverMetricsDtoRaw[]>('get_driver_metrics');
+  return raw.map(normalizeDriverMetrics);
 }

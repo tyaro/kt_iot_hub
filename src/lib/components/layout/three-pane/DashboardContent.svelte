@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { AppMetricsDto, RuntimeStatusDto } from '$lib/ipc';
+  import type { AppMetricsDto, DriverMetricsDto, RuntimeStatusDto } from '$lib/ipc';
 
   function formatBytes(value?: number | null): string {
     if (value == null || !Number.isFinite(value)) {
@@ -22,12 +22,39 @@
     return `${value.toFixed(1)}%`;
   }
 
+  function cpuLevel(value?: number | null): 'normal' | 'warn' | 'danger' {
+    if (value == null || !Number.isFinite(value)) {
+      return 'normal';
+    }
+    if (value >= 90) {
+      return 'danger';
+    }
+    if (value >= 70) {
+      return 'warn';
+    }
+    return 'normal';
+  }
+
+  function ioLevel(value?: number | null): 'normal' | 'warn' | 'danger' {
+    if (value == null || !Number.isFinite(value)) {
+      return 'normal';
+    }
+    if (value >= 10 * 1024 * 1024) {
+      return 'danger';
+    }
+    if (value >= 1024 * 1024) {
+      return 'warn';
+    }
+    return 'normal';
+  }
+
   let {
     tagCount,
     driverCount,
     enabledDriverCount,
     runtimeStatus,
     appMetrics,
+    driverMetrics,
     runtimeBusy,
     dashboardMessage,
     scanCycleHealthSummary,
@@ -45,6 +72,7 @@
       webview_memory_total_bytes: number | null;
       webview_memory_limit_bytes: number | null;
     };
+    driverMetrics: DriverMetricsDto[];
     runtimeBusy: boolean;
     dashboardMessage: string;
     scanCycleHealthSummary: {
@@ -137,6 +165,53 @@
       </ul>
       <p class="sub">※ 取得不可環境では「-」表示</p>
     </div>
+    <div class="card runtime-card driver-metrics-card">
+      <span class="card-icon">🚚</span>
+      <h3>通信ドライバ別 I/O 推定</h3>
+      {#if driverMetrics.length === 0}
+        <p class="sub">起動中の通信ドライバはありません</p>
+      {:else}
+        <table class="driver-metrics-table">
+          <thead>
+            <tr>
+              <th>Driver</th>
+              <th>PID</th>
+              <th>CPU</th>
+              <th>Memory</th>
+              <th>I/O Read</th>
+              <th>I/O Write</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each driverMetrics as metric (metric.driver_id)}
+              <tr>
+                <td>{metric.driver_id} ({metric.driver_type})</td>
+                <td>{metric.pid}</td>
+                <td>
+                  <span class={`metric-badge ${cpuLevel(metric.cpu_percent)}`}>
+                    {formatPercent(metric.cpu_percent)}
+                  </span>
+                </td>
+                <td>{formatBytes(metric.memory_bytes)}</td>
+                <td>
+                  <span class={`metric-badge ${ioLevel(metric.network_rx_bytes_per_sec)}`}>
+                    {formatBytes(metric.network_rx_bytes_per_sec)}/s
+                  </span>
+                </td>
+                <td>
+                  <span class={`metric-badge ${ioLevel(metric.network_tx_bytes_per_sec)}`}>
+                    {formatBytes(metric.network_tx_bytes_per_sec)}/s
+                  </span>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+      <p class="sub">※ CPU は Task Manager 風に 0〜100% へ正規化して表示</p>
+      <p class="sub">※ Windowsではプロセス I/O カウンタ由来の近似値です（ネットワーク専用値ではなく、ファイルI/Oを含む場合あり）</p>
+      <p class="sub">※ 色の目安: CPU 70%/90%、I/O 1MB/s / 10MB/s</p>
+    </div>
   </div>
   {#if dashboardMessage}
     <p class="action-message">{dashboardMessage}</p>
@@ -179,9 +254,10 @@
 
   .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(3, minmax(240px, 1fr));
     gap: 16px;
     margin-bottom: 24px;
+    align-items: stretch;
   }
 
   .card {
@@ -191,6 +267,7 @@
     padding: 20px 16px;
     text-align: center;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    min-width: 0;
   }
 
   .card-icon {
@@ -308,5 +385,66 @@
     padding-left: 18px;
     color: #475569;
     font-size: 0.8rem;
+    line-height: 1.55;
+  }
+
+  .driver-metrics-card {
+    grid-column: 1 / -1;
+  }
+
+  .driver-metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    color: #334155;
+  }
+
+  .driver-metrics-table th,
+  .driver-metrics-table td {
+    border-bottom: 1px solid #e2e8f0;
+    padding: 6px 8px;
+    text-align: left;
+  }
+
+  .driver-metrics-table th {
+    color: #475569;
+    font-weight: 600;
+    background: #f8fafc;
+  }
+
+  .metric-badge {
+    display: inline-block;
+    min-width: 78px;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .metric-badge.normal {
+    color: #334155;
+    background: #e2e8f0;
+  }
+
+  .metric-badge.warn {
+    color: #92400e;
+    background: #fef3c7;
+  }
+
+  .metric-badge.danger {
+    color: #991b1b;
+    background: #fee2e2;
+  }
+
+  @media (max-width: 1180px) {
+    .dashboard-grid {
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+    }
+  }
+
+  @media (max-width: 760px) {
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

@@ -74,6 +74,7 @@ fn main() {
             commands::runtime::start_runtime_services,
             commands::runtime::stop_runtime_services,
             commands::metrics::get_app_metrics,
+            commands::metrics::get_driver_metrics,
             commands::logs::list_app_logs,
             commands::logs::clear_app_logs,
         ])

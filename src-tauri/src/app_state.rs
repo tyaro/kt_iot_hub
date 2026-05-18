@@ -73,11 +73,19 @@ impl ScanGroupRuntimeMetricState {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct DriverIoSampleState {
+    pub read_bytes: u64,
+    pub write_bytes: u64,
+    pub sampled_at: DateTime<Utc>,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct RuntimeMetricsCacheState {
     pub last_network_rx_bytes: Option<u64>,
     pub last_network_tx_bytes: Option<u64>,
     pub last_sampled_at: Option<DateTime<Utc>>,
+    pub last_driver_io_samples: HashMap<u32, DriverIoSampleState>,
 }
 
 /// アプリ全体で共有する状態

@@ -4,7 +4,7 @@
   import PublishersContent from './PublishersContent.svelte';
   import TagsContent from './TagsContent.svelte';
   import SettingsContent from './SettingsContent.svelte';
-  import type { AppMetricsDto, DriverDto, RuntimeStatusDto, ScanGroupDto, TagDto } from '$lib/ipc';
+  import type { AppMetricsDto, DriverDto, DriverMetricsDto, RuntimeStatusDto, ScanGroupDto, TagDto } from '$lib/ipc';
   import type { PageId } from './constants';
 
   type Props = {
@@ -18,6 +18,7 @@
       webview_memory_total_bytes: number | null;
       webview_memory_limit_bytes: number | null;
     };
+    driverMetrics: DriverMetricsDto[];
     runtimeBusy: boolean;
     dashboardMessage: string;
     scanCycleHealthSummary: {
@@ -61,6 +62,7 @@
     enabledDriverCount,
     runtimeStatus,
     appMetrics,
+    driverMetrics,
     runtimeBusy,
     dashboardMessage,
     scanCycleHealthSummary,
@@ -100,6 +102,7 @@
       {enabledDriverCount}
       {runtimeStatus}
       {appMetrics}
+      {driverMetrics}
       {runtimeBusy}
       {dashboardMessage}
       {scanCycleHealthSummary}

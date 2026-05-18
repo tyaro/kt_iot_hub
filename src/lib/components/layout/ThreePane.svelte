@@ -43,6 +43,7 @@
     deleteTag,
     getRuntimeStatus,
     getAppMetrics,
+    getDriverMetrics,
     importDriverUiResult,
     launchDriverUi,
     openMqttMonitorWindow,
@@ -51,6 +52,7 @@
     type DriverDto,
     type RuntimeStatusDto,
     type AppMetricsDto,
+    type DriverMetricsDto,
     type ScanGroupDto,
     type TagDto,
   } from '$lib/ipc/index';
@@ -133,6 +135,7 @@
     webview_memory_total_bytes: null,
     webview_memory_limit_bytes: null,
   });
+  let driverMetrics = $state<DriverMetricsDto[]>([]);
   let runtimeBusy = $state(false);
   let dashboardMessage = $state('');
   let settingsMessage = $state('');
@@ -371,6 +374,7 @@
       await runtimeController.refreshStatus(getRuntimeStatus);
       try {
         const metrics = await getAppMetrics();
+        const dMetrics = await getDriverMetrics();
         const perf = (globalThis.performance as unknown as { memory?: {
           usedJSHeapSize?: number;
           totalJSHeapSize?: number;
@@ -383,6 +387,7 @@
           webview_memory_total_bytes: perf?.totalJSHeapSize ?? null,
           webview_memory_limit_bytes: perf?.jsHeapSizeLimit ?? null,
         };
+        driverMetrics = dMetrics;
       } catch {
         // ダッシュボード表示に影響しないよう、メトリクス取得失敗は握りつぶす
       }
@@ -415,6 +420,7 @@
     enabledDriverCount={$driversStore.items.filter((d: DriverDto) => d.enabled).length}
     {runtimeStatus}
     {appMetrics}
+    {driverMetrics}
     {runtimeBusy}
     {dashboardMessage}
     {scanCycleHealthSummary}

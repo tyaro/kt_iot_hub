@@ -235,8 +235,6 @@ async fn apply_driver_id_rename(
         }
     }
 
-    sync_driver_runtime(state, new_config).await?;
-
     for tag in existing_registry_tags
         .into_iter()
         .filter(|tag| tag.driver_id == original_driver_id)
@@ -254,6 +252,8 @@ async fn apply_driver_id_rename(
             })
             .await;
     }
+
+    sync_driver_runtime(state, new_config).await?;
 
     Ok(())
 }

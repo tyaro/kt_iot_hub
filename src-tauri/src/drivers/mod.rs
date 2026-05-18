@@ -131,6 +131,14 @@ impl DriverProcessManager {
         self.processes.keys().map(|s| s.as_str()).collect()
     }
 
+    /// 起動中ドライバの (driver_id, pid) 一覧を返す
+    pub fn running_driver_processes(&self) -> Vec<(String, u32)> {
+        self.processes
+            .iter()
+            .filter_map(|(driver_id, child)| child.id().map(|pid| (driver_id.clone(), pid)))
+            .collect()
+    }
+
     /// ドライバプロセスが起動中か確認する
     pub fn is_running(&self, driver_id: &str) -> bool {
         self.processes.contains_key(driver_id)

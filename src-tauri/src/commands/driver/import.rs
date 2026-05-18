@@ -295,8 +295,6 @@ async fn apply_driver_import(
         *driver_configs = final_driver_configs;
     }
 
-    sync_driver_runtime(state, driver_config).await?;
-
     for tag in existing_registry_tags
         .into_iter()
         .filter(|t| t.driver_id == driver_id)
@@ -318,6 +316,8 @@ async fn apply_driver_import(
             })
             .await;
     }
+
+    sync_driver_runtime(state, driver_config).await?;
 
     Ok(())
 }
