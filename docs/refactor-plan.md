@@ -159,7 +159,8 @@ commands/
   runtime.rs                    ← 既存維持
   logs.rs                       ← 既存維持
   tag.rs                        ← 既存維持
-```text
+```
+
 ### 2.2 Rust: `src-tauri/src/app_state.rs`
 
 - **方針**: 構造体の場所は変えない（互換を最大化）。フィールドを「ドメイン別サブ構造体」に**まとめるだけ**を別タスクで提案。
@@ -214,7 +215,8 @@ components/
       TopicTreePanel.svelte
       DetailPanel.svelte
       monitorPolling.ts
-```text
+```
+
 ### 2.4 ドライバ UI 静的資産: `apps/<name>/ui/assets/`
 
 - `app.js` を機能別 ESM に分割（`<script type="module">` 読込）。
@@ -607,10 +609,10 @@ components/
 
 | タスク | 着手者 | 状態 | コミット / PR | 備考 |
 | --- | --- | --- | --- | --- |  |
-| R-BE-01 | - | 未着手 | - | - |
-| R-BE-02 | - | 未着手 | - | - |
-| R-BE-03 | - | 未着手 | - | - |
-| R-BE-04 | - | 未着手 | - | - |
+| R-BE-01 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/dto.rs` を `commands/dto/` へ分割 |
+| R-BE-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/driver/ui_launcher.rs` を `ui_launcher/` へ分割 |
+| R-BE-03 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/driver/import.rs` を `import/` へ分割 |
+| R-BE-04 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/driver/crud.rs` を `crud/` へ分割 |
 | R-BE-05 | - | 未着手 | - | - |
 | R-BE-06 | - | 未着手 | - | 任意 |
 | R-BE-07 | - | 未着手 | - | - |
@@ -626,8 +628,8 @@ components/
 | R-RS-01 | - | 未着手 | - | - |
 | R-RS-02 | - | 未着手 | - | - |
 | R-RS-03 | - | 未着手 | - | - |
-| R-DEDUP-01 | - | 未着手 | - | **最優先**（重複定義） |
-| R-DEDUP-02 | - | 未着手 | - | R-DEDUP-01 後 |
+| R-DEDUP-01 | Copilot | 完了（ローカル） | - | 2026-05-18: `write_tags_toml_atomic` 重複定義を排除 |
+| R-DEDUP-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `commands/config_io` へ TOML I/O 共通化 |
 | R-DEDUP-03 | - | 未着手 | - | R-BE-01 後 |
 | R-DEDUP-04 | - | 未着手 | - | R-BE-07 後 |
 | R-DEDUP-05 | - | 未着手 | - | R-BE-01 後 |
