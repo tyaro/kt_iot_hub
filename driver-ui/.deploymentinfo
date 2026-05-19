@@ -1,0 +1,21 @@
+# Driver UI Deployment Structure
+
+This directory is the DEVELOPMENT SOURCE OF TRUTH for driver-ui resources.
+
+Layout:
+
+- driver-ui/postgres/
+  - registration-ui.exe
+  - driver-postgres.exe
+- driver-ui/joywatcher/
+  - registration-ui.exe
+  - driver-joywatcher.exe
+  - joywatcher-bridge-x86.exe
+
+Rules:
+
+- Install build artifacts here first.
+- Stage to src-tauri/driver-ui/ only via stage scripts.
+- Do not treat src-tauri/driver-ui/ as source of truth.
+
+See docs/driver-development.md for add-new-driver procedure.

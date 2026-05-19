@@ -1,3 +1,6 @@
+# Installs a registration UI executable into <app-root>/driver-ui/<driver-type>/.
+# Typical source is target/release/*.exe; destination is development source of truth driver-ui/.
+
 param(
   [Parameter(Mandatory = $true)]
   [string]$DriverType,

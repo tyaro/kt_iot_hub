@@ -1,3 +1,6 @@
+# Installs a runtime driver executable into driver-ui/<driver-type>/ (or a specified BinDir).
+# Typical source is target/release/*.exe; destination is development source of truth by default.
+
 param(
   [Parameter(Mandatory = $true)]
   [string]$DriverType,

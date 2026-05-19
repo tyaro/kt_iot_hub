@@ -1,4 +1,5 @@
-# Build and install release artifacts for bundled driver-ui resources.
+# Builds release artifacts under target/, installs them into driver-ui/ (development source of truth),
+# then stages from driver-ui/ to src-tauri/driver-ui/ for installer bundling.
 # Usage: .\scripts\build-release-driver-suite.ps1
 
 Set-StrictMode -Version Latest
@@ -54,14 +55,22 @@ if (-not (Test-Path $joywatcherBridgeExe)) { throw "Build artifact not found: $j
 Write-Host ">>> installing release artifacts into driver-ui/..."
 & (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "postgres" -SourcePath $postgresUiExe
 & (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "postgres" -SourcePath $postgresDriverExe
-& (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "postgres" -SourcePath $postgresUiExe -AppRoot $bundleRoot
-& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "postgres" -SourcePath $postgresDriverExe -BinDir (Join-Path $bundleRoot "driver-ui\postgres")
 
 & (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "joywatcher" -SourcePath $joywatcherUiExe
 & (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherDriverExe
 & (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherBridgeExe -TargetFileName "joywatcher-bridge-x86.exe"
-& (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "joywatcher" -SourcePath $joywatcherUiExe -AppRoot $bundleRoot
-& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherDriverExe -BinDir (Join-Path $bundleRoot "driver-ui\joywatcher")
-& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherBridgeExe -TargetFileName "joywatcher-bridge-x86.exe" -BinDir (Join-Path $bundleRoot "driver-ui\joywatcher")
 
-Write-Host ">>> done: release artifacts are ready under driver-ui/ and src-tauri/driver-ui/ for installer bundling" -ForegroundColor Green
+$postgresPrimaryUiExe = Join-Path $repoRoot "driver-ui\postgres\registration-ui.exe"
+$postgresPrimaryDriverExe = Join-Path $repoRoot "driver-ui\postgres\driver-postgres.exe"
+$joywatcherPrimaryUiExe = Join-Path $repoRoot "driver-ui\joywatcher\registration-ui.exe"
+$joywatcherPrimaryDriverExe = Join-Path $repoRoot "driver-ui\joywatcher\driver-joywatcher.exe"
+$joywatcherPrimaryBridgeExe = Join-Path $repoRoot "driver-ui\joywatcher\joywatcher-bridge-x86.exe"
+
+Write-Host ">>> staging from driver-ui/ (source of truth) to src-tauri/driver-ui/..."
+& (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "postgres" -SourcePath $postgresPrimaryUiExe -AppRoot $bundleRoot
+& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "postgres" -SourcePath $postgresPrimaryDriverExe -BinDir (Join-Path $bundleRoot "driver-ui\postgres")
+& (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "joywatcher" -SourcePath $joywatcherPrimaryUiExe -AppRoot $bundleRoot
+& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherPrimaryDriverExe -BinDir (Join-Path $bundleRoot "driver-ui\joywatcher")
+& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherPrimaryBridgeExe -TargetFileName "joywatcher-bridge-x86.exe" -BinDir (Join-Path $bundleRoot "driver-ui\joywatcher")
+
+Write-Host ">>> done: release artifacts installed to driver-ui/ and staged to src-tauri/driver-ui/ (one-way sync)" -ForegroundColor Green
