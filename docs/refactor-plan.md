@@ -633,6 +633,7 @@ components/
 | **R-NEW-01** | **Copilot** | **完了（ローカル）** | **-** | **2026-05-20: `commands/driver/transfer.rs` (375行) → `transfer.rs` (220行) + `transfer_impl.rs` (165行) に分割。`TagManagementSettingsFile` struct と `validate_import_payload` / `ensure_unique_ids` / `replace_registry_tags` / `restart_enabled_drivers` helper を transfer_impl へ分離** |
 | **R-BE-08** | **Copilot** | **完了（ローカル）** | **-** | **2026-05-20: `drivers/mod.rs` (431行) → `mod.rs` (230行) + `path_resolver.rs` (190行) に分割。`app_root_candidates` / `resolve_manifest_runtime_path_for_root` / `colocated_runtime_candidates_for_root` helper を path_resolver へ分離。テストブロックで 2 件削除** |
 | **R-BE-08b** | **Copilot** | **完了（ローカル）** | **-** | **2026-05-20: `drivers/manifest.rs` (439行) → `manifest.rs` (230行) + `manifest_discovery.rs` (145行) に分割。`discover_driver_packages` / `discovery_root_candidates` / `discover_single_manifest` を manifest_discovery へ移行。`discover.rs` import 更新** |
+| **Phase 1** | **Copilot** | **完了（ローカル）** | **-** | **2026-05-20: Task 1.1 `.deploymentinfo` 作成 / Task 1.2 スクリプト先頭コメント改善（正本→staging 一方向明示） / Task 1.3 `.staginginfo` 更新。開発時正本・staging 責務を明文化。検証 ✅** |
 
 ---
 
@@ -675,6 +676,11 @@ components/
   - **R-DEDUP-08 完了**: `commands/util.rs` が既に `pub(crate) fn normalize_optional_string` 正本。ラッパ 2 件（`crud/logic.rs:5`, `ui_launcher/paths.rs:221`）を削除し、呼び出し元 3 件のインポート統一
   - 修正対象: `ui_launcher/command.rs` (paths→util), `crud/command.rs` (logic→util), `import/command.rs` (paths→util)
   - 検証: `cargo fmt` ✅ / `cargo clippy --all-targets --all-features -- -D warnings` ✅ / `cargo test` ✅ (32 tests passed)
+- 2026-05-20 Phase 1 完了（正本ディレクトリ宣言）
+  - **Task 1.1 完了**: `driver-ui/.deploymentinfo` 作成。開発時正本であることを明示
+  - **Task 1.2 完了**: スクリプト先頭コメント改善（`build-release-driver-suite.ps1`, `install-driver-ui.ps1`, `install-driver-runtime.ps1`）。正本→staging 一方向フロー明確化
+  - **Task 1.3 完了**: `core/src-tauri/driver-ui/.staginginfo` 更新。staging 明示 + 直接編集禁止警告追加
+  - 検証: `npm run check` ✅ / `cargo test` ✅ (32 tests passed)
 
 ---
 
