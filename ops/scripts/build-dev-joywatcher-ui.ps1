@@ -4,28 +4,19 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$scriptDir = Split-Path -Parent $PSCommandPath
-$repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
+. (Join-Path $PSScriptRoot "driver-build-helpers.ps1")
 
-Write-Host ">>> cargo build JoyWatcher driver-ui (debug)..."
-Push-Location $repoRoot
-try {
-    cargo build --manifest-path drivers/joywatcher/ui/Cargo.toml
-    if ($LASTEXITCODE -ne 0) { throw "cargo build failed (exit code $LASTEXITCODE)" }
-} finally {
-    Pop-Location
-}
+$context = Get-DriverBuildContext -ScriptPath $PSCommandPath
+$scriptDir = $context.ScriptDir
+$repoRoot = $context.RepoRoot
+
+Invoke-CargoBuildManifest -RepoRoot $repoRoot -ManifestPath "drivers/joywatcher/ui/Cargo.toml" -Label "JoyWatcher driver-ui"
 
 $sourcePath = Join-Path $repoRoot "target\debug\driver_ui_joywatcher.exe"
-if (-not (Test-Path $sourcePath)) {
-    throw "Build artifact not found: $sourcePath"
-}
+Assert-BuildArtifactExists -Path $sourcePath
 
 Write-Host ">>> build succeeded"
 Write-Host ">>> installing as JoyWatcher driver-ui..."
-& (Join-Path $scriptDir "install-driver-ui.ps1") `
-    -DriverType "joywatcher" `
-    -SourcePath $sourcePath `
-    -StageToBundle
+Install-DriverUiBuildArtifact -ScriptDir $scriptDir -DriverType "joywatcher" -SourcePath $sourcePath -StageToBundle
 
 Write-Host ">>> done: ops/driver-ui/joywatcher/registration-ui.exe installed and staged"

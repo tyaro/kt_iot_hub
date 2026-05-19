@@ -5,58 +5,55 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$scriptDir = Split-Path -Parent $PSCommandPath
-$repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
+. (Join-Path $PSScriptRoot "driver-build-helpers.ps1")
+
+$context = Get-DriverBuildContext -ScriptPath $PSCommandPath
+$scriptDir = $context.ScriptDir
+$repoRoot = $context.RepoRoot
 $targetTriple = "i686-pc-windows-msvc"
-function Invoke-CargoBuildRelease([string]$manifestPath, [string]$label) {
-  Write-Host ">>> cargo build $label (release)..."
-  Push-Location $repoRoot
-  try {
-    cargo build --release --manifest-path $manifestPath
-    if ($LASTEXITCODE -ne 0) { throw "cargo build failed (exit code $LASTEXITCODE): $label" }
+$buildSteps = @(
+  @{ Kind = "manifest"; ManifestPath = "drivers/postgres/ui/Cargo.toml"; Label = "PostgreSQL driver-ui" },
+  @{ Kind = "manifest"; ManifestPath = "drivers/postgres/driver/Cargo.toml"; Label = "PostgreSQL runtime driver" },
+  @{ Kind = "manifest"; ManifestPath = "drivers/joywatcher/ui/Cargo.toml"; Label = "JoyWatcher driver-ui" },
+  @{ Kind = "manifest"; ManifestPath = "drivers/joywatcher/driver/Cargo.toml"; Label = "JoyWatcher runtime driver" },
+  @{ Kind = "target"; PackageName = "joywatcher-bridge-x86"; Target = $targetTriple; Label = "JoyWatcher x86 bridge" }
+)
+
+foreach ($buildStep in $buildSteps) {
+  if ($buildStep.Kind -eq "manifest") {
+    Invoke-CargoBuildManifest -RepoRoot $repoRoot -ManifestPath $buildStep.ManifestPath -Label $buildStep.Label -BuildKind "release"
+    continue
   }
-  finally {
-    Pop-Location
-  }
+
+  Invoke-CargoBuildPackageTarget -RepoRoot $repoRoot -PackageName $buildStep.PackageName -Target $buildStep.Target -Label $buildStep.Label -BuildKind "release"
 }
 
-function Invoke-CargoBuildReleaseTarget([string]$packageName, [string]$target, [string]$label) {
-  Write-Host ">>> cargo build $label (release / $target)..."
-  Push-Location $repoRoot
-  try {
-    cargo build --release -p $packageName --target $target
-    if ($LASTEXITCODE -ne 0) { throw "cargo build failed (exit code $LASTEXITCODE): $label" }
-  }
-  finally {
-    Pop-Location
-  }
+$installSteps = @(
+  @{ Kind = "ui"; DriverType = "postgres"; SourcePath = (Join-Path $repoRoot "target\release\driver_ui_postgres.exe") },
+  @{ Kind = "runtime"; DriverType = "postgres"; SourcePath = (Join-Path $repoRoot "target\release\driver-postgres.exe") },
+  @{ Kind = "ui"; DriverType = "joywatcher"; SourcePath = (Join-Path $repoRoot "target\release\driver_ui_joywatcher.exe") },
+  @{ Kind = "runtime"; DriverType = "joywatcher"; SourcePath = (Join-Path $repoRoot "target\release\driver-joywatcher.exe") },
+  @{ Kind = "runtime"; DriverType = "joywatcher"; SourcePath = (Join-Path $repoRoot "target\$targetTriple\release\joywatcher-bridge-x86.exe"); TargetFileName = "joywatcher-bridge-x86.exe" }
+)
+
+foreach ($installStep in $installSteps) {
+  Assert-BuildArtifactExists -Path $installStep.SourcePath
 }
-
-Invoke-CargoBuildRelease "drivers/postgres/ui/Cargo.toml" "PostgreSQL driver-ui"
-Invoke-CargoBuildRelease "drivers/postgres/driver/Cargo.toml" "PostgreSQL runtime driver"
-Invoke-CargoBuildRelease "drivers/joywatcher/ui/Cargo.toml" "JoyWatcher driver-ui"
-Invoke-CargoBuildRelease "drivers/joywatcher/driver/Cargo.toml" "JoyWatcher runtime driver"
-Invoke-CargoBuildReleaseTarget "joywatcher-bridge-x86" $targetTriple "JoyWatcher x86 bridge"
-
-$postgresUiExe = Join-Path $repoRoot "target\release\driver_ui_postgres.exe"
-$postgresDriverExe = Join-Path $repoRoot "target\release\driver-postgres.exe"
-$joywatcherUiExe = Join-Path $repoRoot "target\release\driver_ui_joywatcher.exe"
-$joywatcherDriverExe = Join-Path $repoRoot "target\release\driver-joywatcher.exe"
-$joywatcherBridgeExe = Join-Path $repoRoot "target\$targetTriple\release\joywatcher-bridge-x86.exe"
-
-if (-not (Test-Path $postgresUiExe)) { throw "Build artifact not found: $postgresUiExe" }
-if (-not (Test-Path $postgresDriverExe)) { throw "Build artifact not found: $postgresDriverExe" }
-if (-not (Test-Path $joywatcherUiExe)) { throw "Build artifact not found: $joywatcherUiExe" }
-if (-not (Test-Path $joywatcherDriverExe)) { throw "Build artifact not found: $joywatcherDriverExe" }
-if (-not (Test-Path $joywatcherBridgeExe)) { throw "Build artifact not found: $joywatcherBridgeExe" }
 
 Write-Host ">>> installing release artifacts into ops/driver-ui/..."
-& (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "postgres" -SourcePath $postgresUiExe
-& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "postgres" -SourcePath $postgresDriverExe
+foreach ($installStep in $installSteps) {
+  if ($installStep.Kind -eq "ui") {
+    Install-DriverUiBuildArtifact -ScriptDir $scriptDir -DriverType $installStep.DriverType -SourcePath $installStep.SourcePath
+    continue
+  }
 
-& (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "joywatcher" -SourcePath $joywatcherUiExe
-& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherDriverExe
-& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherBridgeExe -TargetFileName "joywatcher-bridge-x86.exe"
+  $targetFileName = $null
+  if ($installStep.ContainsKey("TargetFileName")) {
+    $targetFileName = $installStep.TargetFileName
+  }
+
+  Install-DriverRuntimeBuildArtifact -ScriptDir $scriptDir -DriverType $installStep.DriverType -SourcePath $installStep.SourcePath -TargetFileName $targetFileName
+}
 
 Write-Host ">>> staging from ops/driver-ui/ (source of truth) to core/src-tauri/driver-ui/..."
 & (Join-Path $scriptDir "stage-driver-suite.ps1")

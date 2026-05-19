@@ -4,29 +4,20 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$scriptDir = Split-Path -Parent $PSCommandPath
-$repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
+. (Join-Path $PSScriptRoot "driver-build-helpers.ps1")
 
-Write-Host ">>> cargo build postgres runtime driver (debug)..."
-Push-Location $repoRoot
-try {
-	cargo build --manifest-path drivers/postgres/driver/Cargo.toml
-	if ($LASTEXITCODE -ne 0) { throw "cargo build failed (exit code $LASTEXITCODE)" }
-} finally {
-	Pop-Location
-}
+$context = Get-DriverBuildContext -ScriptPath $PSCommandPath
+$scriptDir = $context.ScriptDir
+$repoRoot = $context.RepoRoot
+
+Invoke-CargoBuildManifest -RepoRoot $repoRoot -ManifestPath "drivers/postgres/driver/Cargo.toml" -Label "postgres runtime driver"
 
 $sourcePath = Join-Path $repoRoot "target\debug\driver-postgres.exe"
-if (-not (Test-Path $sourcePath)) {
-	throw "Build artifact not found: $sourcePath"
-}
+Assert-BuildArtifactExists -Path $sourcePath
 
 Write-Host ">>> build succeeded"
 
 Write-Host ">>> installing beside registration UI..."
-& (Join-Path $scriptDir "install-driver-runtime.ps1") `
-	-DriverType "postgres" `
-	-SourcePath $sourcePath `
-	-StageToBundle
+Install-DriverRuntimeBuildArtifact -ScriptDir $scriptDir -DriverType "postgres" -SourcePath $sourcePath -StageToBundle
 
 Write-Host ">>> done: ops/driver-ui/postgres/driver-postgres.exe installed and staged"
