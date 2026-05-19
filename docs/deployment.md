@@ -12,30 +12,30 @@
 - Mosquitto Windows バイナリ
 - 既定設定ファイル（`mosquitto.conf`）
 - 必要に応じて JoyWatcher ランタイム DLL（再配布可否確認後）
-- ドライバ実行ファイル（`driver-ui/postgres/driver-postgres.exe`, `driver-ui/joywatcher/driver-joywatcher.exe`）
-- ドライバ登録UI（`driver-ui/postgres/registration-ui.exe`, `driver-ui/joywatcher/registration-ui.exe`）
-- JoyWatcher x86 ブリッジ（`driver-ui/joywatcher/joywatcher-bridge-x86.exe`）
+- ドライバ実行ファイル（`ops/driver-ui/postgres/driver-postgres.exe`, `ops/driver-ui/joywatcher/driver-joywatcher.exe`）
+- ドライバ登録UI（`ops/driver-ui/postgres/registration-ui.exe`, `ops/driver-ui/joywatcher/registration-ui.exe`）
+- JoyWatcher x86 ブリッジ（`ops/driver-ui/joywatcher/joywatcher-bridge-x86.exe`）
 
 ### ディレクトリ責務（driver artifacts）
 
-- 開発時正本: `driver-ui/<type>/`
-- bundle staging: `src-tauri/driver-ui/<type>/`
+- 開発時正本: `ops/driver-ui/<type>/`
+- bundle staging: `core/src-tauri/driver-ui/<type>/`
 
-`src-tauri/driver-ui/` はインストーラ同梱用のステージング先であり、
-正本は常に `driver-ui/` とする。
+`core/src-tauri/driver-ui/` はインストーラ同梱用のステージング先であり、
+正本は常に `ops/driver-ui/` とする。
 
 ### 同梱用アーティファクト準備手順
 
-1. `npm run driver-suite:release` を実行し、`driver-ui/` と `src-tauri/driver-ui/` 配下へ release 成果物を配置する。
+1. `npm run driver-suite:release` を実行し、`ops/driver-ui/` と `core/src-tauri/driver-ui/` 配下へ release 成果物を配置する。
 2. `npm run tauri-build:bundle-drivers` を実行して本体インストーラをビルドする。
 
 補足（責務分離）:
 
 - `build-*`: `target/` へビルド
-- `install-*`: `target/` から `driver-ui/`（正本）へ配置
-- `stage-*`: `driver-ui/`（正本）から `src-tauri/driver-ui/`（staging）へ同期
+- `install-*`: `target/` から `ops/driver-ui/`（正本）へ配置
+- `stage-*`: `ops/driver-ui/`（正本）から `core/src-tauri/driver-ui/`（staging）へ同期
 
-`src-tauri/tauri.conf.json` の `bundle.resources` で `src-tauri/driver-ui/` 配下の実行ファイルを指定し、
+`core/src-tauri/tauri.conf.json` の `bundle.resources` で `core/src-tauri/driver-ui/` 配下の実行ファイルを指定し、
 インストーラへ同梱する。インストール後の既定配置先は `<app-dir>/resources/driver-ui/`。
 
 ## インストール時の処理

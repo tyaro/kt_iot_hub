@@ -257,14 +257,14 @@ npm run tauri build
 
 ### 8.3 既知の地雷（着手前必読）
 
-- **`write_tags_toml_atomic` が 2 箇所で重複定義**（`src-tauri/src/commands/driver/toml_io.rs:31` と `src-tauri/src/commands/tag.rs:215`）。tag CRUD を触る場合は **R-DEDUP-01** を先に終わらせるか、両方を同期させて編集する。
+- **`write_tags_toml_atomic` が 2 箇所で重複定義**（`core/src-tauri/src/commands/driver/toml_io.rs:31` と `core/src-tauri/src/commands/tag.rs:215`）。tag CRUD を触る場合は **R-DEDUP-01** を先に終わらせるか、両方を同期させて編集する。
 - `normalize_optional_string` が 3 ファイルに同名で並存（R-DEDUP-08）。新規呼び出し追加時はどれを import すべきか **R-DEDUP-08** 完了後に統一される予定。
-- `apps/joywatcher/{driver,ui}` 間でブリッジ探索ロジック / `BRIDGE_EXE_NAME` 等が重複（R-DEDUP-09）。片方だけ修正しない。
-- driver-UI 静的資産（`apps/*/ui/assets/app.js`）の `tauriInvoke` ラッパ等が重複（R-DEDUP-07）。
+- `drivers/joywatcher/{driver,ui}` 間でブリッジ探索ロジック / `BRIDGE_EXE_NAME` 等が重複（R-DEDUP-09）。片方だけ修正しない。
+- driver-UI 静的資産（`drivers/*/ui/assets/app.js`）の `tauriInvoke` ラッパ等が重複（R-DEDUP-07）。
 
 ### 8.4 リファクタ作業のスコープ規律（再掲・厳守）
 
-- **シリアライズ表現を変えない**。Tauri コマンドの引数・戻り値 JSON、`config/*.toml` キー、ドライバ UI 連携 JSON、gRPC proto はバイト互換を維持。
+- **シリアライズ表現を変えない**。Tauri コマンドの引数・戻り値 JSON、`ops/config/*.toml` キー、ドライバ UI 連携 JSON、gRPC proto はバイト互換を維持。
 - **依頼スコープ外のリファクタを混ぜない**。R-XX-NN 着手中であっても、計画外の整形・命名変更・依存追加は別タスクに切り出す。
 - **共通化は「明らかな同一実装」のみ対象**。似て非なるロジック（例: ドライバ毎の探索順）は安易に統合しない。
 - **1 タスク = 1 コミット粒度**。移動だけの変更とロジック変更はコミットを分ける。

@@ -32,7 +32,7 @@
 
 - **目的**: オフライン環境で動作する IoT ハブ。各種ドライバから値を収集し MQTT で配信。
 - **構成**: Tauri v2 デスクトップアプリ。バックエンド Rust（Tokio）、フロントエンド Svelte 5 Runes + SvelteKit SPA（adapter-static, ssr=false）。
-- **Cargo workspace 構成**: `src-tauri/`（本体）/ `apps/joywatcher/{bridge-x86,driver,ui}` / `apps/postgres/{driver,ui}` / `packages/{protocol-rs,driver-ui-host}`。
+- **Cargo workspace 構成**: `core/src-tauri/`（本体）/ `drivers/joywatcher/{bridge-x86,driver,ui}` / `drivers/postgres/{driver,ui}` / `packages/{protocol-rs,driver-ui-host}`。
 - **通信**: Tag Bus（`tokio::sync::broadcast`）+ gRPC（`DriverRuntimeService`）+ `DriverProcessManager`。
 - **MQTT ブローカーは内蔵しない**（外部 Mosquitto/EMQX 前提）。Publisher のみ実装。
 - **OPC DA は対象外**（COM/DCOM 非対応のため）。
@@ -44,9 +44,9 @@
 以下は機能改修・リファクタの**いずれにおいても**バイト互換を維持する:
 
 - Tauri コマンド名 / 引数 DTO のフィールド名・JSON 形（`#[serde(rename_all = "camelCase")]` を含む既存表現）
-- gRPC proto（`src-tauri/proto/*.proto`）
+- gRPC proto（`core/src-tauri/proto/*.proto`）
 - ドライバ UI 連携 JSON（`packages/protocol-rs/` 正本）
-- `config/*.toml` のキー
+- `ops/config/*.toml` のキー
 - ログメッセージの grep キー（変更時は `docs/refactor-plan.md` に追記）
 
 ---
@@ -62,6 +62,13 @@ cargo fmt
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 cd ..
+
+# または
+cd core/src-tauri
+cargo fmt
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test
+cd ../..
 
 # Frontend
 npm run check
@@ -92,7 +99,7 @@ npm run check
 
 ### 既知の地雷（着手前必読）
 
-- **`write_tags_toml_atomic` が 2 箇所で重複定義**（`src-tauri/src/commands/driver/toml_io.rs:31` と `src-tauri/src/commands/tag.rs:215`）。tag CRUD を触る場合は **R-DEDUP-01** を先に終わらせるか、両方を同期させて編集する。
+- **`write_tags_toml_atomic` が 2 箇所で重複定義**（`core/src-tauri/src/commands/driver/toml_io.rs:31` と `core/src-tauri/src/commands/tag.rs:215`）。tag CRUD を触る場合は **R-DEDUP-01** を先に終わらせるか、両方を同期させて編集する。
 - 同様の重複箇所は `docs/refactor-plan.md` §1.3 にまとめてある。
 - ドライバ候補は現状フロント埋め込み（`knownDriverTypes`）と実行ファイル探索の併用。**manifest 駆動へ移行中**のため、候補生成ロジックに変更を入れる際は `docs/driver-manifest-discovery-design.md` の Phase 計画（互換フォールバック維持）を必ず確認する。
 

@@ -15,25 +15,25 @@
 
 - フロントエンド: Svelte 5 + Vite
 - バックエンド: Rust（Tauri v2）
-- 設定: `config/*.toml`（ローカル永続化用。Git 管理対象外）
+- 設定: `ops/config/*.toml`（ローカル永続化用。Git 管理対象外）
 
 ## Monorepo 構成（段階移行中）
 
-- `src-tauri/` : 本体アプリ
+- `core/src-tauri/` : 本体アプリ
 - `packages/protocol-rs/` : 本体/ドライバUI間の共有プロトコル定義（Rust）
-- `apps/postgres/ui/` : PostgreSQL 用ドライバ登録UI（別アプリ）
-- `apps/postgres/driver/` : PostgreSQL 通信ランタイム（別プロセス）
+- `drivers/postgres/ui/` : PostgreSQL 用ドライバ登録UI（別アプリ）
+- `drivers/postgres/driver/` : PostgreSQL 通信ランタイム（別プロセス）
 
-### `dist/` と `apps/postgres/ui/assets/` の違い
+### `core/dist/` と `drivers/postgres/ui/assets/` の違い
 
-- ルートの `dist/` は、本体 Svelte UI を `npm run build` した結果の出力先です。
-- `src-tauri/tauri.conf.json` の `frontendDist` は `../dist` を参照します。
-- `apps/postgres/ui/assets/` は、PostgreSQL 登録UI (`registration-ui.exe`) が読み込む静的画面資産です。
-- `apps/postgres/ui/tauri.conf.json` の `frontendDist` は `./assets` を参照します。
+- `core/dist/` は、本体 Svelte UI を `npm run build` した結果の出力先です。
+- `core/src-tauri/tauri.conf.json` の `frontendDist` は `../dist` を参照します。
+- `drivers/postgres/ui/assets/` は、PostgreSQL 登録UI (`registration-ui.exe`) が読み込む静的画面資産です。
+- `drivers/postgres/ui/tauri.conf.json` の `frontendDist` は `./assets` を参照します。
 
-つまり、**本体アプリの画面はルート `dist/`、登録UI の画面は `apps/postgres/ui/assets/`** です。
+つまり、**本体アプリの画面は `core/dist/`、登録UI の画面は `drivers/postgres/ui/assets/`** です。
 
-> 現在は段階移行のため、`apps/postgres/ui` は最小実装です。
+> 現在は段階移行のため、`drivers/postgres/ui` は最小実装です。
 > まずは「本体と別物の実行ファイルとして起動できること」を優先し、
 > 本格UIは次フェーズで実装します。
 
@@ -50,10 +50,10 @@
 
 ### 配置責務
 
-- 開発時正本: `driver-ui/<driver_type>/`
+- 開発時正本: `ops/driver-ui/<driver_type>/`
   - `registration-ui.exe`
   - `driver-<type>.exe`
-- 同梱ステージング: `src-tauri/driver-ui/<driver_type>/`
+- 同梱ステージング: `core/src-tauri/driver-ui/<driver_type>/`
   - インストーラ bundle 直前の同期先
   - 正本ではない（直接編集しない）
 
@@ -61,8 +61,8 @@
 
 ### 配置・同梱の実行手順
 
-- `npm run driver-ui:dev`（`apps/postgres/ui` をビルドして正本へ配置）
-- `npm run driver-runtime:dev`（`apps/postgres/driver` をビルドして正本へ配置）
+- `npm run driver-ui:dev`（`drivers/postgres/ui` をビルドして正本へ配置）
+- `npm run driver-runtime:dev`（`drivers/postgres/driver` をビルドして正本へ配置）
 - `npm run driver-suite:release`（release 成果物を正本へ配置し、staging へ同期）
 - `npm run tauri-build:bundle-drivers`（staging を同梱してインストーラをビルド）
 
@@ -94,11 +94,11 @@
 
 ### インストーラ同梱対象（v0.2.0）
 
-- `driver-ui/postgres/registration-ui.exe`
-- `driver-ui/postgres/driver-postgres.exe`
-- `driver-ui/joywatcher/registration-ui.exe`
-- `driver-ui/joywatcher/driver-joywatcher.exe`
-- `driver-ui/joywatcher/joywatcher-bridge-x86.exe`
+- `ops/driver-ui/postgres/registration-ui.exe`
+- `ops/driver-ui/postgres/driver-postgres.exe`
+- `ops/driver-ui/joywatcher/registration-ui.exe`
+- `ops/driver-ui/joywatcher/driver-joywatcher.exe`
+- `ops/driver-ui/joywatcher/joywatcher-bridge-x86.exe`
 
 ## JoyWatcher DLL の扱い
 

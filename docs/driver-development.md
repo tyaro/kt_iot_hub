@@ -13,10 +13,11 @@
 2. `docs/ui-registration.md`
 3. `docs/config-spec.md`
 4. 参考実装
-   - `apps/postgres/ui/src/main.rs`
-   - `apps/postgres/ui/assets/app.js`
-   - `apps/postgres/driver/src/main.rs`
-   - `apps/postgres/driver/src/grpc_client.rs`
+
+- `drivers/postgres/ui/src/main.rs`
+- `drivers/postgres/ui/assets/app.js`
+- `drivers/postgres/driver/src/main.rs`
+- `apps/common/driver_runtime_grpc_client.rs`
 
 この順に読むことで、以下を短時間で判断できるようにする。
 
@@ -46,7 +47,7 @@
 - UI フロー正本: `docs/ui-registration.md`
 - 返却 JSON / 型の正本: `packages/protocol-rs`
 - 設定の正本: `docs/config-spec.md`
-- 実装例の正本: `apps/postgres/ui/`, `apps/postgres/driver/`
+- 実装例の正本: `drivers/postgres/ui/`, `drivers/postgres/driver/`
 
 ### 4. 完了条件
 
@@ -62,33 +63,33 @@
 
 ### 本体側
 
-- `src-tauri/src/commands/bridge.rs`
+- `core/src-tauri/src/commands/bridge.rs`
   - 登録UI 起動コンテキストや受け渡しの入口
-- `src-tauri/src/commands/driver_ui_protocol.rs`
+- `core/src-tauri/src/commands/driver_ui_protocol.rs`
   - 返却 JSON 型の再公開
-- `src-tauri/src/commands/tag.rs`
+- `core/src-tauri/src/commands/tag.rs`
   - タグ管理からの取り込みや反映導線の確認先
-- `src-tauri/src/app_state.rs`
+- `core/src-tauri/src/app_state.rs`
   - 実行時共有状態の確認先
 
 ### 登録UI 側の参考実装
 
-- `apps/postgres/ui/src/main.rs`
+- `drivers/postgres/ui/src/main.rs`
   - 最小 Tauri シェル
-- `apps/postgres/ui/assets/app.js`
+- `drivers/postgres/ui/assets/app.js`
   - 3 ステップ UI、接続テスト、候補生成、保存処理
 
 ### 通信ランタイム側の参考実装
 
-- `apps/postgres/driver/src/main.rs`
+- `drivers/postgres/driver/src/main.rs`
   - 起動引数、初期化、実行ループ
-- `apps/postgres/driver/src/grpc_client.rs`
+- `apps/common/driver_runtime_grpc_client.rs`
   - 本体との gRPC 通信
 
 ### 配置 / ビルド
 
-- `scripts/build-dev-driver-ui.ps1`
-- `scripts/install-driver-ui.ps1`
+- `ops/scripts/build-dev-driver-ui.ps1`
+- `ops/scripts/install-driver-ui.ps1`
 
 ## 推奨実装順序
 
@@ -268,7 +269,7 @@ apps/foo/driver/
 新しい `driver_type = "foo"` を追加する場合の推奨構成:
 
 ```text
-apps/
+drivers/
   foo/
     ui/
       Cargo.toml
@@ -283,7 +284,7 @@ apps/
       src/<driver_logic>.rs
       src/grpc_client.rs
 
-driver-ui/
+ops/driver-ui/
   foo/
     registration-ui.exe
     driver-foo.exe
@@ -291,9 +292,9 @@ driver-ui/
 
 補足:
 
-- `apps/<type>/ui/` は登録UI 実装
-- `apps/<type>/driver/` は通信ランタイム実装
-- 配布時の配置は `driver-ui/<type>/` に揃える
+- `drivers/<type>/ui/` は登録UI 実装
+- `drivers/<type>/driver/` は通信ランタイム実装
+- 配布時の配置は `ops/driver-ui/<type>/` に揃える
 
 ## 実装の責務分担
 
@@ -339,7 +340,7 @@ driver-ui/
 
 #### Tauri 側
 
-- `apps/<type>/ui/src/main.rs` を作成
+- `drivers/<type>/ui/src/main.rs` を作成
 - 本体との橋渡しには `kt_driver_ui_host` を使う
 - 最低限必要なコマンド:
   - `bridge::get_driver_ui_launch_context`
@@ -356,7 +357,7 @@ driver-ui/
 
 ### 3. 通信ランタイムを作成する
 
-最小構成は `apps/postgres/driver/` を踏襲する。
+最小構成は `drivers/postgres/driver/` を踏襲する。
 
 #### 起動引数
 
@@ -397,14 +398,14 @@ Driver UI が返却する JSON 型は、必ず `packages/protocol-rs` を正本�
 推奨配置:
 
 ```text
-driver-ui/<driver_type>/registration-ui.exe
-driver-ui/<driver_type>/driver-<driver_type>.exe
+ops/driver-ui/<driver_type>/registration-ui.exe
+ops/driver-ui/<driver_type>/driver-<driver_type>.exe
 ```
 
 配置責務:
 
-- `driver-ui/<driver_type>/` は開発時正本（運用開始時の起点）
-- `src-tauri/driver-ui/<driver_type>/` は bundle staging（同梱直前の同期先）
+- `ops/driver-ui/<driver_type>/` は開発時正本（運用開始時の起点）
+- `core/src-tauri/driver-ui/<driver_type>/` は bundle staging（同梱直前の同期先）
 - staging は正本ではないため、直接編集しない
 
 実行時探索（通信ランタイム）:
@@ -418,18 +419,18 @@ driver-ui/<driver_type>/driver-<driver_type>.exe
 
 - `driver_ui_base_dir` 指定時はその配下を優先
 - 続いて resources / app directory などの実行環境由来候補を探索
-- 実装詳細は `src-tauri/src/commands/driver/ui_launcher/paths.rs` を参照
+- 実装詳細は `core/src-tauri/src/commands/driver/ui_launcher/paths.rs` を参照
 
 スクリプト責務:
 
 - `build-*`: ビルドのみ（`target/` 出力）
-- `install-*`: `target/` から正本 `driver-ui/` へ配置
-- `stage-*`: 正本 `driver-ui/` から `src-tauri/driver-ui/` へ同期
+- `install-*`: `target/` から正本 `ops/driver-ui/` へ配置
+- `stage-*`: 正本 `ops/driver-ui/` から `core/src-tauri/driver-ui/` へ同期
 
 PowerShell スクリプトで配置できるようにする。
 
 - 既存:
-  - `scripts/install-driver-ui.ps1`
+  - `ops/scripts/install-driver-ui.ps1`
 - 必要に応じて通信ランタイム用 install script も同様の形式で揃える
 
 ### 6. ドキュメントとチェック項目を更新する
