@@ -1,6 +1,6 @@
 [package]
 name = "kt_driver_ui_host"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # 本体アプリと外部ドライバUIアプリの双方で共通利用する Tauri コマンド層。

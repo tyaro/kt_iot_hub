@@ -1,12 +1,12 @@
 {
   "productName": "kt_iot_hub",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "identifier": "com.example.kt-iot-hub",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
     "devUrl": "http://localhost:5173",
-    "frontendDist": "../dist"
+    "frontendDist": "../../dist"
   },
   "app": {
     "windows": [

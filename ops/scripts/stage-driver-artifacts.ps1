@@ -24,7 +24,18 @@ if (-not (Test-Path $targetDir)) {
 }
 
 function Get-RelativeChildPath([string]$basePath, [string]$fullPath) {
-  return [System.IO.Path]::GetRelativePath($basePath, $fullPath)
+  $normalizedBasePath = [System.IO.Path]::GetFullPath($basePath)
+  $normalizedFullPath = [System.IO.Path]::GetFullPath($fullPath)
+
+  if (-not $normalizedBasePath.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+    $normalizedBasePath += [System.IO.Path]::DirectorySeparatorChar
+  }
+
+  if ($normalizedFullPath.StartsWith($normalizedBasePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    return $normalizedFullPath.Substring($normalizedBasePath.Length)
+  }
+
+  throw "Path is not under base path. Base: $basePath Full: $fullPath"
 }
 
 function Remove-StaleArtifacts([string]$sourcePath, [string]$targetPath) {

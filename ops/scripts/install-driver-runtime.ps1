@@ -22,7 +22,7 @@ $scriptDir = Split-Path -Parent $PSCommandPath
 $repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
 
 if ($StageToBundle -and -not [string]::IsNullOrWhiteSpace($BinDir)) {
-  throw "-StageToBundle は BinDir 未指定時のみ利用できます。ops/driver-ui を正本に install した後で staging してください。"
+  throw "-StageToBundle can only be used when BinDir is not specified. Install into ops/driver-ui first, then stage to bundle."
 }
 
 if ([string]::IsNullOrWhiteSpace($BinDir)) {
@@ -35,7 +35,7 @@ if ([string]::IsNullOrWhiteSpace($TargetFileName)) {
 
 $resolvedSource = Resolve-Path $SourcePath
 if (-not (Test-Path $resolvedSource -PathType Leaf)) {
-  throw "SourcePath がファイルではありません: $SourcePath"
+  throw "SourcePath is not a file: $SourcePath"
 }
 
 if (-not (Test-Path $BinDir)) {

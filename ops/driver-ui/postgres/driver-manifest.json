@@ -3,7 +3,7 @@
   "driverType": "postgres",
   "displayName": "PostgreSQL 接続",
   "description": "PostgreSQL データベースへの接続とクエリ実行に対応",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "vendor": "kt_iot_hub",
   "registrationUi": "registration-ui.exe",
   "runtime": "driver-postgres.exe",

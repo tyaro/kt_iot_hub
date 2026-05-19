@@ -92,7 +92,7 @@
 
 見つからない場合は、ランタイム開始時にエラーを返します。
 
-### インストーラ同梱対象（v0.2.0）
+### インストーラ同梱対象（v0.4.0）
 
 - `ops/driver-ui/postgres/registration-ui.exe`
 - `ops/driver-ui/postgres/driver-postgres.exe`
