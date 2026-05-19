@@ -4,22 +4,22 @@
 # Common ignores
 node_modules/
 dist/
-!apps/postgres/ui/assets/
-!apps/postgres/ui/assets/**
-config/*
-!config/.gitkeep
+!drivers/postgres/ui/assets/
+!drivers/postgres/ui/assets/**
+ops/config/*
+!ops/config/.gitkeep
 target/
 .DS_Store
 /*.log
 
 # Driver UI binaries (layout only tracked)
-driver-ui/**/*.exe
-driver-ui/**/*.dll
-driver-ui/**/*.pdb
-src-tauri/driver-ui/**/*.exe
-src-tauri/driver-ui/**/*.dll
-src-tauri/driver-ui/**/*.pdb
+ops/driver-ui/**/*.exe
+ops/driver-ui/**/*.dll
+ops/driver-ui/**/*.pdb
+core/src-tauri/driver-ui/**/*.exe
+core/src-tauri/driver-ui/**/*.dll
+core/src-tauri/driver-ui/**/*.pdb
 
 # build.rs が apps/common/ui-assets/ から同期するビルド成果物
-apps/joywatcher/ui/assets/_shared/
-apps/postgres/ui/assets/_shared/
+drivers/joywatcher/ui/assets/_shared/
+drivers/postgres/ui/assets/_shared/

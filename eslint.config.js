@@ -7,7 +7,7 @@ import svelteParser from 'svelte-eslint-parser';
 export default [
   js.configs.recommended,
   {
-    ignores: ['build', 'dist', 'node_modules', 'target', 'src-tauri/target', '参考/**', '*.config.js']
+    ignores: ['build', 'dist', 'node_modules', 'target', 'core/src-tauri/target', '参考/**', '*.config.js']
   },
   {
     files: ['**/*.js'],
