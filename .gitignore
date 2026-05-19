@@ -4,6 +4,7 @@
 # Common ignores
 node_modules/
 dist/
+.vscode/settings.json
 !drivers/postgres/ui/assets/
 !drivers/postgres/ui/assets/**
 ops/config/*
