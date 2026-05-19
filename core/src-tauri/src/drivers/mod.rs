@@ -157,15 +157,17 @@ impl DriverProcessManager {
         exe_name: &str,
         driver_ui_base_dir: Option<&str>,
     ) -> Option<PathBuf> {
-        if let Some(manifest_runtime_path) =
-            resolve_manifest_runtime_path(driver_type, driver_ui_base_dir)
-        {
-            return Some(manifest_runtime_path);
-        }
+        for root in app_root_candidates(driver_ui_base_dir) {
+            if let Some(manifest_runtime_path) =
+                resolve_manifest_runtime_path_for_root(driver_type, &root)
+            {
+                return Some(manifest_runtime_path);
+            }
 
-        for candidate in colocated_runtime_candidates(driver_type, exe_name, driver_ui_base_dir) {
-            if candidate.exists() {
-                return Some(candidate);
+            for candidate in colocated_runtime_candidates_for_root(driver_type, exe_name, &root) {
+                if candidate.exists() {
+                    return Some(candidate);
+                }
             }
         }
 
@@ -188,16 +190,16 @@ impl DriverProcessManager {
     }
 }
 
-fn resolve_manifest_runtime_path(
+fn resolve_manifest_runtime_path_for_root(
     driver_type: &str,
-    driver_ui_base_dir: Option<&str>,
+    root: &std::path::Path,
 ) -> Option<PathBuf> {
     let driver_type = driver_type.trim();
     if driver_type.is_empty() {
         return None;
     }
 
-    for manifest_path in manifest_candidates(driver_type, driver_ui_base_dir) {
+    for manifest_path in manifest_candidates_for_root(driver_type, root) {
         if !manifest_path.exists() {
             continue;
         }
@@ -251,30 +253,21 @@ fn resolve_manifest_runtime_path(
     None
 }
 
-fn manifest_candidates(driver_type: &str, driver_ui_base_dir: Option<&str>) -> Vec<PathBuf> {
+fn manifest_candidates_for_root(driver_type: &str, root: &std::path::Path) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
 
-    for root in app_root_candidates(driver_ui_base_dir) {
-        candidates.push(
-            root.join("ops")
-                .join("driver-ui")
-                .join(driver_type)
-                .join("driver-manifest.json"),
-        );
-        candidates.push(
-            root.join("driver-ui")
-                .join(driver_type)
-                .join("driver-manifest.json"),
-        );
-        candidates.push(root.join(driver_type).join("driver-manifest.json"));
-        candidates.push(
-            root.join("drivers")
-                .join(driver_type)
-                .join("driver-ui")
-                .join(driver_type)
-                .join("driver-manifest.json"),
-        );
-    }
+    candidates.push(
+        root.join("ops")
+            .join("driver-ui")
+            .join(driver_type)
+            .join("driver-manifest.json"),
+    );
+    candidates.push(
+        root.join("driver-ui")
+            .join(driver_type)
+            .join("driver-manifest.json"),
+    );
+    candidates.push(root.join(driver_type).join("driver-manifest.json"));
 
     let mut unique = Vec::new();
     for candidate in candidates {
@@ -286,23 +279,21 @@ fn manifest_candidates(driver_type: &str, driver_ui_base_dir: Option<&str>) -> V
     unique
 }
 
-fn colocated_runtime_candidates(
+fn colocated_runtime_candidates_for_root(
     driver_type: &str,
     exe_name: &str,
-    driver_ui_base_dir: Option<&str>,
+    root: &std::path::Path,
 ) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
 
-    for root in app_root_candidates(driver_ui_base_dir) {
-        candidates.push(
-            root.join("ops")
-                .join("driver-ui")
-                .join(driver_type)
-                .join(exe_name),
-        );
-        candidates.push(root.join("driver-ui").join(driver_type).join(exe_name));
-        candidates.push(root.join(driver_type).join(exe_name));
-    }
+    candidates.push(
+        root.join("ops")
+            .join("driver-ui")
+            .join(driver_type)
+            .join(exe_name),
+    );
+    candidates.push(root.join("driver-ui").join(driver_type).join(exe_name));
+    candidates.push(root.join(driver_type).join(exe_name));
 
     let mut unique = Vec::new();
     for candidate in candidates {
@@ -375,10 +366,10 @@ mod tests {
 
     #[test]
     fn colocated_candidates_support_repo_root_base() {
-        let candidates = colocated_runtime_candidates(
+        let candidates = colocated_runtime_candidates_for_root(
             "postgres",
             "driver-postgres.exe",
-            Some(r"D:\develop\kt_iot_hub"),
+            &PathBuf::from(r"D:\develop\kt_iot_hub"),
         );
 
         assert_eq!(
@@ -400,10 +391,10 @@ mod tests {
 
     #[test]
     fn colocated_candidates_support_driver_ui_root_base() {
-        let candidates = colocated_runtime_candidates(
+        let candidates = colocated_runtime_candidates_for_root(
             "postgres",
             "driver-postgres.exe",
-            Some(r"D:\develop\kt_iot_hub\driver-ui"),
+            &PathBuf::from(r"D:\develop\kt_iot_hub\driver-ui"),
         );
 
         assert_eq!(

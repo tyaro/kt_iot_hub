@@ -148,39 +148,50 @@ pub struct InvalidDriverPackage {
     pub driver_type_hint: Option<String>,
 }
 
-/// 指定ベースフォルダ配下の driver-ui/<type>/driver-manifest.json を走査してドライバを発見
+/// 指定ベースフォルダ配下の manifest 正本/staging を走査してドライバを発見
+///
+/// 許可する起点は以下の通り:
+/// - <base>/ops/driver-ui/<type>/driver-manifest.json （開発時正本）
+/// - <base>/driver-ui/<type>/driver-manifest.json     （bundle staging / 配布物）
+/// - <base> 自体が driver-ui ルートのケース
 pub fn discover_driver_packages(driver_ui_base_dir: &Path) -> Result<DiscoveryResult> {
     let mut available = Vec::new();
     let mut invalid = Vec::new();
     let mut found_driver_types = std::collections::HashMap::new();
 
-    let driver_ui_path = driver_ui_base_dir.join("driver-ui");
-
-    // driver-ui ディレクトリが存在しなければ空結果を返す
-    if !driver_ui_path.exists() {
+    let discovery_roots = discovery_root_candidates(driver_ui_base_dir);
+    if discovery_roots.is_empty() {
         return Ok(DiscoveryResult { available, invalid });
     }
 
-    // driver-ui/* を走査
-    if let Ok(entries) = std::fs::read_dir(&driver_ui_path) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                if path.is_dir() {
-                    let manifest_path = path.join("driver-manifest.json");
+    for discovery_root in discovery_roots {
+        if let Ok(entries) = std::fs::read_dir(&discovery_root) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        let manifest_path = path.join("driver-manifest.json");
 
-                    match discover_single_manifest(&manifest_path, &path) {
-                        Ok(package) => {
-                            // driver_type 重複チェック
-                            if let Some(_) = found_driver_types.get(&package.driver_type) {
-                                // 重複を検出 → 両方を invalid に移動
-                                let first_idx = available
-                                    .iter()
-                                    .position(|p| p.driver_type == package.driver_type);
-                                if let Some(idx) = first_idx {
-                                    let existing = available.remove(idx);
+                        match discover_single_manifest(&manifest_path, &path) {
+                            Ok(package) => {
+                                if found_driver_types.contains_key(&package.driver_type) {
+                                    let first_idx = available
+                                        .iter()
+                                        .position(|p| p.driver_type == package.driver_type);
+                                    if let Some(idx) = first_idx {
+                                        let existing = available.remove(idx);
+                                        invalid.push(InvalidDriverPackage {
+                                            manifest_path: existing.manifest_path.clone(),
+                                            status_code: "DUPLICATE_DRIVER_TYPE".to_string(),
+                                            status_message: format!(
+                                                "Duplicate driver_type '{}' found at multiple locations",
+                                                package.driver_type
+                                            ),
+                                            driver_type_hint: Some(package.driver_type.clone()),
+                                        });
+                                    }
                                     invalid.push(InvalidDriverPackage {
-                                        manifest_path: existing.manifest_path.clone(),
+                                        manifest_path: package.manifest_path.clone(),
                                         status_code: "DUPLICATE_DRIVER_TYPE".to_string(),
                                         status_message: format!(
                                             "Duplicate driver_type '{}' found at multiple locations",
@@ -188,40 +199,30 @@ pub fn discover_driver_packages(driver_ui_base_dir: &Path) -> Result<DiscoveryRe
                                         ),
                                         driver_type_hint: Some(package.driver_type.clone()),
                                     });
+                                } else {
+                                    found_driver_types
+                                        .insert(package.driver_type.clone(), package.clone());
+                                    available.push(package);
                                 }
-                                invalid.push(InvalidDriverPackage {
-                                    manifest_path: package.manifest_path.clone(),
-                                    status_code: "DUPLICATE_DRIVER_TYPE".to_string(),
-                                    status_message: format!(
-                                        "Duplicate driver_type '{}' found at multiple locations",
-                                        package.driver_type
-                                    ),
-                                    driver_type_hint: Some(package.driver_type.clone()),
-                                });
-                            } else {
-                                found_driver_types
-                                    .insert(package.driver_type.clone(), package.clone());
-                                available.push(package);
                             }
-                        }
-                        Err(error) => {
-                            // パース・検証失敗
-                            let (status_code, status_message, hint) = match error {
-                                DiscoverError::ParseFailed { reason } => {
-                                    ("MANIFEST_PARSE_ERROR", reason, None)
-                                }
-                                DiscoverError::ValidationFailed {
-                                    reason,
-                                    driver_type,
-                                } => ("MANIFEST_VALIDATION_ERROR", reason, driver_type),
-                            };
+                            Err(error) => {
+                                let (status_code, status_message, hint) = match error {
+                                    DiscoverError::ParseFailed { reason } => {
+                                        ("MANIFEST_PARSE_ERROR", reason, None)
+                                    }
+                                    DiscoverError::ValidationFailed {
+                                        reason,
+                                        driver_type,
+                                    } => ("MANIFEST_VALIDATION_ERROR", reason, driver_type),
+                                };
 
-                            invalid.push(InvalidDriverPackage {
-                                manifest_path,
-                                status_code: status_code.to_string(),
-                                status_message,
-                                driver_type_hint: hint,
-                            });
+                                invalid.push(InvalidDriverPackage {
+                                    manifest_path,
+                                    status_code: status_code.to_string(),
+                                    status_message,
+                                    driver_type_hint: hint,
+                                });
+                            }
                         }
                     }
                 }
@@ -230,6 +231,36 @@ pub fn discover_driver_packages(driver_ui_base_dir: &Path) -> Result<DiscoveryRe
     }
 
     Ok(DiscoveryResult { available, invalid })
+}
+
+fn discovery_root_candidates(base_dir: &Path) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    candidates.push(base_dir.join("ops").join("driver-ui"));
+    candidates.push(base_dir.join("driver-ui"));
+    if contains_manifest_children(base_dir) {
+        candidates.push(base_dir.to_path_buf());
+    }
+
+    let mut unique = Vec::new();
+    for candidate in candidates {
+        if candidate.exists() && candidate.is_dir() && !unique.contains(&candidate) {
+            unique.push(candidate);
+        }
+    }
+
+    unique
+}
+
+fn contains_manifest_children(base_dir: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(base_dir) else {
+        return false;
+    };
+
+    entries.filter_map(Result::ok).any(|entry| {
+        let path = entry.path();
+        path.is_dir() && path.join("driver-manifest.json").exists()
+    })
 }
 
 /// 1 つのマニフェストを読み込んで検証
@@ -341,14 +372,14 @@ mod tests {
     }
 
     #[test]
-    fn test_load_postgres_manifest() {
-        // workspace root を起点に postgres manifest へのパスを組み立て
+    fn test_load_postgres_manifest_from_ops_source_of_truth() {
+        // workspace root を起点に ops/driver-ui 正本の manifest を参照する
         let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()
             .parent()
             .unwrap()
-            .join("drivers/postgres/driver-manifest.json");
+            .join("ops/driver-ui/postgres/driver-manifest.json");
 
         let manifest = load_manifest(&manifest_path);
         assert!(

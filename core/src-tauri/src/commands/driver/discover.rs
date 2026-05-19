@@ -1,5 +1,5 @@
 // ドライバマニフェストディスカバリコマンド
-// driver-ui ベースフォルダ配下のマニフェストを自動発見
+// manifest 正本 / bundle staging 配下のマニフェストを自動発見
 
 use crate::drivers::manifest;
 use serde::{Deserialize, Serialize};
@@ -110,55 +110,55 @@ mod tests {
 
     #[tokio::test]
     async fn test_discover_postgres_manifest() {
-        // workspace root を起点にドライバベースフォルダを組み立て
-        // discovery は base_dir/driver-ui/*/ を走査するので、
-        // base_dir = drivers/postgres とする
-        let postgres_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        // repo root を指定すると ops/driver-ui 正本が優先走査される
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()
             .parent()
             .unwrap()
-            .join("drivers/postgres");
+            .to_path_buf();
 
         let req = DiscoverDriverPackagesRequest {
-            driver_ui_base_dir: postgres_dir.to_string_lossy().to_string(),
+            driver_ui_base_dir: repo_root.to_string_lossy().to_string(),
         };
 
         let result = discover_driver_packages(req).await;
         assert!(result.is_ok(), "Discovery should succeed");
 
         let response = result.unwrap();
-        // 実行ファイルが存在しないため、invalid に分類されるはず
         assert!(
-            response.invalid_count > 0 || response.available_count > 0,
-            "Should find postgres manifest (either valid or invalid)"
+            response
+                .available
+                .iter()
+                .any(|pkg| pkg.driver_type == "postgres"),
+            "Should find postgres manifest from ops/driver-ui source of truth"
         );
     }
 
     #[tokio::test]
     async fn test_discover_joywatcher_manifest() {
-        // workspace root を起点にドライバベースフォルダを組み立て
-        // discovery は base_dir/driver-ui/*/ を走査するので、
-        // base_dir = drivers/joywatcher とする
-        let joywatcher_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        // ops/driver-ui 自体を直接指定しても discovery できる
+        let ops_driver_ui_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()
             .parent()
             .unwrap()
-            .join("drivers/joywatcher");
+            .join("ops/driver-ui");
 
         let req = DiscoverDriverPackagesRequest {
-            driver_ui_base_dir: joywatcher_dir.to_string_lossy().to_string(),
+            driver_ui_base_dir: ops_driver_ui_dir.to_string_lossy().to_string(),
         };
 
         let result = discover_driver_packages(req).await;
         assert!(result.is_ok(), "Discovery should succeed");
 
         let response = result.unwrap();
-        // 実行ファイルが存在しないため、invalid に分類されるはず
         assert!(
-            response.invalid_count > 0 || response.available_count > 0,
-            "Should find joywatcher manifest (either valid or invalid)"
+            response
+                .available
+                .iter()
+                .any(|pkg| pkg.driver_type == "joywatcher"),
+            "Should find joywatcher manifest when base dir is ops/driver-ui"
         );
     }
 

@@ -326,6 +326,9 @@ async fn restart_enabled_drivers(state: &tauri::State<'_, AppState>) -> Result<(
 fn detect_default_driver_ui_base_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     if let Ok(resource_dir) = app_handle.path().resource_dir() {
         for candidate in [resource_dir.clone(), resource_dir.join("_up_")] {
+            if candidate.join("ops").join("driver-ui").exists() {
+                return Some(candidate);
+            }
             if candidate.join("driver-ui").exists() {
                 return Some(candidate);
             }
@@ -334,6 +337,9 @@ fn detect_default_driver_ui_base_dir(app_handle: &tauri::AppHandle) -> Option<Pa
 
     if let Ok(current_exe) = std::env::current_exe() {
         if let Some(exe_dir) = current_exe.parent() {
+            if exe_dir.join("ops").join("driver-ui").exists() {
+                return Some(exe_dir.to_path_buf());
+            }
             if exe_dir.join("driver-ui").exists() {
                 return Some(exe_dir.to_path_buf());
             }
@@ -341,6 +347,9 @@ fn detect_default_driver_ui_base_dir(app_handle: &tauri::AppHandle) -> Option<Pa
     }
 
     if let Some(repo_root) = find_repo_root() {
+        if repo_root.join("ops").join("driver-ui").exists() {
+            return Some(repo_root);
+        }
         if repo_root.join("driver-ui").exists() {
             return Some(repo_root);
         }

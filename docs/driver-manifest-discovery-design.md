@@ -55,20 +55,20 @@
 
 ### 5.2 推奨ディレクトリ構成
 
-- `<base>/driver-ui/<driver_type>/driver-manifest.json`
-- `<base>/driver-ui/<driver_type>/registration-ui.exe`
-- `<base>/driver-ui/<driver_type>/driver-<driver_type>.exe`
+- 開発時正本: `<base>/ops/driver-ui/<driver_type>/driver-manifest.json`
+- 開発時正本: `<base>/ops/driver-ui/<driver_type>/registration-ui.exe`
+- 開発時正本: `<base>/ops/driver-ui/<driver_type>/driver-<driver_type>.exe`
 
-補足（workspace 整理後の責務）:
+補足（現在の運用責務）:
 
-- 開発時正本は `driver-ui/<driver_type>/` とする
-- `src-tauri/driver-ui/<driver_type>/` は bundle staging とし、正本から同期する
-- manifest も正本側（`driver-ui/<driver_type>/driver-manifest.json`）へ配置する
+- 開発時正本は `ops/driver-ui/<driver_type>/` とする
+- `core/src-tauri/driver-ui/<driver_type>/` は bundle staging とし、正本から一方向同期する
+- manifest も正本側（`ops/driver-ui/<driver_type>/driver-manifest.json`）へ配置する
 
 ### 5.3 後方互換
 
-- 既存の `driver-ui/<type>/registration-ui(.exe)` 探索は当面維持する。
-- マニフェストが無い既存ドライバは「legacy discovery」で扱う。
+- 配布物 / bundle staging 向けの `driver-ui/<type>/...` 探索は維持する。
+- 開発ツリー内の `drivers/<type>/...` 直参照は段階縮退し、manifest 正本は `ops/driver-ui/` に集約する。
 
 ## 6. マニフェスト仕様（v1）
 

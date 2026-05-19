@@ -117,13 +117,6 @@ fn manifest_candidates_for_root(driver_type: &str, root: &std::path::Path) -> Ve
             .join("driver-manifest.json"),
     );
     candidates.push(root.join(driver_type).join("driver-manifest.json"));
-    candidates.push(
-        root.join("drivers")
-            .join(driver_type)
-            .join("driver-ui")
-            .join(driver_type)
-            .join("driver-manifest.json"),
-    );
 
     let mut unique = Vec::<PathBuf>::new();
     for candidate in candidates {
