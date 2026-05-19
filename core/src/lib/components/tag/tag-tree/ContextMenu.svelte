@@ -1,19 +1,24 @@
 <script lang="ts">
   import type { TagDto } from '$lib/ipc';
+  import type { ScanGroupDto } from '$lib/ipc';
   import type { ContextMenuState } from './types';
 
   let {
     menu,
     onRequestNewTag,
+    onRequestEditDriverScanRate,
     onRequestEditDriver,
     onRequestDeleteDriver,
+    onRequestEditScanGroupRate,
     onRequestEditTag,
     onRequestDeleteTag,
   }: {
     menu: ContextMenuState;
     onRequestNewTag: (driverId: string) => void;
+    onRequestEditDriverScanRate: (driverId: string) => void;
     onRequestEditDriver: (driverId: string) => void;
     onRequestDeleteDriver: (driverId: string) => void;
+    onRequestEditScanGroupRate: (scanGroup: ScanGroupDto) => void;
     onRequestEditTag: (tag: TagDto) => void;
     onRequestDeleteTag: (tag: TagDto) => void;
   } = $props();
@@ -27,6 +32,9 @@
     aria-label="タグツリー操作メニュー"
     tabindex="-1"
   >
+    <button class="context-item" onclick={() => onRequestEditDriverScanRate(menu.driverId!)}>
+      周期一括変更
+    </button>
     <button class="context-item" onclick={() => onRequestNewTag(menu.driverId!)}>
       タグ追加
     </button>
@@ -35,6 +43,18 @@
     </button>
     <button class="context-item danger" onclick={() => onRequestDeleteDriver(menu.driverId!)}>
       接続先削除
+    </button>
+  </div>
+{:else if menu.open && menu.kind === 'scan-group' && menu.scanGroup}
+  <div
+    class="context-menu"
+    style={`left: ${menu.x}px; top: ${menu.y}px;`}
+    role="menu"
+    aria-label="タグツリー操作メニュー"
+    tabindex="-1"
+  >
+    <button class="context-item" onclick={() => onRequestEditScanGroupRate(menu.scanGroup!)}>
+      周期変更
     </button>
   </div>
 {:else if menu.open && menu.kind === 'tag' && menu.tag}

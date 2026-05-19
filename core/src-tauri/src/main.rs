@@ -49,6 +49,8 @@ fn main() {
             commands::tag::create_tag,
             commands::tag::list_tags,
             commands::tag::list_scan_groups,
+            commands::tag::update_scan_group_rate,
+            commands::tag::bulk_update_driver_scan_group_rate,
             commands::tag::delete_tag,
             commands::driver::crud::list_drivers,
             commands::driver::crud::save_driver,

@@ -54,6 +54,7 @@
     reloadAllRegistry,
   } from '$lib/stores/index';
   import {
+    bulkUpdateDriverScanGroupRate,
     checkDriverUiResult,
     deleteDriver,
     discoverDriverPackages,
@@ -76,6 +77,7 @@
     type DriverMetricsDto,
     type ScanGroupDto,
     type TagDto,
+    updateScanGroupRate,
   } from '$lib/ipc/index';
 
   let currentPage = $state<PageId>('dashboard');
@@ -159,6 +161,50 @@
     selectedTag = next.selectedTag;
     selectedScanGroup = next.selectedScanGroup;
     return next.selectedDriver;
+  }
+
+  async function handleUpdateScanGroupRate(scanGroup: ScanGroupDto, scanRateMs: number): Promise<void> {
+    if (!ensureDriverUiNotBusy()) {
+      return;
+    }
+
+    try {
+      const updated = await updateScanGroupRate({
+        driver_id: scanGroup.driver_id,
+        scan_group_id: scanGroup.id,
+        scan_rate_ms: scanRateMs,
+      });
+      await reloadScanGroups(scanGroup.driver_id);
+      selectedScanGroup = updated;
+      tagActionMessage = `ScanGroup ${updated.id} の周期を ${updated.scan_rate_ms ?? scanRateMs} ms に更新しました。`;
+    } catch (error) {
+      const message = extractErrorMessage(error, 'ScanGroup 周期の更新に失敗しました');
+      tagActionMessage = message;
+      notify(message);
+    }
+  }
+
+  async function handleBulkUpdateDriverScanGroupRate(driver: DriverDto, scanRateMs: number): Promise<void> {
+    if (!ensureDriverUiNotBusy()) {
+      return;
+    }
+
+    try {
+      const result = await bulkUpdateDriverScanGroupRate({
+        driver_id: driver.id,
+        scan_rate_ms: scanRateMs,
+      });
+      await reloadScanGroups(driver.id);
+      if (selectedScanGroup?.driver_id === driver.id) {
+        const refreshed = $scanGroupsStore.items.find((item) => item.id === selectedScanGroup?.id);
+        selectedScanGroup = refreshed ?? selectedScanGroup;
+      }
+      tagActionMessage = `接続先 ${driver.id} 配下の ${result.updated_count} 件の ScanGroup 周期を ${result.scan_rate_ms} ms に更新しました。`;
+    } catch (error) {
+      const message = extractErrorMessage(error, '接続先単位の周期更新に失敗しました');
+      tagActionMessage = message;
+      notify(message);
+    }
   }
 
   let selectedTag = $state<TagDto | null>(null);
@@ -504,6 +550,8 @@
     selectedDriver,
     selectedScanGroup,
     editorDriverId,
+    onUpdateScanGroupRate: handleUpdateScanGroupRate,
+    onBulkUpdateDriverScanGroupRate: handleBulkUpdateDriverScanGroupRate,
     onTagEditorDone: selectionController.onTagEditorDone,
     onTagEditorCancel: selectionController.onTagEditorCancel,
     onTagDetailEdit: tagUiController.requestEditTag,

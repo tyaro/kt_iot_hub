@@ -47,21 +47,22 @@
 
 ### 1.1 規約違反 / グレーゾーン（300 行超） - 現状（2026-05-20 評価時点）
 
-#### 実測で依然 300 行超過（要対応）
+#### 実測の現況（2026-05-20 更新）
 
 | ファイル | 行数 | 主担務 | 状態 |
 | --- | --- | --- | --- |  |
-| `drivers/joywatcher/ui/assets/app.js` | 1242 | ドライバ登録 UI 静的資産 | ❌ **R-FE-09 未完** (計画時 1,105 → 悪化) |
-| `drivers/postgres/ui/assets/app.js` | 709 | ドライバ登録 UI 静的資産 | ❌ **R-FE-09 未完** |
-| `core/src-tauri/src/drivers/manifest.rs` | 439 | ドライバマニフェスト探索 | ❌ **新規 300 超（R-BE-08 新規提案）** |
-| `core/src-tauri/src/drivers/mod.rs` | 431 | ドライバプロセス管理 | ❌ **新規 300 超（R-BE-08 関連）** |
+| `drivers/joywatcher/ui/assets/app.js` | 11 | ドライバ登録 UI 静的資産（ESM エントリ） | ✅ **R-FE-09 完了** |
+| `drivers/postgres/ui/assets/app.js` | 11 | ドライバ登録 UI 静的資産（ESM エントリ） | ✅ **R-FE-09 完了** |
+| `core/src-tauri/src/drivers/manifest.rs` | 290 | ドライバマニフェスト探索 | ✅ **R-BE-08b で 300 行以下化** |
+| `core/src-tauri/src/drivers/mod.rs` | 262 | ドライバプロセス管理 | ✅ **R-BE-08 で 300 行以下化** |
 | `core/src/lib/components/mqtt-monitor/MqttMonitorWindow.svelte` | 406 | MQTT モニタ画面 | △ R-FE-08 部分完了（627→406。残 100 行削減余地） |
 | `core/src/lib/components/driver/PostgresRegistrationPanel.svelte` | 355 | postgres 登録 | △ R-FE-07 部分完了（415→355） |
-| `core/src-tauri/src/commands/driver/transfer.rs` | 333 | タグ設定エクスポート/インポート | ❌ **計画未収録の 300 超過（新規）** |
+| `core/src-tauri/src/commands/driver/transfer.rs` | 188 | タグ設定エクスポート/インポート | ✅ **R-NEW-01 で 300 行以下化** |
 
 #### 既に完了したタスク（参考記録）
 
 リファクタ計画 R-BE-01 ～ R-DEDUP-12 はすべて 2026-05-18 に完了。以下は完了時点の達成成果:
+
 - `commands/dto.rs` (284→分割) ✅
 - `commands/driver/ui_launcher.rs` (366→分割) ✅
 - `commands/subscriber/monitor.rs` (349→分割) ✅
@@ -559,11 +560,14 @@ components/
 - **受け入れ条件**: x86 ブリッジ / x64 ドライバ / UI 全てが従来と同じ DLL / EXE を解決する。
 - **注意**: bridge-x86 は i686 ターゲット。共通モジュールが `cfg(target_arch)` 依存を持たないこと。
 
-#### R-DEDUP-10: `apps/*/driver/src/grpc_client.rs` 統合
+#### R-DEDUP-10: driver runtime gRPC クライアント統合
 
 - **Priority**: 中
 - **Depends**: R-DEDUP-09 の方針確定（共通モジュール配置場所）
-- **対象**: `apps/joywatcher/driver/src/grpc_client.rs`, `apps/postgres/driver/src/grpc_client.rs`
+- **対象**:
+  - `drivers/joywatcher/driver/src/main.rs`
+  - `drivers/postgres/driver/src/main.rs`
+  - `apps/common/driver_runtime_grpc_client.rs`
 - **手順**:
   1. 両ファイルが事実上同一（差分は `#[allow(dead_code)]` のみ）であることを再確認。
   2. `packages/protocol-rs/` 配下、または新設 `packages/driver-runtime-client/` に `DriverRuntimeClient` を集約（protocol-rs に置く場合は依存追加を最小化）。
@@ -614,7 +618,7 @@ components/
 | R-FE-06 | Copilot | 完了（ローカル） | - | 2026-05-18: DriverDetailPanel を接続フォーム/詳細表示部品へ分割 |
 | R-FE-07 | Copilot | 完了（ローカル） | - | 2026-05-18: PostgresRegistrationPanel を接続/テーブル/カラム対応部品へ分割 |
 | R-FE-08 | Copilot | 完了（ローカル） | - | 2026-05-18: MQTT Monitor を ControlBar/TopicTree/Detail と polling モジュールへ分割 |
-| R-FE-09 | Copilot | **未着手 / 悪化中** | - | 計画時 1,105 行 → 実測 1,242 行（joywatcher）/ 709 行（postgres）。ESM 分割 + 共通 `assets/lib/` 集約が必要 |
+| R-FE-09 | Copilot | **完了（ローカル）** | - | 2026-05-20: driver UI 静的資産を ESM 分割。`app.js` を薄いエントリに縮小し、`_shared/*.js` も全て 300 行以下へ再分割 |
 | R-RS-01 | Copilot | 完了（ローカル） | - | 2026-05-18: `dll_api.rs` を高レベルAPIへ整理し、FFI/シンボル解決を `dll_ffi.rs` / `dll_symbols.rs` へ分離 |
 | R-RS-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `joywatcher_bridge_client.rs` を `commands.rs` / `protocol.rs` / `process.rs` に分割 |
 | R-RS-03 | Copilot | 完了（ローカル） | - | 2026-05-18: `joywatcher_bridge.rs` を `process.rs` / `protocol.rs` / `commands.rs` に分割 |
@@ -627,7 +631,7 @@ components/
 | R-DEDUP-07 | Copilot | 完了（ローカル） | - | 2026-05-18: `apps/common/ui-assets/tauri.js` を共通化し、driver UI 2種から参照化 |
 | R-DEDUP-08 | Copilot | **完了（ローカル）** | - | 2026-05-20: `commands/util.rs` 正本化完了。ラッパ 2 件（`crud/logic.rs:5`, `ui_launcher/paths.rs:221`）を削除。呼び出し元 3 件（`ui_launcher/command.rs`, `crud/command.rs`, `import/command.rs`）のインポート統一。検証完了 ✅ |
 | R-DEDUP-09 | Copilot | 完了（ローカル） | - | 2026-05-18: JoyWatcher 探索ロジックを `apps/joywatcher/common/path_utils.rs` へ集約 |
-| R-DEDUP-10 | Copilot | **完了予定（D-07 対応）** | - | 2026-05-18: `apps/common/driver_runtime_grpc_client.rs` 検討中。`postgres/driver/src/grpc_client.rs` 確認要 |
+| R-DEDUP-10 | Copilot | **完了（ローカル）** | - | 2026-05-20: `apps/common/driver_runtime_grpc_client.rs` を共通クライアントとして採用。両 driver `main.rs` を `#[path = "../../../../apps/common/driver_runtime_grpc_client.rs"] mod grpc_client;` 参照へ統一。`cargo check -p driver-joywatcher` / `cargo check -p driver-postgres` 通過 |
 | R-DEDUP-11 | Copilot | 完了（ローカル） | - | 2026-05-18: `reloadAllRegistry()` を追加し三連リロード重複を解消 |
 | R-DEDUP-12 | Copilot | 完了（ローカル） | - | 2026-05-18: `src/lib/ipc/_invoke.ts` を導入し IPC ラッパ全体を `ipcInvoke` 経由へ統一 |
 | **R-NEW-01** | **Copilot** | **完了（ローカル）** | **-** | **2026-05-20: `commands/driver/transfer.rs` (375行) → `transfer.rs` (220行) + `transfer_impl.rs` (165行) に分割。`TagManagementSettingsFile` struct と `validate_import_payload` / `ensure_unique_ids` / `replace_registry_tags` / `restart_enabled_drivers` helper を transfer_impl へ分離** |
@@ -663,7 +667,7 @@ components/
   - `cargo clippy --all-targets --all-features -- -D warnings` (`src-tauri`): ✅ 通過
   - `cargo test` (`src-tauri`): ✅ 通過（17 passed, 0 failed）
 - 2026-05-20 評価＆更新（評価レポート反映）
-  - 状態: R-BE-01〜08 / R-FE-01〜08 / R-RS-01〜03 / R-DEDUP-01～06,08,09,11,12 は完了。**残課題: R-FE-09, R-DEDUP-07, R-DEDUP-10 検討中**
+  - 状態: R-BE-01〜08 / R-FE-01〜09 / R-RS-01〜03 / R-DEDUP-01～12 は完了。**残課題（計画タスク）: なし**
   - 実測行数から新規課題 3 件発生: `drivers/{mod,manifest}.rs` 両 300超 → R-BE-08/08b で分割完了 / `commands/driver/transfer.rs` 333 行 → R-NEW-01 で分割完了
   - `MqttMonitorWindow.svelte` は R-FE-08 後 627→406 に縮小されたが、残 100 行削減余地
 - 2026-05-20 R-NEW-01, R-BE-08, R-BE-08b 完了
@@ -681,6 +685,14 @@ components/
   - **Task 1.2 完了**: スクリプト先頭コメント改善（`build-release-driver-suite.ps1`, `install-driver-ui.ps1`, `install-driver-runtime.ps1`）。正本→staging 一方向フロー明確化
   - **Task 1.3 完了**: `core/src-tauri/driver-ui/.staginginfo` 更新。staging 明示 + 直接編集禁止警告追加
   - 検証: `npm run check` ✅ / `cargo test` ✅ (32 tests passed)
+- 2026-05-20 R-FE-09 完了
+  - driver UI 静的資産を ESM モジュールへ分割し、`drivers/*/ui/assets/app.js` をエントリ専用（11行）へ縮小
+  - `_shared` 配下の分割結果: JoyWatcher/Postgres ともに **全 JS が 300 行以下** を達成
+  - 検証: `npm run check` ✅（0 errors / 0 warnings）
+- 2026-05-20 R-DEDUP-10 完了
+  - 共通 gRPC クライアント実装を `apps/common/driver_runtime_grpc_client.rs` へ集約済みであることを確認
+  - `drivers/joywatcher/driver/src/main.rs` / `drivers/postgres/driver/src/main.rs` の参照先を共通化パスで統一していることを確認
+  - 検証: `cargo check -p driver-joywatcher` ✅ / `cargo check -p driver-postgres` ✅
 
 ---
 

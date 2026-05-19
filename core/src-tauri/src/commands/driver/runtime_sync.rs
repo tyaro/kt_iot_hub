@@ -5,7 +5,7 @@ use crate::commands::dto::ErrorResponse;
 use crate::config::DriverConfig;
 use tracing::info;
 
-pub(super) async fn sync_driver_runtime(
+pub(crate) async fn sync_driver_runtime(
     state: &tauri::State<'_, AppState>,
     config: &DriverConfig,
 ) -> Result<(), ErrorResponse> {

@@ -7,12 +7,14 @@
     isSelected,
     onToggle,
     onSelect,
+    onContextMenu,
   }: {
     scanGroup: ScanGroupDto;
     isExpanded: boolean;
     isSelected: boolean;
     onToggle: () => void;
     onSelect: () => void;
+    onContextMenu: (event: MouseEvent) => void;
   } = $props();
 
   function formatCycleSummary(item: ScanGroupDto) {
@@ -54,6 +56,7 @@
       class="tree-label tree-label-btn scan-group-label"
       class:selected={isSelected}
       onclick={onSelect}
+      oncontextmenu={onContextMenu}
     >
       📊 {scanGroup.id}
     </button>

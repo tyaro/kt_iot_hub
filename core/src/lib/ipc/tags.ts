@@ -23,6 +23,23 @@ export interface ScanGroupDto {
   cycle_status?: string;
 }
 
+export interface UpdateScanGroupRateRequest {
+  driver_id: string;
+  scan_group_id: string;
+  scan_rate_ms: number;
+}
+
+export interface BulkUpdateDriverScanGroupRateRequest {
+  driver_id: string;
+  scan_rate_ms: number;
+}
+
+export interface BulkUpdateScanGroupsResult {
+  driver_id: string;
+  updated_count: number;
+  scan_rate_ms: number;
+}
+
 export type CreateTagRequest = TagShape;
 
 type ApiTagDto = {
@@ -53,6 +70,23 @@ type ApiCreateTagRequest = {
   driverId: string;
   scanGroupId: string;
   driverSpec: Record<string, unknown>;
+};
+
+type ApiUpdateScanGroupRateRequest = {
+  driverId: string;
+  scanGroupId: string;
+  scanRateMs: number;
+};
+
+type ApiBulkUpdateDriverScanGroupRateRequest = {
+  driverId: string;
+  scanRateMs: number;
+};
+
+type ApiBulkUpdateScanGroupsResult = {
+  driverId: string;
+  updatedCount: number;
+  scanRateMs: number;
 };
 
 function mapTagFromApi(api: ApiTagDto): TagDto {
@@ -91,6 +125,35 @@ function mapCreateTagToApi(req: CreateTagRequest): ApiCreateTagRequest {
   };
 }
 
+function mapUpdateScanGroupRateToApi(
+  req: UpdateScanGroupRateRequest,
+): ApiUpdateScanGroupRateRequest {
+  return {
+    driverId: req.driver_id,
+    scanGroupId: req.scan_group_id,
+    scanRateMs: req.scan_rate_ms,
+  };
+}
+
+function mapBulkUpdateDriverScanGroupRateToApi(
+  req: BulkUpdateDriverScanGroupRateRequest,
+): ApiBulkUpdateDriverScanGroupRateRequest {
+  return {
+    driverId: req.driver_id,
+    scanRateMs: req.scan_rate_ms,
+  };
+}
+
+function mapBulkUpdateScanGroupsResultFromApi(
+  api: ApiBulkUpdateScanGroupsResult,
+): BulkUpdateScanGroupsResult {
+  return {
+    driver_id: api.driverId,
+    updated_count: api.updatedCount,
+    scan_rate_ms: api.scanRateMs,
+  };
+}
+
 /**
  * タグを作成する
  */
@@ -117,6 +180,33 @@ export async function listScanGroups(driverId?: string): Promise<ScanGroupDto[]>
     driverId: driverId ?? null,
   });
   return api.map(mapScanGroupFromApi);
+}
+
+/**
+ * 1件の ScanGroup 周期を更新する
+ */
+export async function updateScanGroupRate(
+  req: UpdateScanGroupRateRequest,
+): Promise<ScanGroupDto> {
+  const api = await ipcInvoke<ApiScanGroupDto>('update_scan_group_rate', {
+    req: mapUpdateScanGroupRateToApi(req),
+  });
+  return mapScanGroupFromApi(api);
+}
+
+/**
+ * 指定接続先配下の ScanGroup 周期を一括更新する
+ */
+export async function bulkUpdateDriverScanGroupRate(
+  req: BulkUpdateDriverScanGroupRateRequest,
+): Promise<BulkUpdateScanGroupsResult> {
+  const api = await ipcInvoke<ApiBulkUpdateScanGroupsResult>(
+    'bulk_update_driver_scan_group_rate',
+    {
+      req: mapBulkUpdateDriverScanGroupRateToApi(req),
+    },
+  );
+  return mapBulkUpdateScanGroupsResultFromApi(api);
 }
 
 /**

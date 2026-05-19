@@ -12,6 +12,8 @@
     selectedDriver: DriverDto | null;
     selectedScanGroup: ScanGroupDto | null;
     editorDriverId: string | null;
+    onUpdateScanGroupRate: (scanGroup: ScanGroupDto, scanRateMs: number) => Promise<void>;
+    onBulkUpdateDriverScanGroupRate: (driver: DriverDto, scanRateMs: number) => Promise<void>;
     onTagEditorDone: () => Promise<void>;
     onTagEditorCancel: () => void;
     onTagDetailEdit: (tag: TagDto) => void;
@@ -46,6 +48,8 @@
     selectedDriver,
     selectedScanGroup,
     editorDriverId,
+    onUpdateScanGroupRate,
+    onBulkUpdateDriverScanGroupRate,
     onTagEditorDone,
     onTagEditorCancel,
     onTagDetailEdit,
@@ -82,6 +86,8 @@
     {selectedDriver}
     {selectedScanGroup}
     {editorDriverId}
+    onUpdateScanGroupRate={onUpdateScanGroupRate}
+    onBulkUpdateDriverScanGroupRate={onBulkUpdateDriverScanGroupRate}
     onTagEditorDone={onTagEditorDone}
     onTagEditorCancel={onTagEditorCancel}
     onTagDetailEdit={onTagDetailEdit}

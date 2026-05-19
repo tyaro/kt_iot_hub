@@ -173,6 +173,28 @@ enabled = true
 5. `driver_spec.kind` と接続先 `kind` が一致
 6. PostgreSQL では `driver_spec.value_column` が必須
 
+### `scan_group.scan_rate_ms` の更新ルール
+
+`scan_group.scan_rate_ms` は `tags.toml` 上の正本値であり、既存 ScanGroup に対する周期変更は
+本体アプリから以下の単位で実施できる。
+
+- **単体更新**: `(driver, scan_group.id)` をキーに 1 件の `scan_rate_ms` を更新する
+- **接続先一括更新**: `driver` をキーに、その接続先配下の全 `scan_group.scan_rate_ms` を同一値へ更新する
+
+更新時の仕様:
+
+1. 変更対象は `scan_rate_ms` のみとする
+2. `scan_group.id` / `driver` / `table` / `timestamp_column` / `node` / `schema` は変更しない
+3. `scan_group.id` はドライバ横断で重複し得るため、単体更新の識別子は **`driver + scan_group.id`** とする
+4. 保存は既存のアトミックライト方式（一時ファイル → rename）で行う
+5. メモリ上の `scan_groups` と `tags.toml` を同一トランザクション相当で同期する
+
+バリデーション:
+
+- `scan_rate_ms` は 100ms 以上の整数とする
+- 単体更新時に対象 `(driver, scan_group.id)` が存在しない場合はエラーとする
+- 一括更新時に対象 `driver` 配下の ScanGroup が 0 件の場合はエラーとする
+
 ## `config/drivers.toml` 例
 
 ```toml
@@ -233,6 +255,7 @@ topic = "plant"
 - ドライバ固有の接続先情報は `driver_spec` に格納する。
 - 本体は `driver`（接続先ID）と `scan_group` の参照整合を検証し、`driver_spec` の詳細解釈は各ドライバへ委譲する。
 - PostgreSQL のように複数タグを同一テーブルから読む場合は、`scan_group` でテーブル単位の読出し周期を管理する。
+- 本体 UI から変更できる ScanGroup 項目は当面 `scan_rate_ms` のみとし、構造変更はドライバ UI 側で扱う。
 - 編集時はアトミックライト（一時ファイル → rename）で破損を防止する。
 - バージョンフィールド（`schema_version`）をファイル先頭に持たせ、将来のマイグレーションに備える。
 - 登録プロセス取込時は、全検証成功後に一括反映し、部分成功を許可しない。

@@ -15,8 +15,8 @@
 | アーキテクチャ実装整合性 | ○ | gRPC 常時稼働・ランタイム制御の対象範囲、DriverProcessManager、Tag Bus、PublisherManager の構成は設計と一致。ドライバ UI 分離・JoyWatcher x86 bridge も設計通り。 |
 | コード品質（バックエンド） | ○ | `commands/` の薄ラッパ + `core` / `drivers` 分離は守られている。1 ファイル 300 行規約はおおむね達成（後述の例外あり）。 |
 | コード品質（フロント） | ◎ | リファクタ計画後の分割（`ThreePane`, `DashboardContent`, `TagTree`, `MqttMonitorWindow` 等）が反映され、現状 Svelte 側は全ファイル 300 行台以下に収束。 |
-| リファクタ計画達成度 | ○ | `R-BE-01/02/03/05/06/07`, `R-FE-01〜08`, `R-DEDUP-01`, `R-RS-01〜03` は概ね完了。**未完が `R-FE-09`（ドライバ UI 静的資産分割）と `R-DEDUP-08`（`normalize_optional_string` 3 重定義）**。 |
-| 既知の地雷 | △ | ドライバ UI 静的資産が肥大化（`drivers/joywatcher/ui/assets/app.js` が **1,242 行**、計画時 1,105 行より増加）。`drivers/mod.rs` (431) / `drivers/manifest.rs` (439) が新たな 300 行超過候補。 |
+| リファクタ計画達成度 | ◎ | `R-BE-01〜08`, `R-FE-01〜09`, `R-RS-01〜03`, `R-DEDUP-01〜12`, `R-NEW-01` は完了。現状の規約残件は Svelte 2 ファイル（`MqttMonitorWindow.svelte` 406 行、`PostgresRegistrationPanel.svelte` 355 行）のみ。 |
+| 既知の地雷 | ○ | 以前の巨大 `drivers/*/ui/assets/app.js` は解消済み。現時点の主な注意点は、ドキュメント内に古い行数・未完表記が残りやすい点。 |
 | セキュリティ / 規約 | ○ | `unsafe_code` の使用は JoyWatcher x86 bridge の FFI 周辺に局所化。`tauri.conf.json` の CSP 維持・capabilities 最小化方針は継続中。秘匿情報のハードコードは未検出。 |
 
 総評: **設計はオフライン IoT ハブとして非常に良くまとまっており、現状はリファクタ計画後半に位置する成熟段階**。残課題はフロントエンドのドライバ別静的資産（巨大 `app.js`）と少数の重複ヘルパに収束している。
@@ -38,16 +38,16 @@
 4. **設定の TOML 正本化**
    - AI 編集・Git 差分の双方に強い。アトミック書き出し（`write_toml_atomic`）が `commands/config_io` に集約済み。
 5. **段階的ディスカバリ移行**
-   - [docs/driver-manifest-discovery-design.md](./driver-manifest-discovery-design.md) で manifest 駆動への 3 段階移行（v0.4.0 deprecate → v0.5.0 削除）が決定済み。`drivers/manifest.rs` (439 行) が Phase 1 の実体。
+   - [docs/driver-manifest-discovery-design.md](./driver-manifest-discovery-design.md) で manifest 駆動への 3 段階移行（v0.4.0 deprecate → v0.5.0 削除）が決定済み。実装は `drivers/manifest.rs` + `drivers/manifest_discovery.rs` へ分割済み。
 
 ### 2.2 弱み・リスク
 
 | # | 内容 | 影響 | 推奨対応 |
 | --- | --- | --- | --- |
-| W-1 | ドライバ UI 静的資産（`drivers/*/ui/assets/app.js`）が分割されておらず肥大化（joywatcher 1,242 行、postgres 709 行） | 規約違反 / 保守性低下 / 重複バグ温床 | `R-FE-09` を実施。`<script type="module">` 化 + 共通 `assets/lib/` に invoke ラッパ・`formatError`・`normalizeId` を集約。CSP / `frontendDist` 影響事前確認。 |
-| W-2 | `drivers/mod.rs` 431 行 / `drivers/manifest.rs` 439 行 | 規約（300 行）違反 | manifest discovery 系を `manifest/{schema,discover,resolver}.rs` に責務分割。`drivers/mod.rs` は executable 解決ロジックを `executable_resolver.rs` に分離余地あり。 |
-| W-3 | `normalize_optional_string` が `util.rs` / `crud/logic.rs` / `ui_launcher/paths.rs` の 3 箇所に並存 | 仕様分岐リスク | `R-DEDUP-08`: `commands/util.rs` を正本にし、他 2 箇所を `use crate::commands::util::normalize_optional_string;` に置換。 |
-| W-4 | `commands/driver/transfer.rs` 333 行（タグ設定 JSON エクスポート/インポート） | 規約超過 | `transfer/{command.rs, export.rs, import.rs}` に責務分割を検討。 |
+| W-1 | `MqttMonitorWindow.svelte` (406) / `PostgresRegistrationPanel.svelte` (355) が 300 行超 | 規約上の残件 | 機能安定性は維持されているため、次回の保守タイミングで段階分割（任意）。 |
+| W-2 | ドキュメント内の古い行数・未完表記が残りやすい | 進捗判断の誤認 | `docs/refactor-plan.md` と本評価レポートを同日に同期更新する運用を固定化。 |
+| W-3 | `import_driver_ui_result` 反映順序（sync 失敗時の見え方） | 運用時の混乱余地 | rollback もしくは反映順序整理を別チケットで検討。 |
+| W-4 | `cargo clippy -D warnings` のベースライン管理 | CI 安定性 | `dead_code` 等の段階是正を継続タスク化。 |
 | W-5 | `apps_state.rs` の `Shared<T>` が 16 並列フィールド（リファクタ計画では R-BE-07 で補助型外出しのみ実施済） | 後続で凝集度が上がりにくい | ドメイン別サブ構造体（`MqttMonitorState`, `DriverUiSessionStore` 等）への凝集を別タスクで段階導入。今回の不変条件には抵触しない範囲で。 |
 | W-6 | `import_driver_ui_result` の反映順序: `sync_driver_runtime` 失敗時に `tags.toml` 更新済 / registry 未反映の不整合（リポジトリメモ既知） | 運用時の見え方の混乱 | 反映を「メモリ反映 → ランタイム sync → 失敗時に TOML を rollback」へ整理する設計タスクを起票推奨（互換維持のため別チケット）。 |
 | W-7 | `cargo clippy --all-targets --all-features -- -D warnings` の既存ベースラインが `dead_code` 系で失敗（リポジトリメモ既知） | CI で「全体グリーン」の保証がない | 影響ファイルごとに `#[allow(dead_code)]` を局所付与 → 段階的に削除する別タスク化（リファクタ規律「機能変更を伴わない」と整合）。 |
@@ -58,7 +58,7 @@
 - ✅ `docs/architecture.md` の「Driver Process Manager」「gRPC 常時稼働」「Tag Bus 中心」「Publisher trait」: いずれも実装側に対応物あり（`drivers/mod.rs`, `grpc/driver_runtime.rs`, `core/tag_bus.rs`, `publishers/mod.rs`）。
 - ✅ `decisions.md` の「`start_runtime_services` は gRPC を停止しない」: `commands/runtime.rs` 実装と整合（gRPC shutdown は本体終了時のみ）。
 - ✅ `mqtt-monitor.md` の「subscriber は本体内・モニタは別ウィンドウ」: `subscribers/mqtt_monitor.rs` + `commands/subscriber/monitor/` + Svelte `MqttMonitorWindow.svelte` で実装。
-- ⚠️ `docs/refactor-plan.md` §1.1 の「分割対象一覧」は**既に大半が完了済**で表記が陳腐化。完了タスクと残課題（`R-FE-09`, `R-DEDUP-08`, 新規発生した 300 行超過 2 件）を §4 進行ログに反映し、表を最新化する必要あり。
+- ✅ `docs/refactor-plan.md` §1.1 / §4 は 2026-05-20 時点で更新済み。タスク進捗は「R-DEDUP-07/08/10 を含め完了」に同期済み。
 
 ---
 
@@ -118,13 +118,11 @@ grpc (DriverRuntimeService / TagRegistrationService)
 
 | ファイル | 行数 | 区分 | 評価 |
 | --- | --- | --- | --- |
-| [drivers/joywatcher/ui/assets/app.js](../drivers/joywatcher/ui/assets/app.js) | 1242 | フロント（ドライバ UI） | ❌ 要分割（R-FE-09 未完）。計画時 1,105 → 増加 |
-| [drivers/postgres/ui/assets/app.js](../drivers/postgres/ui/assets/app.js) | 709 | フロント（ドライバ UI） | ❌ 要分割（R-FE-09 未完） |
-| [core/src-tauri/src/drivers/manifest.rs](../core/src-tauri/src/drivers/manifest.rs) | 439 | バックエンド | ❌ 新規 300 行超過 |
-| [core/src-tauri/src/drivers/mod.rs](../core/src-tauri/src/drivers/mod.rs) | 431 | バックエンド | ❌ 新規 300 行超過 |
-| [core/src/lib/components/mqtt-monitor/MqttMonitorWindow.svelte](../core/src/lib/components/mqtt-monitor/MqttMonitorWindow.svelte) | 406 | フロント | △ 300 超だが R-FE-08 で大幅縮減後（627→406）。残分割余地あり |
-| [core/src/lib/components/driver/PostgresRegistrationPanel.svelte](../core/src/lib/components/driver/PostgresRegistrationPanel.svelte) | 355 | フロント | △ R-FE-07 部分達成（415→355） |
-| [core/src-tauri/src/commands/driver/transfer.rs](../core/src-tauri/src/commands/driver/transfer.rs) | 333 | バックエンド | ❌ 計画未収録の 300 超過 |
+| [core/src/lib/components/mqtt-monitor/MqttMonitorWindow.svelte](../core/src/lib/components/mqtt-monitor/MqttMonitorWindow.svelte) | 406 | フロント | △ 300 超（R-FE-08 後の残分） |
+| [core/src/lib/components/driver/PostgresRegistrationPanel.svelte](../core/src/lib/components/driver/PostgresRegistrationPanel.svelte) | 355 | フロント | △ 300 超（R-FE-07 後の残分） |
+| [core/src-tauri/src/drivers/manifest.rs](../core/src-tauri/src/drivers/manifest.rs) | 290 | バックエンド | ✅ R-BE-08b で 300 行以下 |
+| [core/src-tauri/src/drivers/mod.rs](../core/src-tauri/src/drivers/mod.rs) | 262 | バックエンド | ✅ R-BE-08 で 300 行以下 |
+| [core/src-tauri/src/commands/driver/transfer.rs](../core/src-tauri/src/commands/driver/transfer.rs) | 188 | バックエンド | ✅ R-NEW-01 で 300 行以下 |
 | 他（300 行未満） | — | — | ✅ |
 
 逆に**プランで「分割対象」とされていたが既に達成済み**の主要例:
@@ -149,9 +147,9 @@ grpc (DriverRuntimeService / TagRegistrationService)
 | D-01 (`write_tags_toml_atomic` 2 重定義) | ✅ 解消 | 現状 `commands/driver/toml_io.rs` の 1 箇所のみ。`tag.rs` 側は `super::driver::toml_io::write_tags_toml_atomic` を import |
 | D-02 (`resolve_config_dir` 等の共通化) | ✅ 部分解消 | `commands/config_io/mod.rs` に統合済 |
 | D-03 (`ErrorResponse` 構築の散在) | △ 残 | `ErrorResponse::invalid_input` ヘルパは追加されたが、`map_err` 直書きは依然多い |
-| D-05 (`normalize_optional_string` 3 重) | ❌ **未解消**（R-DEDUP-08 残） | `util.rs` / `crud/logic.rs` / `ui_launcher/paths.rs` |
-| D-06 / D-08 (ドライバ UI 系の重複) | ❌ 未解消 | R-FE-09 と連動。`tauriInvoke` ラッパ・`BRIDGE_EXE_NAME` 探索ロジックの共通化が宙ぶらりん |
-| D-07 (driver `grpc_client.rs` の 1 行差重複) | ❌ 未解消（ファイルパス変更あり） | `drivers/{joywatcher,postgres}/driver/src/main.rs` 周辺へ移動済の可能性あり。要再調査 |
+| D-05 (`normalize_optional_string` 3 重) | ✅ 解消 | R-DEDUP-08 完了。`commands/util.rs` 正本へ統一 |
+| D-06 / D-08 (ドライバ UI 系の重複) | ✅ 解消 | R-FE-09 + R-DEDUP-07 完了。ESM 分割と共通ライブラリ化を実施 |
+| D-07 (driver `grpc_client.rs` の 1 行差重複) | ✅ 解消 | R-DEDUP-10 完了。`apps/common/driver_runtime_grpc_client.rs` へ統合 |
 
 ### 4.3 エラー処理 / 安全性
 
@@ -178,37 +176,29 @@ grpc (DriverRuntimeService / TagRegistrationService)
 | R-BE-06: `metrics` platform 分割 | ◯（`commands/metrics/` 化のみ。windows/fallback 分離は未確認、現状 1 ファイル 179 行で許容） |
 | R-BE-07: `app_state` 補助型外出し | ✅ 完了（`app_state/{app_cpu,driver_ui_session,mqtt_monitor,scan_metrics}.rs`） |
 | R-FE-01〜08 | ✅ ほぼ完了（`MqttMonitorWindow` のみ 406 行で部分残） |
-| **R-FE-09: ドライバ UI 静的資産分割** | ❌ **未着手 / 悪化中**（joywatcher 1,105→1,242） |
+| **R-FE-09: ドライバ UI 静的資産分割** | ✅ 完了（`app.js` エントリ薄化 + `_shared` 分割） |
 | R-RS-01/02/03: JoyWatcher 大ファイル分割 | ✅ 完了 |
 | R-DEDUP-01: `write_tags_toml_atomic` 重複排除 | ✅ 完了 |
-| **R-DEDUP-08: `normalize_optional_string` 統一** | ❌ 未完 |
-| R-DEDUP-07/09: ドライバ UI / JoyWatcher 共通化 | △ 部分残 |
+| **R-DEDUP-08: `normalize_optional_string` 統一** | ✅ 完了 |
+| R-DEDUP-07/09/10: ドライバ UI / JoyWatcher / gRPC client 共通化 | ✅ 完了 |
 
 ---
 
 ## 6. 推奨アクション（優先度順）
 
-1. **R-FE-09 の再優先化（高）**  
-   - `drivers/joywatcher/ui/assets/app.js` (1,242 行) を ESM 分割し、`drivers/{joywatcher,postgres}/ui/assets/lib/` 共通モジュール（invoke ラッパ・`formatError`・`normalizeId`）を導入。CSP（`script-src 'self'`）と `frontendDist` の参照を事前検証。
-2. **`drivers/mod.rs` / `drivers/manifest.rs` の責務分割（中）**  
-   - manifest 駆動ディスカバリは Phase 進行に伴いさらに増える見込みのため、`drivers/manifest/{schema,discover,resolver,fallback}.rs` 等への分割を計画化（[docs/refactor-plan.md](./refactor-plan.md) に新規 `R-BE-08` として追記推奨）。
-3. **R-DEDUP-08（中）**  
-   - `commands/util.rs` を正本に統一。差分はテストで保証。
-4. **`commands/driver/transfer.rs` 分割（中）**  
-   - JSON エクスポート / インポート / `driverUiBaseDir` 既定値解決を独立ファイルへ。
-5. **refactor-plan の §1.1 / §4 進行ログ更新（中）**  
-   - 完了済タスクの除去と、新規発生した 300 行超過 2 件・`app.js` 拡大の記録。
-6. **`MqttMonitorWindow.svelte` の残り 100 行削減（低）**  
-   - `monitor/monitorPolling.ts` 抽出が完了済かを確認し、残ロジックを `ControlBar.svelte` 等に分配。
-7. **`import_driver_ui_result` の整合性改善（低・別チケット）**  
-   - TOML rollback or 「メモリ反映先行」順序の設計レビュー（互換維持の範囲で）。
-8. **clippy `-D warnings` グリーン化計画（低）**  
-   - `dead_code` 系の局所 `#[allow]` を段階解消する独立タスクとして起票。
+1. **ドキュメント同期運用の固定化（中）**  
+   - `refactor-plan` / `evaluation` を同日更新し、未完表記の陳腐化を防止する。
+2. **Svelte 300 行超 2 ファイルの扱い方針決定（中）**  
+   - `MqttMonitorWindow.svelte` と `PostgresRegistrationPanel.svelte` を追加分割するか、例外理由を明記して据え置くかを決める。
+3. **`import_driver_ui_result` の整合性改善（低・別チケット）**  
+   - rollback もしくは反映順序整理の設計レビューを行う。
+4. **clippy `-D warnings` ベースライン運用（低）**  
+   - `dead_code` 系の段階是正タスクを継続する。
 
 ---
 
 ## 7. 結論
 
 - 本プロジェクトは **設計書・ADR・リファクタ計画が三位一体で運用されている稀有な状態**にあり、AI / 人間いずれの実装者でも追従しやすい構造を達成している。
-- リファクタ計画後半（フロント分割・JoyWatcher 大ファイル分割・DTO 分割・`write_tags_toml_atomic` 重複排除）は実装に反映済みで、**残課題はドライバ UI 静的資産と少数のヘルパ重複に限定**できている。
-- 今後は (a) ドライバ UI 静的資産の ESM 化、(b) manifest discovery 関連の責務分割、(c) refactor-plan の最新化、の 3 点を優先することで、規約（300 行）達成率を再び 100% に近づけられる。
+- リファクタ計画後半（フロント分割・JoyWatcher 大ファイル分割・DTO 分割・重複排除）は実装に反映済みで、**主要タスクは完了済み**。
+- 今後は (a) ドキュメント同期運用、(b) Svelte 300 行超 2 件の扱い方針、(c) 低優先の品質改善（clippy/反映順序）を進める段階。

@@ -96,6 +96,17 @@
     };
   }
 
+  function openScanGroupContextMenu(event: MouseEvent, scanGroup: ScanGroupDto) {
+    event.preventDefault();
+    contextMenu = {
+      open: true,
+      x: event.clientX,
+      y: event.clientY,
+      kind: 'scan-group',
+      scanGroup,
+    };
+  }
+
   function openTagContextMenu(event: MouseEvent, tag: TagDto) {
     event.preventDefault();
     selectTag(tag);
@@ -112,7 +123,15 @@
     if (!contextMenu.open) {
       return;
     }
-    contextMenu = { open: false, x: 0, y: 0, kind: undefined, driverId: undefined, tag: undefined };
+    contextMenu = {
+      open: false,
+      x: 0,
+      y: 0,
+      kind: undefined,
+      driverId: undefined,
+      scanGroup: undefined,
+      tag: undefined,
+    };
   }
 
   function requestNewTag(driverId: string) {
@@ -127,6 +146,19 @@
 
   function requestEditDriver(driverId: string) {
     onRequestEditDriver(driverId);
+    closeContextMenu();
+  }
+
+  function requestEditDriverScanRate(driverId: string) {
+    const driver = $driversStore.items.find((item) => item.id === driverId);
+    if (driver) {
+      onSelectDriver(driver);
+    }
+    closeContextMenu();
+  }
+
+  function requestEditScanGroupRate(scanGroup: ScanGroupDto) {
+    onSelectScanGroup(scanGroup);
     closeContextMenu();
   }
 
@@ -213,6 +245,7 @@
               isSelected={selectedScanGroupId === scanGroup.id}
               onToggle={() => toggleScanGroup(scanGroup.id)}
               onSelect={() => selectScanGroup(scanGroup)}
+              onContextMenu={(event) => openScanGroupContextMenu(event, scanGroup)}
             />
 
             {#if isGroupExpanded}
@@ -242,8 +275,10 @@
   <ContextMenu
     menu={contextMenu}
     onRequestNewTag={requestNewTag}
+    onRequestEditDriverScanRate={requestEditDriverScanRate}
     onRequestEditDriver={requestEditDriver}
     onRequestDeleteDriver={requestDeleteDriver}
+    onRequestEditScanGroupRate={requestEditScanGroupRate}
     onRequestEditTag={requestEditTag}
     onRequestDeleteTag={requestDeleteTag}
   />

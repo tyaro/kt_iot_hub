@@ -11,6 +11,8 @@
     selectedDriver,
     selectedScanGroup,
     editorDriverId,
+    onUpdateScanGroupRate,
+    onBulkUpdateDriverScanGroupRate,
     onTagEditorDone,
     onTagEditorCancel,
     onTagDetailEdit,
@@ -25,6 +27,8 @@
     selectedDriver: DriverDto | null;
     selectedScanGroup: ScanGroupDto | null;
     editorDriverId: string | null;
+    onUpdateScanGroupRate: (scanGroup: ScanGroupDto, scanRateMs: number) => Promise<void>;
+    onBulkUpdateDriverScanGroupRate: (driver: DriverDto, scanRateMs: number) => Promise<void>;
     onTagEditorDone: () => void | Promise<void>;
     onTagEditorCancel: () => void;
     onTagDetailEdit: (tag: TagDto) => void;
@@ -33,6 +37,82 @@
     onDriverDelete: (driverId: string) => void | Promise<void>;
     onDriverDone: (driverId?: string) => void | Promise<DriverDto | null>;
   } = $props();
+
+  const MIN_SCAN_RATE_MS = 100;
+
+  let driverBulkScanRateMs = $state(1000);
+  let scanGroupRateMs = $state(1000);
+  let updatingDriverBulkRate = $state(false);
+  let updatingScanGroupRate = $state(false);
+  let localErrorMessage = $state('');
+
+  $effect(() => {
+    if (selectedDriver) {
+      const relatedGroups = selectedScanGroup?.driver_id === selectedDriver.id
+        ? [selectedScanGroup]
+        : [];
+      driverBulkScanRateMs = relatedGroups[0]?.scan_rate_ms ?? driverBulkScanRateMs;
+    }
+  });
+
+  $effect(() => {
+    if (selectedScanGroup?.scan_rate_ms != null) {
+      scanGroupRateMs = selectedScanGroup.scan_rate_ms;
+    }
+  });
+
+  function validateScanRateMs(value: number): string | null {
+    if (!Number.isFinite(value) || Number.isNaN(value)) {
+      return '周期は数値で入力してください。';
+    }
+    if (!Number.isInteger(value)) {
+      return '周期は整数で入力してください。';
+    }
+    if (value < MIN_SCAN_RATE_MS) {
+      return `周期は ${MIN_SCAN_RATE_MS} ms 以上で入力してください。`;
+    }
+    return null;
+  }
+
+  async function submitDriverBulkRate() {
+    if (!selectedDriver) {
+      return;
+    }
+
+    const validationError = validateScanRateMs(driverBulkScanRateMs);
+    if (validationError) {
+      localErrorMessage = validationError;
+      return;
+    }
+
+    localErrorMessage = '';
+    updatingDriverBulkRate = true;
+    try {
+      await onBulkUpdateDriverScanGroupRate(selectedDriver, driverBulkScanRateMs);
+    } finally {
+      updatingDriverBulkRate = false;
+    }
+  }
+
+  async function submitScanGroupRate() {
+    if (!selectedScanGroup) {
+      return;
+    }
+
+    const validationError = validateScanRateMs(scanGroupRateMs);
+    if (validationError) {
+      localErrorMessage = validationError;
+      return;
+    }
+
+    localErrorMessage = '';
+    updatingScanGroupRate = true;
+    try {
+      await onUpdateScanGroupRate(selectedScanGroup, scanGroupRateMs);
+    } finally {
+      updatingScanGroupRate = false;
+    }
+  }
 </script>
 
 <div class="right-pane">
@@ -54,12 +134,41 @@
           onRequestClose={onTagDetailClose}
         />
       {:else if selectedDriver}
-        <DriverDetailPanel
-          driver={selectedDriver}
-          mode="detail"
-          onRequestDelete={onDriverDelete}
-          onDone={onDriverDone}
-        />
+        <div class="info-panel stacked-panel">
+          <DriverDetailPanel
+            driver={selectedDriver}
+            mode="detail"
+            onRequestDelete={onDriverDelete}
+            onDone={onDriverDone}
+          />
+
+          <section class="edit-section">
+            <h4>接続先配下の周期一括変更</h4>
+            <p class="helper-text compact">この接続先に属する全 ScanGroup の周期を同一値へ更新します。</p>
+            <label class="field-label" for="driver-bulk-scan-rate">周期 (ms)</label>
+            <div class="inline-form">
+              <input
+                id="driver-bulk-scan-rate"
+                type="number"
+                min={MIN_SCAN_RATE_MS}
+                step="100"
+                bind:value={driverBulkScanRateMs}
+                disabled={updatingDriverBulkRate}
+              />
+              <button
+                class="btn-primary"
+                onclick={submitDriverBulkRate}
+                disabled={updatingDriverBulkRate}
+              >
+                {updatingDriverBulkRate ? '更新中...' : '全 ScanGroup に適用'}
+              </button>
+            </div>
+          </section>
+
+          {#if localErrorMessage}
+            <p class="error-text">{localErrorMessage}</p>
+          {/if}
+        </div>
       {:else if selectedScanGroup}
         <div class="info-panel">
           <div class="panel-header compact">
@@ -72,7 +181,32 @@
             <dt>テーブル</dt><dd class="mono">{selectedScanGroup.table ?? '-'}</dd>
             <dt>時系列列</dt><dd class="mono">{selectedScanGroup.timestamp_column ?? '-'}</dd>
           </dl>
-          <p class="helper-text">Scanグループの追加・変更は接続先ドライバ専用UI側で行います。</p>
+          <section class="edit-section">
+            <h4>周期変更</h4>
+            <p class="helper-text compact">構造変更はドライバ UI 側で行い、本体では周期のみ更新できます。</p>
+            <label class="field-label" for="scan-group-rate">周期 (ms)</label>
+            <div class="inline-form">
+              <input
+                id="scan-group-rate"
+                type="number"
+                min={MIN_SCAN_RATE_MS}
+                step="100"
+                bind:value={scanGroupRateMs}
+                disabled={updatingScanGroupRate}
+              />
+              <button
+                class="btn-primary"
+                onclick={submitScanGroupRate}
+                disabled={updatingScanGroupRate}
+              >
+                {updatingScanGroupRate ? '更新中...' : 'この ScanGroup に適用'}
+              </button>
+            </div>
+          </section>
+          {#if localErrorMessage}
+            <p class="error-text">{localErrorMessage}</p>
+          {/if}
+          <p class="helper-text">Scanグループの追加・削除・構造変更は接続先ドライバ専用UI側で行います。</p>
         </div>
       {:else}
         <div class="empty-right">
@@ -116,6 +250,12 @@
 
   .info-panel {
     padding: 16px;
+  }
+
+  .stacked-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
 
   .panel-header.compact {
@@ -165,6 +305,69 @@
     font-size: 0.8rem;
     color: #64748b;
     line-height: 1.5;
+  }
+
+  .helper-text.compact {
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+
+  .edit-section {
+    border-top: 1px solid #e3e8ef;
+    padding-top: 12px;
+  }
+
+  .edit-section h4 {
+    margin: 0 0 8px;
+    font-size: 0.9rem;
+    color: #334155;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+
+  .inline-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .inline-form input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font: inherit;
+    box-sizing: border-box;
+  }
+
+  .btn-primary {
+    background-color: #2563eb;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.84rem;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: #1d4ed8;
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .error-text {
+    margin: 0;
+    color: #b91c1c;
+    font-size: 0.8rem;
   }
 
   .mono {

@@ -5,9 +5,13 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use rumqttc::{AsyncClient, EventLoop, MqttOptions, QoS};
 use tokio::sync::broadcast::error::RecvError;
+use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::time::{timeout, Duration, Instant};
 use tracing::{info, warn};
+
+const MQTT_CLIENT_REQUEST_CAPACITY: usize = 4096;
+const MQTT_PUBLISH_QUEUE_CAPACITY: usize = 32768;
 
 pub struct MqttPublisher {
     id: String,
@@ -114,7 +118,8 @@ impl Publisher for MqttPublisher {
             options.set_credentials(username, password);
         }
 
-        let (client, mut event_loop): (AsyncClient, EventLoop) = AsyncClient::new(options, 10);
+        let (client, mut event_loop): (AsyncClient, EventLoop) =
+            AsyncClient::new(options, MQTT_CLIENT_REQUEST_CAPACITY);
         let mut rx = bus.subscribe();
         let registry = registry.clone();
         let (stop_tx, mut stop_rx) = oneshot::channel();
@@ -131,32 +136,52 @@ impl Publisher for MqttPublisher {
                 }
             });
 
+            let (publish_tx, mut publish_rx) =
+                mpsc::channel::<crate::core::TagValue>(MQTT_PUBLISH_QUEUE_CAPACITY);
+            let publish_registry = registry.clone();
+            let publish_topic_root = topic_root.clone();
+            let publish_publisher_id = publisher_id.clone();
+            let mut publish_task = tokio::spawn(async move {
+                while let Some(value) = publish_rx.recv().await {
+                    let tag = publish_registry.get(&value.tag_id).await;
+                    let topic = build_topic(
+                        &publish_topic_root,
+                        tag.as_ref().map(|tag| tag.driver_id.as_str()),
+                        tag.as_ref().map(|tag| tag.scan_group_id.as_str()),
+                        tag.as_ref().map(|tag| tag.name.as_str()),
+                        value.tag_id.0.as_str(),
+                    );
+                    let payload = build_payload(&value.value);
+
+                    if let Err(e) = client
+                        .publish(topic, qos_to_rumqtt(qos), retain, payload)
+                        .await
+                    {
+                        warn!("MQTT publish failed: {}", e);
+                    }
+                }
+
+                info!(
+                    "MqttPublisher {} publish worker stopped",
+                    publish_publisher_id
+                );
+            });
+
             let mut lagged_total: u64 = 0;
             let mut lagged_last_log = Instant::now();
 
-            loop {
+            let shutdown_reason = loop {
                 tokio::select! {
                     _ = &mut stop_rx => {
                         info!("MqttPublisher {} stopped", publisher_id);
-                        event_loop_task.abort();
-                        let _ = event_loop_task.await;
-                        break;
+                        break "stop requested";
                     }
                     recv = rx.recv() => {
                         match recv {
                             Ok(value) => {
-                                let tag = registry.get(&value.tag_id).await;
-                                let topic = build_topic(
-                                    &topic_root,
-                                    tag.as_ref().map(|tag| tag.driver_id.as_str()),
-                                    tag.as_ref().map(|tag| tag.scan_group_id.as_str()),
-                                    tag.as_ref().map(|tag| tag.name.as_str()),
-                                    value.tag_id.0.as_str(),
-                                );
-                                let payload = build_payload(&value.value);
-
-                                if let Err(e) = client.publish(topic, qos_to_rumqtt(qos), retain, payload).await {
-                                    warn!("MQTT publish failed: {}", e);
+                                if publish_tx.send(value).await.is_err() {
+                                    warn!("MQTT publish queue is closed unexpectedly");
+                                    break "publish queue closed";
                                 }
                             }
                             Err(RecvError::Lagged(skipped)) => {
@@ -172,14 +197,36 @@ impl Publisher for MqttPublisher {
                             }
                             Err(RecvError::Closed) => {
                                 info!("TagBus is closed, stopping MqttPublisher {}", publisher_id);
-                                event_loop_task.abort();
-                                let _ = event_loop_task.await;
-                                break;
+                                break "tag bus closed";
                             }
                         }
                     }
                 }
+            };
+
+            info!(
+                "MqttPublisher {} receiver loop finished: {}",
+                publisher_id,
+                shutdown_reason
+            );
+            drop(publish_tx);
+
+            match timeout(Duration::from_secs(5), &mut publish_task).await {
+                Ok(join_result) => {
+                    let _ = join_result;
+                }
+                Err(_) => {
+                    warn!(
+                        "MqttPublisher {} publish worker stop timed out; aborting task",
+                        publisher_id
+                    );
+                    publish_task.abort();
+                    let _ = publish_task.await;
+                }
             }
+
+            event_loop_task.abort();
+            let _ = event_loop_task.await;
         }));
 
         self.stop_tx = Some(stop_tx);

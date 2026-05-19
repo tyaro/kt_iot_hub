@@ -117,6 +117,21 @@
   - 段階移行とし、既存 PostgreSQL フロー互換を維持しながら、JoyWatcher から固定フォーム依存を解消する。
   - 詳細設計は `docs/driver-property-extensibility-design.md` を正本とする。
 
+## Scan 周期変更の責務分担
+
+- **決定**: 既存 ScanGroup の周期（`scan_rate_ms`）変更は、本体タグ管理画面から実行可能とする。
+- **決定**: 変更単位は「ScanGroup 単体」と「接続先配下一括」の 2 種類を提供する。
+- **決定**: ScanGroup の追加・削除・ID 変更・構造変更は、引き続きドライバ UI を正本とする。
+- **理由**:
+  - 周期変更は日常運用で頻度が高く、ドライバ UI を毎回起動せず本体から即時に調整できた方が運用負荷が低い。
+  - 一方で ScanGroup の構造変更まで本体に持ち込むと、本体がドライバ固有知識を持ち過ぎる。
+  - `scan_rate_ms` はドライバ種別に依存しない共通属性であり、本体が責務を持ちやすい。
+- **実装ルール**:
+  - 更新キーは `driver_id + scan_group_id` とする（`scan_group_id` 単独では扱わない）。
+  - 本体 UI から変更可能なのは `scan_rate_ms` のみとする。
+  - 永続化は `tags.toml` の `[[scan_group]]` をアトミックに更新し、メモリ上の `AppState.scan_groups` と同期する。
+  - 更新APIは Tauri コマンドとして提供し、IPC 層から呼び出す。
+
 ## ドライバ候補のマニフェスト駆動ディスカバリ
 
 - **決定**: 接続先ドライバ候補は `driverUiBaseDir` 配下の `driver-manifest.json` を走査して自動生成する方式へ段階移行する。
