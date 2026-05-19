@@ -13,6 +13,10 @@
 - ドライバ manifest 設計: [`driver-manifest-discovery-design.md`](./driver-manifest-discovery-design.md)
 - ドライバ拡張性設計: [`driver-property-extensibility-design.md`](./driver-property-extensibility-design.md)
 
+## 補助資料・履歴
+
+- 初期化完了レポート: [`phase1-init-report.md`](./phase1-init-report.md)
+
 ## 領域別ドキュメント（実装近接）
 
 - Core: [`../core/docs/README.md`](../core/docs/README.md)

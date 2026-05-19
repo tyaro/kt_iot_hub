@@ -1,5 +1,7 @@
 # Phase 1 初期化完了レポート
 
+> この文書は初期化完了時点の履歴資料です。現行構成とは一部差分がありますが、主要リンクは現在の構成に合わせて補正しています。
+
 ## 概要
 
 Tauri v2 ベースの kt_iot_hub プロジェクト初期化が正常に完了しました。
@@ -18,9 +20,9 @@ Tauri v2 ベースの kt_iot_hub プロジェクト初期化が正常に完了�
 
 ✅ **Core モジュール**
 
-- [Tag, TagValue, DataType, Quality](src-tauri/src/core/tag.rs) 型定義
-- [Tag Bus](src-tauri/src/core/tag_bus.rs) (broadcast channel ベース)
-- [TagRegistry](src-tauri/src/core/mod.rs) インメモリ管理
+- [Tag, TagValue, DataType, Quality](../core/src-tauri/src/core/tag.rs) 型定義
+- [Tag Bus](../core/src-tauri/src/core/tag_bus.rs) (broadcast channel ベース)
+- [TagRegistry](../core/src-tauri/src/core/mod.rs) インメモリ管理
 
 ✅ **Config モジュール**
 
@@ -29,14 +31,14 @@ Tauri v2 ベースの kt_iot_hub プロジェクト初期化が正常に完了�
 
 ✅ **Driver & Publisher 基盤**
 
-- [Driver trait](src-tauri/src/drivers/mod.rs) インターフェース
-- [Publisher trait](src-tauri/src/publishers/mod.rs) インターフェース
+- [Driver trait](../core/src-tauri/src/drivers/mod.rs) インターフェース
+- [Publisher trait](../core/src-tauri/src/publishers/mod.rs) インターフェース
 - DriverManager, PublisherManager
 
 ✅ **Tauri IPC 層**
 
-- [DTO 定義](src-tauri/src/commands/dto.rs)
-- [Tag コマンド](src-tauri/src/commands/tag.rs) (create, list, delete スタブ)
+- [DTO 定義](../core/src-tauri/src/commands/dto/mod.rs)
+- [Tag コマンド](../core/src-tauri/src/commands/tag.rs) (create, list, delete スタブ)
 - Type-safe Tauri invoke
 
 ✅ **コンパイル状態**
@@ -56,14 +58,14 @@ Tauri v2 ベースの kt_iot_hub プロジェクト初期化が正常に完了�
 
 ✅ **UI フレームワーク**
 
-- [3-ペインレイアウト](src/lib/components/layout/ThreePane.svelte)
+- [3-ペインレイアウト](../core/src/lib/components/layout/ThreePane.svelte)
   - 左: ナビゲーション (ダッシュボード, タグ, ドライバ, パブリッシャ, ログ, 設定)
   - 中央: コンテンツエリア
   - 右: 詳細パネル
 
 ✅ **IPC ラッパー**
 
-- [createTag, listTags, deleteTag](src/lib/ipc/index.ts) 型安全インターフェース
+- [createTag, listTags, deleteTag](../core/src/lib/ipc/index.ts) 型安全インターフェース
 
 ✅ **コンパイル状態**
 
@@ -71,13 +73,13 @@ Tauri v2 ベースの kt_iot_hub プロジェクト初期化が正常に完了�
 
 ### 3. 設定ファイル
 
-✅ `config/*.toml` ローカル永続化対応
+✅ `ops/config/*.toml` ローカル永続化対応
 
-- `config/tags.toml` / `config/drivers.toml` / `config/publishers.toml` を読み込み対象として実装
+- `ops/config/tags.toml` / `ops/config/drivers.toml` / `ops/config/publishers.toml` を読み込み対象として実装
 - 現在はローカル永続化ファイルとして扱い、Git 管理対象外とする
-- 形式例は `docs/config-spec.md` を参照
+- 形式例は [`config-spec.md`](./config-spec.md) を参照
 
-✅ [tauri.conf.json](src-tauri/tauri.conf.json)
+✅ [tauri.conf.json](../core/src-tauri/tauri.conf.json)
 
 - Tauri v2 設定
 - CSP セキュリティ有効
