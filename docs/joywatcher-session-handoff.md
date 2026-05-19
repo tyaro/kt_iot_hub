@@ -9,7 +9,7 @@
   - [ ] 本体取り込み
   - [x] ドキュメント更新
 - 参照中の正本ドキュメント:
-  - `docs/driver-development.md`
+  - `drivers/docs/driver-development.md`
   - `docs/ui-registration.md`
   - `docs/config-spec.md`
 

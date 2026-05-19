@@ -10,16 +10,16 @@
   - 通信ランタイム
   - 本体取り込み
 - 正本ドキュメントを開いている
-  - `docs/driver-development.md`
+  - `drivers/docs/driver-development.md`
   - `docs/ui-registration.md`
   - `docs/config-spec.md`
 
 ## 1. 雛形を置く
 
-- `docs/templates/driver-ui-main-template.rs`
-- `docs/templates/driver-ui-app-template.js`
-- `docs/templates/driver-runtime-main-template.rs`
-- `docs/templates/driver-runtime-grpc-client-template.rs`
+- `drivers/docs/templates/driver-ui-main-template.rs`
+- `drivers/docs/templates/driver-ui-app-template.js`
+- `drivers/docs/templates/driver-runtime-main-template.rs`
+- `drivers/docs/templates/driver-runtime-grpc-client-template.rs`
 
 確認:
 
@@ -104,6 +104,6 @@
 
 ## 8. 引き継ぎ
 
-- `docs/templates/driver-session-handoff-template.md` を使って記録する
+- `drivers/docs/templates/driver-session-handoff-template.md` を使って記録する
 - 次セッションで最初に見るファイルを 3 つ残す
 - 未確認項目を明記する

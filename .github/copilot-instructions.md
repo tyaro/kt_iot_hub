@@ -275,8 +275,8 @@ npm run tauri build
 | --- | --- |
 | アーキ全体・設計判断 | [docs/design.md](../docs/design.md), [docs/architecture.md](../docs/architecture.md), [docs/decisions.md](../docs/decisions.md) |
 | ドライバ候補の自動発見（manifest） | [docs/driver-manifest-discovery-design.md](../docs/driver-manifest-discovery-design.md), [docs/driver-property-extensibility-design.md](../docs/driver-property-extensibility-design.md) |
-| ドライバ実装フロー | [docs/driver-development.md](../docs/driver-development.md), [docs/driver-implementation-flow.md](../docs/driver-implementation-flow.md) |
-| 引き継ぎテンプレ | [docs/templates/driver-session-handoff-template.md](../docs/templates/driver-session-handoff-template.md) |
+| ドライバ実装フロー | [drivers/docs/driver-development.md](../drivers/docs/driver-development.md), [drivers/docs/driver-implementation-flow.md](../drivers/docs/driver-implementation-flow.md) |
+| 引き継ぎテンプレ | [drivers/docs/templates/driver-session-handoff-template.md](../drivers/docs/templates/driver-session-handoff-template.md) |
 | 設定ファイル仕様 | [docs/config-spec.md](../docs/config-spec.md) |
 | UI 登録仕様 | [docs/ui-registration.md](../docs/ui-registration.md) |
 | MQTT モニタ仕様 | [docs/mqtt-monitor.md](../docs/mqtt-monitor.md) |

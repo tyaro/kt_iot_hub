@@ -142,4 +142,4 @@
 - `docs/ui-registration.md`
 - `docs/architecture.md`
 - `docs/config-spec.md`
-- `docs/driver-development.md`
+- `drivers/docs/driver-development.md`

@@ -229,6 +229,6 @@
 
 - `docs/driver-property-extensibility-design.md`
 - `docs/ui-registration.md`
-- `docs/driver-development.md`
+- `drivers/docs/driver-development.md`
 - `docs/config-spec.md`
 - `docs/decisions.md`

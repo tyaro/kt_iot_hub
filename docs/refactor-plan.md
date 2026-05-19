@@ -704,6 +704,6 @@ components/
 
 - 設計書: [docs/design.md](design.md)
 - アーキテクチャ: [docs/architecture.md](architecture.md)
-- ドライバ実装フロー: [docs/driver-implementation-flow.md](driver-implementation-flow.md)
-- 既存テンプレ: [docs/templates/](templates/)
+- ドライバ実装フロー: [drivers/docs/driver-implementation-flow.md](../drivers/docs/driver-implementation-flow.md)
+- 既存テンプレ: [drivers/docs/templates/](../drivers/docs/templates/)
 - リポジトリメモ: `/memories/repo/kt_iot_hub.md`（実装時参照すべき暗黙ルール）

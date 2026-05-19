@@ -348,10 +348,10 @@ MQTT 配信時のトピックは以下の階層構造に従う。
 
 正式テンプレート（サンプル）:
 
-- `docs/templates/driver-ui-request-template.json`（本体 → ドライバ）
-- `docs/templates/driver-ui-response-template.json`（ドライバ → 本体）
-- `docs/templates/driver-ui-request-fields.md`（`--input-json` フィールド仕様: 必須/任意）
-- `docs/templates/driver-ui-response-fields.md`（`--output-json` フィールド仕様: 必須/任意）
+- `drivers/docs/templates/driver-ui-request-template.json`（本体 → ドライバ）
+- `drivers/docs/templates/driver-ui-response-template.json`（ドライバ → 本体）
+- `drivers/docs/templates/driver-ui-request-fields.md`（`--input-json` フィールド仕様: 必須/任意）
+- `drivers/docs/templates/driver-ui-response-fields.md`（`--output-json` フィールド仕様: 必須/任意）
 
 一時 JSON ファイル連携では、以下のメタ情報を必須とする。
 

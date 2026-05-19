@@ -18,4 +18,4 @@ Rules:
 - Stage to src-tauri/driver-ui/ only via stage scripts.
 - Do not treat src-tauri/driver-ui/ as source of truth.
 
-See docs/driver-development.md for add-new-driver procedure.
+See drivers/docs/driver-development.md for add-new-driver procedure.

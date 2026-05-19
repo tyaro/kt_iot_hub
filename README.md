@@ -7,8 +7,8 @@
 - 設計ドキュメント入口: [`docs/design.md`](./docs/design.md)
 - プロジェクト概要・用語集: [`docs/overview.md`](./docs/overview.md)
 - タグ登録 UI 方針: [`docs/ui-registration.md`](./docs/ui-registration.md)
-- ドライバUI / 通信ドライバ作成ガイド: [`docs/driver-development.md`](./docs/driver-development.md)
-- ドライバ実装チェックフロー: [`docs/driver-implementation-flow.md`](./docs/driver-implementation-flow.md)
+- ドライバUI / 通信ドライバ作成ガイド: [`drivers/docs/driver-development.md`](./drivers/docs/driver-development.md)
+- ドライバ実装チェックフロー: [`drivers/docs/driver-implementation-flow.md`](./drivers/docs/driver-implementation-flow.md)
 - 設定仕様（TOML）: [`docs/config-spec.md`](./docs/config-spec.md)
 
 ## 現在の主な構成

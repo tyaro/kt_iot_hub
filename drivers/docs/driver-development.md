@@ -119,12 +119,12 @@
 
 実ファイルとして使い回せるテンプレートは以下に置く。
 
-- `docs/templates/driver-ui-main-template.rs`
-- `docs/templates/driver-ui-app-template.js`
-- `docs/templates/driver-runtime-main-template.rs`
-- `docs/templates/driver-runtime-grpc-client-template.rs`
+- `drivers/docs/templates/driver-ui-main-template.rs`
+- `drivers/docs/templates/driver-ui-app-template.js`
+- `drivers/docs/templates/driver-runtime-main-template.rs`
+- `drivers/docs/templates/driver-runtime-grpc-client-template.rs`
 
-全体の確認順は `docs/driver-implementation-flow.md` を参照。
+全体の確認順は `drivers/docs/driver-implementation-flow.md` を参照。
 
 ### 登録UI の最小 `src/main.rs`
 
@@ -626,7 +626,7 @@ PowerShell スクリプトで配置できるようにする。
 
 別セッションへ引き継ぐときは、少なくとも以下を残す。
 
-- 定型フォーマットは `docs/templates/driver-session-handoff-template.md` を使う
+- 定型フォーマットは `drivers/docs/templates/driver-session-handoff-template.md` を使う
 
 - 今回対象の `driver_type`
 - 完了した段階
@@ -645,7 +645,7 @@ PowerShell スクリプトで配置できるようにする。
 変更ファイル:
 - apps/foo/ui/src/main.rs
 - apps/foo/ui/assets/app.js
-- docs/driver-development.md
+- drivers/docs/driver-development.md
 確認済み:
 - UI 起動
 - save_driver_ui_output
@@ -674,12 +674,12 @@ PowerShell スクリプトで配置できるようにする。
 
   ## まずコピペして始めるときの参照順
 
-  1. `docs/driver-implementation-flow.md`
-  2. `docs/templates/driver-ui-main-template.rs`
-  3. `docs/templates/driver-ui-app-template.js`
-  4. `docs/templates/driver-runtime-main-template.rs`
-  5. `docs/templates/driver-runtime-grpc-client-template.rs`
-  6. `docs/templates/driver-session-handoff-template.md`
+  1. `drivers/docs/driver-implementation-flow.md`
+  2. `drivers/docs/templates/driver-ui-main-template.rs`
+  3. `drivers/docs/templates/driver-ui-app-template.js`
+  4. `drivers/docs/templates/driver-runtime-main-template.rs`
+  5. `drivers/docs/templates/driver-runtime-grpc-client-template.rs`
+  6. `drivers/docs/templates/driver-session-handoff-template.md`
 
 ## 非推奨事項
 

@@ -22,9 +22,9 @@
 
 ドライバ実装に着手する場合は加えて以下:
 
-- [docs/driver-development.md](docs/driver-development.md)
-- [docs/driver-implementation-flow.md](docs/driver-implementation-flow.md)
-- [docs/templates/driver-session-handoff-template.md](docs/templates/driver-session-handoff-template.md)
+- [drivers/docs/driver-development.md](drivers/docs/driver-development.md)
+- [drivers/docs/driver-implementation-flow.md](drivers/docs/driver-implementation-flow.md)
+- [drivers/docs/templates/driver-session-handoff-template.md](drivers/docs/templates/driver-session-handoff-template.md)
 
 ---
 
