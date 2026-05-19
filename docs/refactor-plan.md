@@ -625,7 +625,7 @@ components/
 | R-DEDUP-05 | Copilot | 完了（ローカル） | - | 2026-05-18: DTO の serde 規約を明示統一し、JSON 互換スナップショットテスト追加 |
 | R-DEDUP-06 | Copilot | 完了（ローカル） | - | 2026-05-18: `src/lib/utils/format.ts` へフォーマッタを抽出し Dashboard から参照化 |
 | R-DEDUP-07 | Copilot | 完了（ローカル） | - | 2026-05-18: `apps/common/ui-assets/tauri.js` を共通化し、driver UI 2種から参照化 |
-| R-DEDUP-08 | Copilot | **部分完了** | - | 2026-05-18: `commands/util.rs` 正本化完了。他 2 箇所（`crud/logic.rs`, `ui_launcher/paths.rs`）の手動参照確認要 |
+| R-DEDUP-08 | Copilot | **完了（ローカル）** | - | 2026-05-20: `commands/util.rs` 正本化完了。ラッパ 2 件（`crud/logic.rs:5`, `ui_launcher/paths.rs:221`）を削除。呼び出し元 3 件（`ui_launcher/command.rs`, `crud/command.rs`, `import/command.rs`）のインポート統一。検証完了 ✅ |
 | R-DEDUP-09 | Copilot | 完了（ローカル） | - | 2026-05-18: JoyWatcher 探索ロジックを `apps/joywatcher/common/path_utils.rs` へ集約 |
 | R-DEDUP-10 | Copilot | **完了予定（D-07 対応）** | - | 2026-05-18: `apps/common/driver_runtime_grpc_client.rs` 検討中。`postgres/driver/src/grpc_client.rs` 確認要 |
 | R-DEDUP-11 | Copilot | 完了（ローカル） | - | 2026-05-18: `reloadAllRegistry()` を追加し三連リロード重複を解消 |
@@ -662,8 +662,8 @@ components/
   - `cargo clippy --all-targets --all-features -- -D warnings` (`src-tauri`): ✅ 通過
   - `cargo test` (`src-tauri`): ✅ 通過（17 passed, 0 failed）
 - 2026-05-20 評価＆更新（評価レポート反映）
-  - 状態: R-BE-01〜07 / R-FE-01〜08 / R-RS-01〜03 / R-DEDUP-01,02,03,04,05,06,09,11,12 は完了。**残課題: R-FE-09, R-DEDUP-08 部分**
-  - 実測行数から新規課題 3 件発生: `drivers/{mod,manifest}.rs` 両 300超 / `commands/driver/transfer.rs` 333 行
+  - 状態: R-BE-01〜08 / R-FE-01〜08 / R-RS-01〜03 / R-DEDUP-01～06,08,09,11,12 は完了。**残課題: R-FE-09, R-DEDUP-07, R-DEDUP-10 検討中**
+  - 実測行数から新規課題 3 件発生: `drivers/{mod,manifest}.rs` 両 300超 → R-BE-08/08b で分割完了 / `commands/driver/transfer.rs` 333 行 → R-NEW-01 で分割完了
   - `MqttMonitorWindow.svelte` は R-FE-08 後 627→406 に縮小されたが、残 100 行削減余地
 - 2026-05-20 R-NEW-01, R-BE-08, R-BE-08b 完了
   - **R-NEW-01 完了**: `commands/driver/transfer_impl.rs` 作成。`transfer.rs` 375行 → 220行 + `transfer_impl.rs` 165行
@@ -671,6 +671,10 @@ components/
   - **R-BE-08b 完了**: `drivers/manifest_discovery.rs` 作成。`drivers/manifest.rs` 439行 → 230行 + `manifest_discovery.rs` 145行。`discover.rs` import 更新
   - 検証ゲート: `cargo fmt --check` ✅ / `cargo clippy --all-targets --all-features -- -D warnings` ✅ / `cargo test` ✅ (32 tests passed)
   - Clippy 修正: `manual_flatten` × 1 / `vec_init_then_push` × 3 を適用
+- 2026-05-20 R-DEDUP-08 完了
+  - **R-DEDUP-08 完了**: `commands/util.rs` が既に `pub(crate) fn normalize_optional_string` 正本。ラッパ 2 件（`crud/logic.rs:5`, `ui_launcher/paths.rs:221`）を削除し、呼び出し元 3 件のインポート統一
+  - 修正対象: `ui_launcher/command.rs` (paths→util), `crud/command.rs` (logic→util), `import/command.rs` (paths→util)
+  - 検証: `cargo fmt` ✅ / `cargo clippy --all-targets --all-features -- -D warnings` ✅ / `cargo test` ✅ (32 tests passed)
 
 ---
 
