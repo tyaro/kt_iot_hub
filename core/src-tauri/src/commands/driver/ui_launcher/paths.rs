@@ -103,20 +103,16 @@ fn resolve_manifest_driver_ui_path(driver_type: &str, root: &std::path::Path) ->
 }
 
 fn manifest_candidates_for_root(driver_type: &str, root: &std::path::Path) -> Vec<PathBuf> {
-    let mut candidates = Vec::<PathBuf>::new();
-
-    candidates.push(
+    let candidates = vec![
         root.join("ops")
             .join("driver-ui")
             .join(driver_type)
             .join("driver-manifest.json"),
-    );
-    candidates.push(
         root.join("driver-ui")
             .join(driver_type)
             .join("driver-manifest.json"),
-    );
-    candidates.push(root.join(driver_type).join("driver-manifest.json"));
+        root.join(driver_type).join("driver-manifest.json"),
+    ];
 
     let mut unique = Vec::<PathBuf>::new();
     for candidate in candidates {

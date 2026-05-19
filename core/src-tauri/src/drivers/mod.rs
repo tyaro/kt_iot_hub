@@ -3,6 +3,8 @@
 // 本体はプロセスのライフサイクルのみを担当し、通信処理はドライバプロセス側が実装する
 
 pub mod manifest;
+pub mod manifest_discovery;
+mod path_resolver;
 
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
@@ -157,14 +159,16 @@ impl DriverProcessManager {
         exe_name: &str,
         driver_ui_base_dir: Option<&str>,
     ) -> Option<PathBuf> {
-        for root in app_root_candidates(driver_ui_base_dir) {
+        for root in path_resolver::app_root_candidates(driver_ui_base_dir) {
             if let Some(manifest_runtime_path) =
-                resolve_manifest_runtime_path_for_root(driver_type, &root)
+                path_resolver::resolve_manifest_runtime_path_for_root(driver_type, &root)
             {
                 return Some(manifest_runtime_path);
             }
 
-            for candidate in colocated_runtime_candidates_for_root(driver_type, exe_name, &root) {
+            for candidate in
+                path_resolver::colocated_runtime_candidates_for_root(driver_type, exe_name, &root)
+            {
                 if candidate.exists() {
                     return Some(candidate);
                 }
@@ -190,163 +194,6 @@ impl DriverProcessManager {
     }
 }
 
-fn resolve_manifest_runtime_path_for_root(
-    driver_type: &str,
-    root: &std::path::Path,
-) -> Option<PathBuf> {
-    let driver_type = driver_type.trim();
-    if driver_type.is_empty() {
-        return None;
-    }
-
-    for manifest_path in manifest_candidates_for_root(driver_type, root) {
-        if !manifest_path.exists() {
-            continue;
-        }
-
-        let Some(manifest_dir) = manifest_path.parent() else {
-            continue;
-        };
-
-        let loaded_manifest = match manifest::load_manifest(&manifest_path) {
-            Ok(manifest) => manifest,
-            Err(err) => {
-                info!(
-                    "Manifest runtime resolution skipped unreadable manifest: path={} error={}",
-                    manifest_path.display(),
-                    err
-                );
-                continue;
-            }
-        };
-
-        if loaded_manifest.driver_type != driver_type {
-            info!(
-                "Manifest runtime resolution skipped mismatched driver type: requested={} manifest={} path={}",
-                driver_type,
-                loaded_manifest.driver_type,
-                manifest_path.display()
-            );
-            continue;
-        }
-
-        match manifest::validate_manifest(&loaded_manifest, manifest_dir) {
-            Ok(package) => {
-                info!(
-                    "Resolved driver runtime from manifest: driver_type={} path={}",
-                    driver_type,
-                    package.runtime_path.display()
-                );
-                return Some(package.runtime_path);
-            }
-            Err(err) => {
-                info!(
-                    "Manifest runtime resolution fell back to legacy search: driver_type={} path={} reason={:?}",
-                    driver_type,
-                    manifest_path.display(),
-                    err
-                );
-            }
-        }
-    }
-
-    None
-}
-
-fn manifest_candidates_for_root(driver_type: &str, root: &std::path::Path) -> Vec<PathBuf> {
-    let mut candidates = Vec::new();
-
-    candidates.push(
-        root.join("ops")
-            .join("driver-ui")
-            .join(driver_type)
-            .join("driver-manifest.json"),
-    );
-    candidates.push(
-        root.join("driver-ui")
-            .join(driver_type)
-            .join("driver-manifest.json"),
-    );
-    candidates.push(root.join(driver_type).join("driver-manifest.json"));
-
-    let mut unique = Vec::new();
-    for candidate in candidates {
-        if !unique.contains(&candidate) {
-            unique.push(candidate);
-        }
-    }
-
-    unique
-}
-
-fn colocated_runtime_candidates_for_root(
-    driver_type: &str,
-    exe_name: &str,
-    root: &std::path::Path,
-) -> Vec<PathBuf> {
-    let mut candidates = Vec::new();
-
-    candidates.push(
-        root.join("ops")
-            .join("driver-ui")
-            .join(driver_type)
-            .join(exe_name),
-    );
-    candidates.push(root.join("driver-ui").join(driver_type).join(exe_name));
-    candidates.push(root.join(driver_type).join(exe_name));
-
-    let mut unique = Vec::new();
-    for candidate in candidates {
-        if !unique.contains(&candidate) {
-            unique.push(candidate);
-        }
-    }
-
-    unique
-}
-
-fn app_root_candidates(driver_ui_base_dir: Option<&str>) -> Vec<PathBuf> {
-    let mut roots = Vec::<PathBuf>::new();
-
-    if let Some(base_dir) = driver_ui_base_dir {
-        let trimmed = base_dir.trim();
-        if !trimmed.is_empty() {
-            roots.push(PathBuf::from(trimmed));
-        }
-    }
-
-    if let Ok(current_dir) = std::env::current_dir() {
-        let mut cursor = Some(current_dir.as_path());
-        while let Some(path) = cursor {
-            roots.push(path.to_path_buf());
-            cursor = path.parent();
-        }
-    }
-
-    if let Ok(current_exe) = std::env::current_exe() {
-        if let Some(exe_dir) = current_exe.parent() {
-            roots.push(exe_dir.join("resources"));
-            if let Some(parent) = exe_dir.parent() {
-                roots.push(parent.join("Resources"));
-            }
-
-            let mut cursor = Some(exe_dir);
-            while let Some(path) = cursor {
-                roots.push(path.to_path_buf());
-                cursor = path.parent();
-            }
-        }
-    }
-
-    let mut unique = Vec::<PathBuf>::new();
-    for root in roots {
-        if !unique.contains(&root) {
-            unique.push(root);
-        }
-    }
-    unique
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -362,47 +209,6 @@ mod tests {
                 .unwrap()
                 .as_nanos()
         ))
-    }
-
-    #[test]
-    fn colocated_candidates_support_repo_root_base() {
-        let candidates = colocated_runtime_candidates_for_root(
-            "postgres",
-            "driver-postgres.exe",
-            &PathBuf::from(r"D:\develop\kt_iot_hub"),
-        );
-
-        assert_eq!(
-            candidates[0],
-            PathBuf::from(r"D:\develop\kt_iot_hub")
-                .join("ops")
-                .join("driver-ui")
-                .join("postgres")
-                .join("driver-postgres.exe")
-        );
-        assert_eq!(
-            candidates[1],
-            PathBuf::from(r"D:\develop\kt_iot_hub")
-                .join("driver-ui")
-                .join("postgres")
-                .join("driver-postgres.exe")
-        );
-    }
-
-    #[test]
-    fn colocated_candidates_support_driver_ui_root_base() {
-        let candidates = colocated_runtime_candidates_for_root(
-            "postgres",
-            "driver-postgres.exe",
-            &PathBuf::from(r"D:\develop\kt_iot_hub\driver-ui"),
-        );
-
-        assert_eq!(
-            candidates[2],
-            PathBuf::from(r"D:\develop\kt_iot_hub\driver-ui")
-                .join("postgres")
-                .join("driver-postgres.exe")
-        );
     }
 
     #[test]

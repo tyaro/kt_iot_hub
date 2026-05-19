@@ -1,7 +1,7 @@
 // ドライバマニフェストディスカバリコマンド
 // manifest 正本 / bundle staging 配下のマニフェストを自動発見
 
-use crate::drivers::manifest;
+use crate::drivers::manifest_discovery;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::info;
@@ -59,7 +59,7 @@ pub async fn discover_driver_packages(
 
     info!("Discovering driver packages from: {}", base_dir.display());
 
-    let result = manifest::discover_driver_packages(&base_dir)
+    let result = manifest_discovery::discover_driver_packages(&base_dir)
         .map_err(|e| format!("Discovery failed: {}", e))?;
 
     let available = result
