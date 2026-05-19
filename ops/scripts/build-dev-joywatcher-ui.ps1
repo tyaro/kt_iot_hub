@@ -27,4 +27,7 @@ Write-Host ">>> installing as JoyWatcher driver-ui..."
     -DriverType "joywatcher" `
     -SourcePath $sourcePath
 
-Write-Host ">>> done: ops/driver-ui/joywatcher/registration-ui.exe installed"
+Write-Host ">>> staging JoyWatcher driver artifacts to core/src-tauri/driver-ui/..."
+& (Join-Path $scriptDir "stage-driver-artifacts.ps1") -DriverType "joywatcher"
+
+Write-Host ">>> done: ops/driver-ui/joywatcher/registration-ui.exe installed and staged"

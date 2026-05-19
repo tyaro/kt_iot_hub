@@ -28,4 +28,7 @@ Write-Host ">>> installing beside registration UI..."
 	-DriverType "postgres" `
 	-SourcePath $sourcePath
 
-Write-Host ">>> done: ops/driver-ui/postgres/driver-postgres.exe installed"
+Write-Host ">>> staging postgres driver artifacts to core/src-tauri/driver-ui/..."
+& (Join-Path $scriptDir "stage-driver-artifacts.ps1") -DriverType "postgres"
+
+Write-Host ">>> done: ops/driver-ui/postgres/driver-postgres.exe installed and staged"

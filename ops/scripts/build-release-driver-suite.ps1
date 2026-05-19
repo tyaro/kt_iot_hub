@@ -8,8 +8,6 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $PSCommandPath
 $repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
 $targetTriple = "i686-pc-windows-msvc"
-$bundleRoot = Join-Path $repoRoot "core\src-tauri"
-
 function Invoke-CargoBuildRelease([string]$manifestPath, [string]$label) {
   Write-Host ">>> cargo build $label (release)..."
   Push-Location $repoRoot
@@ -60,17 +58,7 @@ Write-Host ">>> installing release artifacts into ops/driver-ui/..."
 & (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherDriverExe
 & (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherBridgeExe -TargetFileName "joywatcher-bridge-x86.exe"
 
-$postgresPrimaryUiExe = Join-Path $repoRoot "ops\driver-ui\postgres\registration-ui.exe"
-$postgresPrimaryDriverExe = Join-Path $repoRoot "ops\driver-ui\postgres\driver-postgres.exe"
-$joywatcherPrimaryUiExe = Join-Path $repoRoot "ops\driver-ui\joywatcher\registration-ui.exe"
-$joywatcherPrimaryDriverExe = Join-Path $repoRoot "ops\driver-ui\joywatcher\driver-joywatcher.exe"
-$joywatcherPrimaryBridgeExe = Join-Path $repoRoot "ops\driver-ui\joywatcher\joywatcher-bridge-x86.exe"
-
 Write-Host ">>> staging from ops/driver-ui/ (source of truth) to core/src-tauri/driver-ui/..."
-& (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "postgres" -SourcePath $postgresPrimaryUiExe -AppRoot $bundleRoot
-& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "postgres" -SourcePath $postgresPrimaryDriverExe -BinDir (Join-Path $bundleRoot "driver-ui\postgres")
-& (Join-Path $scriptDir "install-driver-ui.ps1") -DriverType "joywatcher" -SourcePath $joywatcherPrimaryUiExe -AppRoot $bundleRoot
-& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherPrimaryDriverExe -BinDir (Join-Path $bundleRoot "driver-ui\joywatcher")
-& (Join-Path $scriptDir "install-driver-runtime.ps1") -DriverType "joywatcher" -SourcePath $joywatcherPrimaryBridgeExe -TargetFileName "joywatcher-bridge-x86.exe" -BinDir (Join-Path $bundleRoot "driver-ui\joywatcher")
+& (Join-Path $scriptDir "stage-driver-suite.ps1")
 
 Write-Host ">>> done: release artifacts installed to ops/driver-ui/ and staged to core/src-tauri/driver-ui/ (one-way sync)" -ForegroundColor Green
