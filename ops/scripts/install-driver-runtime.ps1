@@ -1,5 +1,11 @@
-# Installs a runtime driver executable into ops/driver-ui/<driver-type>/ (or a specified BinDir).
-# Typical source is target/release/*.exe; destination is development source of truth by default.
+# Installs a runtime driver executable.
+#
+# Default: Copies to ops/driver-ui/<driver-type>/ (development source of truth, see .deploymentinfo)
+# When -BinDir specified: Copies to <BinDir>/<driver-type>/ (custom location, legacy)
+#
+# Recommended: Use npm run driver-runtime:install or stage-driver-artifacts.ps1 for proper flow.
+#
+# Usage: .\ops\scripts\install-driver-runtime.ps1 -DriverType postgres -SourcePath C:\build\driver-postgres.exe
 
 param(
   [Parameter(Mandatory = $true)]

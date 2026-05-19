@@ -1,5 +1,11 @@
 # Builds release artifacts under target/, installs them into ops/driver-ui/ (development source of truth),
 # then stages from ops/driver-ui/ to core/src-tauri/driver-ui/ for installer bundling.
+#
+# Flow:
+#   1. Build: target/release/* (build output)
+#   2. Install: target/* => ops/driver-ui/* (development source of truth, see .deploymentinfo)
+#   3. Stage: ops/driver-ui/* => core/src-tauri/driver-ui/* (bundle staging, see .staginginfo)
+#
 # Usage: .\ops\scripts\build-release-driver-suite.ps1
 
 Set-StrictMode -Version Latest

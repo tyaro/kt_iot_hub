@@ -1,0 +1,36 @@
+# Driver UI Deployment Structure
+
+This is the **DEVELOPMENT SOURCE OF TRUTH** for driver-ui resources.
+
+## Layout
+
+- `driver-ui/postgres/`
+  - `registration-ui.exe` (運用開始時の起点)
+  - `driver-postgres.exe`
+- `driver-ui/joywatcher/`
+  - `registration-ui.exe`
+  - `driver-joywatcher.exe`
+  - `joywatcher-bridge-x86.exe`
+
+## Responsibility
+
+- **Modification**: All driver artifacts are built into this directory first
+- **Sync**: Before bundling, contents are synced to `core/src-tauri/driver-ui/` (staging)
+- **Git**: Driver binaries should be `.gitignore`d (built artifacts, not sources)
+
+## Build Flow
+
+1. Build: `target/release/<driver-artifact>` (build output)
+2. Install: Copy to `driver-ui/<type>/` (this directory — SOURCE OF TRUTH)
+3. Stage: Sync to `core/src-tauri/driver-ui/<type>/` (bundle staging before installer build)
+4. Bundle: Include staged artifacts in installer
+
+## Script Responsibility
+
+- `build-*`: Compile to `target/`, no deployment
+- `install-*`: Copy from `target/` to `driver-ui/` (this directory)
+- `stage-*`: Copy from `driver-ui/` to `src-tauri/driver-ui/`
+
+See [../docs/driver-development.md](../docs/driver-development.md) and [../docs/deployment.md](../docs/deployment.md) for details.
+
+For adding a new driver, refer to [../drivers/docs/driver-development.md](../drivers/docs/driver-development.md).

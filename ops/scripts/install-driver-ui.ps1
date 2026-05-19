@@ -1,6 +1,11 @@
 # Installs a registration UI executable.
-# Default destination: <repo-root>/ops/driver-ui/<driver-type>/ (development source of truth).
-# When -AppRoot is specified, destination: <AppRoot>/driver-ui/<driver-type>/ (bundle staging).
+#
+# Default: Copies to ops/driver-ui/<driver-type>/ (development source of truth, see .deploymentinfo)
+# When -AppRoot specified: Copies to <AppRoot>/driver-ui/<driver-type>/ (bundle staging, legacy)
+#
+# Recommended: Use npm run driver-ui:install or stage-driver-artifacts.ps1 for proper flow.
+#
+# Usage: .\ops\scripts\install-driver-ui.ps1 -DriverType postgres -SourcePath C:\build\registration-ui.exe
 
 param(
   [Parameter(Mandatory = $true)]

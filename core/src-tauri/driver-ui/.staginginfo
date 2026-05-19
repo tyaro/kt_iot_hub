@@ -1,5 +1,31 @@
 # Bundle Staging Directory
 
-This is NOT the source of truth.
-Synced from ../../../ops/driver-ui/ before bundle.
-Do not edit files here directly.
+This is **NOT** the source of truth.
+
+## Purpose
+
+- Synced from `driver-ui/` (development source of truth) before bundle
+- Included in installer packages
+- Temporary staging area for bundling process
+
+## Important
+
+**Do NOT edit files here directly.**
+
+All modifications must be made to the source directory (`driver-ui/`), then synced here.
+
+## Sync Procedure
+
+Before running `npm run tauri build` (or equivalent bundle command):
+
+```powershell
+npm run driver-suite:stage
+# or manually:
+# .\ops\scripts\stage-driver-artifacts.ps1
+```
+
+This ensures installer includes the latest artifacts from the development source of truth.
+
+---
+
+See [../../../driver-ui/.deploymentinfo](../../../driver-ui/.deploymentinfo) for source of truth layout.
