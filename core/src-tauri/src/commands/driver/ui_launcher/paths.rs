@@ -218,12 +218,6 @@ fn path_to_string(path: PathBuf) -> String {
     }
 }
 
-pub(in crate::commands::driver) fn normalize_optional_string(
-    value: Option<String>,
-) -> Option<String> {
-    crate::commands::util::normalize_optional_string(value)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

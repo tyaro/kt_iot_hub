@@ -1,5 +1,5 @@
 use super::launch_context::build_driver_ui_launch_context;
-use super::paths::{find_default_driver_ui_path, normalize_optional_string};
+use super::paths::find_default_driver_ui_path;
 use super::session::{register_active_session, resolve_launch_target};
 use super::tempfile::build_driver_ui_io_paths;
 use crate::app_state::AppState;
@@ -7,6 +7,7 @@ use crate::commands::dto::{
     CheckDriverUiResultRequest, CheckDriverUiResultResponse, ErrorResponse, LaunchDriverUiRequest,
     LaunchDriverUiResponse,
 };
+use crate::commands::util::normalize_optional_string;
 use tracing::{info, warn};
 use uuid::Uuid;
 

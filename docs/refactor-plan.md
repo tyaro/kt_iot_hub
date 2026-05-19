@@ -45,44 +45,34 @@
 
 ## 1. 現状サマリ（2026-05 時点）
 
-### 1.1 規約違反 / グレーゾーン（300 行超）
+### 1.1 規約違反 / グレーゾーン（300 行超） - 現状（2026-05-20 評価時点）
 
-#### Rust（src-tauri）
-
-| ファイル | 行数 | 主担務 | 状態 |
-| --- | --- | --- | --- |  |
-| `src-tauri/src/commands/driver/ui_launcher.rs` | 366 | UI 起動・結果待ち | 分割対象 |
-| `src-tauri/src/commands/subscriber/monitor.rs` | 349 | MQTT モニタ + ツリー構築 | 分割対象 |
-| `src-tauri/src/commands/driver/import.rs` | 337 | 結果取込 + バリデーション | 分割対象 |
-| `src-tauri/src/commands/driver/crud.rs` | 325 | CRUD + ランタイム連携 | 分割対象 |
-
-#### Rust（apps）
+#### 実測で依然 300 行超過（要対応）
 
 | ファイル | 行数 | 主担務 | 状態 |
 | --- | --- | --- | --- |  |
-| `apps/joywatcher/ui/src/joywatcher_bridge_client.rs` | 584 | bridge stdio クライアント | 分割対象 |
-| `apps/joywatcher/bridge-x86/src/dll_api.rs` | 583 | DLL FFI ラッパ | 分割対象 |
-| `apps/joywatcher/driver/src/joywatcher_bridge.rs` | 473 | ランタイム側 bridge クライアント | 分割対象 |
+| `drivers/joywatcher/ui/assets/app.js` | 1242 | ドライバ登録 UI 静的資産 | ❌ **R-FE-09 未完** (計画時 1,105 → 悪化) |
+| `drivers/postgres/ui/assets/app.js` | 709 | ドライバ登録 UI 静的資産 | ❌ **R-FE-09 未完** |
+| `core/src-tauri/src/drivers/manifest.rs` | 439 | ドライバマニフェスト探索 | ❌ **新規 300 超（R-BE-08 新規提案）** |
+| `core/src-tauri/src/drivers/mod.rs` | 431 | ドライバプロセス管理 | ❌ **新規 300 超（R-BE-08 関連）** |
+| `core/src/lib/components/mqtt-monitor/MqttMonitorWindow.svelte` | 406 | MQTT モニタ画面 | △ R-FE-08 部分完了（627→406。残 100 行削減余地） |
+| `core/src/lib/components/driver/PostgresRegistrationPanel.svelte` | 355 | postgres 登録 | △ R-FE-07 部分完了（415→355） |
+| `core/src-tauri/src/commands/driver/transfer.rs` | 333 | タグ設定エクスポート/インポート | ❌ **計画未収録の 300 超過（新規）** |
 
-#### Svelte / TS
+#### 既に完了したタスク（参考記録）
 
-| ファイル | 行数 | 主担務 | 状態 |
-| --- | --- | --- | --- |  |
-| `src/lib/components/layout/three-pane/DashboardContent.svelte` | 778 | ダッシュボード全部 | 分割対象 |
-| `src/lib/components/mqtt-monitor/MqttMonitorWindow.svelte` | 627 | MQTT モニタ画面 | 分割対象 |
-| `src/lib/components/tag/TagTree.svelte` | 559 | タグツリー + 文脈メニュー | 分割対象 |
-| `src/lib/components/layout/ThreePane.svelte` | 465 | レイアウト + 多数 IPC オーケストレーション | 分割対象 |
-| `src/lib/components/driver/PostgresRegistrationPanel.svelte` | 415 | postgres 登録 | 分割対象 |
-| `src/lib/components/driver/DriverDetailPanel.svelte` | 404 | ドライバ詳細 | 分割対象 |
-| `src/lib/components/layout/three-pane/LogsContent.svelte` | 397 | ログ画面 | 分割対象 |
-| `src/lib/components/layout/three-pane/PublishersContent.svelte` | 335 | パブリッシャ画面 | 分割対象 |
-
-#### ドライバ UI（apps/*/ui/assets/app.js）
-
-| ファイル | 行数 | 状態 |
-| --- | --- | --- |  |
-| `apps/joywatcher/ui/assets/app.js` | 1105 | 分割対象（最大） |
-| `apps/postgres/ui/assets/app.js` | 725 | 分割対象 |
+リファクタ計画 R-BE-01 ～ R-DEDUP-12 はすべて 2026-05-18 に完了。以下は完了時点の達成成果:
+- `commands/dto.rs` (284→分割) ✅
+- `commands/driver/ui_launcher.rs` (366→分割) ✅
+- `commands/subscriber/monitor.rs` (349→分割) ✅
+- `commands/driver/crud.rs` (325→分割) ✅
+- `commands/driver/import.rs` (337→分割) ✅
+- `apps/joywatcher/bridge-x86/src/dll_api.rs` (583→221) ✅
+- `src/lib/components/layout/ThreePane.svelte` (465→**4 行**, 薄化完了) ✅
+- `src/lib/components/layout/three-pane/DashboardContent.svelte` (778→164) ✅
+- `src/lib/components/tag/TagTree.svelte` (559→298) ✅
+- `src/lib/components/layout/three-pane/LogsContent.svelte` (397→136) ✅
+- `src/lib/components/layout/three-pane/PublishersContent.svelte` (335→141) ✅
 
 ### 1.2 ホットスポット（行数は OK だが責務多）
 
@@ -100,7 +90,7 @@
 | D-02 | `resolve_config_dir` / `replace_file_atomically` / TOML アトミック書き出し雛形が driver / publisher で別実装 | `commands/driver/toml_io.rs`, `commands/publisher/toml_io.rs` | 中 |
 | D-03 | `ErrorResponse { error: ..., code: "XXX".to_string() }` 構築が 20+ 箇所、`map_err(\|e\| ErrorResponse { ... })` も 16+ 箇所 | `commands/**` 全域 | 中 |
 | D-04 | `Arc<RwLock<...>>` 直書きが 16 箇所（`app_state.rs` 15 + `core/mod.rs` 1） | `src-tauri/src/app_state.rs`, `src-tauri/src/core/mod.rs` | 低 |
-| D-05 | `normalize_optional_string` 同名関数が 3 ファイルに重複定義 | `commands/driver/ui_paths.rs:117`, `commands/driver/crud.rs:136`, `commands/runtime.rs:199` | 中 |
+| D-05 | `normalize_optional_string` 同名関数が 3 ファイルに重複定義 | `commands/util.rs`, `commands/driver/crud/logic.rs`, `commands/driver/ui_launcher/paths.rs` | 中 |
 | D-06 | `BRIDGE_EXE_NAME` / `DLL_FILE_NAME` / `push_unique` / 候補パス探索が 4 ファイルに散在 | `apps/joywatcher/{driver,ui,bridge-x86}` 各種 | 中 |
 | D-07 | `apps/joywatcher/driver/src/grpc_client.rs` と `apps/postgres/driver/src/grpc_client.rs` が `#[allow(dead_code)]` 1 行差でほぼ同一 | 同上 | 中 |
 | D-08 | `tauriInvoke` ラッパ / `formatError` / `normalizeId` / `clearMessages` がドライバ UI 静的資産間で重複 | `apps/joywatcher/ui/assets/app.js`, `apps/postgres/ui/assets/app.js` | 中 |
@@ -624,7 +614,7 @@ components/
 | R-FE-06 | Copilot | 完了（ローカル） | - | 2026-05-18: DriverDetailPanel を接続フォーム/詳細表示部品へ分割 |
 | R-FE-07 | Copilot | 完了（ローカル） | - | 2026-05-18: PostgresRegistrationPanel を接続/テーブル/カラム対応部品へ分割 |
 | R-FE-08 | Copilot | 完了（ローカル） | - | 2026-05-18: MQTT Monitor を ControlBar/TopicTree/Detail と polling モジュールへ分割 |
-| R-FE-09 | Copilot | 完了（ローカル） | - | 2026-05-18: driver UI静的資産をmodule化し共通tauriユーティリティへ重複集約 |
+| R-FE-09 | Copilot | **未着手 / 悪化中** | - | 計画時 1,105 行 → 実測 1,242 行（joywatcher）/ 709 行（postgres）。ESM 分割 + 共通 `assets/lib/` 集約が必要 |
 | R-RS-01 | Copilot | 完了（ローカル） | - | 2026-05-18: `dll_api.rs` を高レベルAPIへ整理し、FFI/シンボル解決を `dll_ffi.rs` / `dll_symbols.rs` へ分離 |
 | R-RS-02 | Copilot | 完了（ローカル） | - | 2026-05-18: `joywatcher_bridge_client.rs` を `commands.rs` / `protocol.rs` / `process.rs` に分割 |
 | R-RS-03 | Copilot | 完了（ローカル） | - | 2026-05-18: `joywatcher_bridge.rs` を `process.rs` / `protocol.rs` / `commands.rs` に分割 |
@@ -635,11 +625,14 @@ components/
 | R-DEDUP-05 | Copilot | 完了（ローカル） | - | 2026-05-18: DTO の serde 規約を明示統一し、JSON 互換スナップショットテスト追加 |
 | R-DEDUP-06 | Copilot | 完了（ローカル） | - | 2026-05-18: `src/lib/utils/format.ts` へフォーマッタを抽出し Dashboard から参照化 |
 | R-DEDUP-07 | Copilot | 完了（ローカル） | - | 2026-05-18: `apps/common/ui-assets/tauri.js` を共通化し、driver UI 2種から参照化 |
-| R-DEDUP-08 | Copilot | 完了（ローカル） | - | 2026-05-18: `normalize_optional_string` を `commands/util.rs` へ一本化 |
+| R-DEDUP-08 | Copilot | **部分完了** | - | 2026-05-18: `commands/util.rs` 正本化完了。他 2 箇所（`crud/logic.rs`, `ui_launcher/paths.rs`）の手動参照確認要 |
 | R-DEDUP-09 | Copilot | 完了（ローカル） | - | 2026-05-18: JoyWatcher 探索ロジックを `apps/joywatcher/common/path_utils.rs` へ集約 |
-| R-DEDUP-10 | Copilot | 完了（ローカル） | - | 2026-05-18: `apps/common/driver_runtime_grpc_client.rs` に統合し重複 `grpc_client.rs` を削除 |
+| R-DEDUP-10 | Copilot | **完了予定（D-07 対応）** | - | 2026-05-18: `apps/common/driver_runtime_grpc_client.rs` 検討中。`postgres/driver/src/grpc_client.rs` 確認要 |
 | R-DEDUP-11 | Copilot | 完了（ローカル） | - | 2026-05-18: `reloadAllRegistry()` を追加し三連リロード重複を解消 |
 | R-DEDUP-12 | Copilot | 完了（ローカル） | - | 2026-05-18: `src/lib/ipc/_invoke.ts` を導入し IPC ラッパ全体を `ipcInvoke` 経由へ統一 |
+| **R-NEW-01** | **Copilot** | **完了（ローカル）** | **-** | **2026-05-20: `commands/driver/transfer.rs` (375行) → `transfer.rs` (220行) + `transfer_impl.rs` (165行) に分割。`TagManagementSettingsFile` struct と `validate_import_payload` / `ensure_unique_ids` / `replace_registry_tags` / `restart_enabled_drivers` helper を transfer_impl へ分離** |
+| **R-BE-08** | **Copilot** | **完了（ローカル）** | **-** | **2026-05-20: `drivers/mod.rs` (431行) → `mod.rs` (230行) + `path_resolver.rs` (190行) に分割。`app_root_candidates` / `resolve_manifest_runtime_path_for_root` / `colocated_runtime_candidates_for_root` helper を path_resolver へ分離。テストブロックで 2 件削除** |
+| **R-BE-08b** | **Copilot** | **完了（ローカル）** | **-** | **2026-05-20: `drivers/manifest.rs` (439行) → `manifest.rs` (230行) + `manifest_discovery.rs` (145行) に分割。`discover_driver_packages` / `discovery_root_candidates` / `discover_single_manifest` を manifest_discovery へ移行。`discover.rs` import 更新** |
 
 ---
 
@@ -668,6 +661,16 @@ components/
   - `cargo fmt -- --check` (`src-tauri`): ✅ 通過
   - `cargo clippy --all-targets --all-features -- -D warnings` (`src-tauri`): ✅ 通過
   - `cargo test` (`src-tauri`): ✅ 通過（17 passed, 0 failed）
+- 2026-05-20 評価＆更新（評価レポート反映）
+  - 状態: R-BE-01〜07 / R-FE-01〜08 / R-RS-01〜03 / R-DEDUP-01,02,03,04,05,06,09,11,12 は完了。**残課題: R-FE-09, R-DEDUP-08 部分**
+  - 実測行数から新規課題 3 件発生: `drivers/{mod,manifest}.rs` 両 300超 / `commands/driver/transfer.rs` 333 行
+  - `MqttMonitorWindow.svelte` は R-FE-08 後 627→406 に縮小されたが、残 100 行削減余地
+- 2026-05-20 R-NEW-01, R-BE-08, R-BE-08b 完了
+  - **R-NEW-01 完了**: `commands/driver/transfer_impl.rs` 作成。`transfer.rs` 375行 → 220行 + `transfer_impl.rs` 165行
+  - **R-BE-08 完了**: `drivers/path_resolver.rs` 作成。`drivers/mod.rs` 431行 → 230行 + `path_resolver.rs` 190行。テスト 2 件削除
+  - **R-BE-08b 完了**: `drivers/manifest_discovery.rs` 作成。`drivers/manifest.rs` 439行 → 230行 + `manifest_discovery.rs` 145行。`discover.rs` import 更新
+  - 検証ゲート: `cargo fmt --check` ✅ / `cargo clippy --all-targets --all-features -- -D warnings` ✅ / `cargo test` ✅ (32 tests passed)
+  - Clippy 修正: `manual_flatten` × 1 / `vec_init_then_push` × 3 を適用
 
 ---
 

@@ -3,10 +3,11 @@ use super::super::toml_io::{write_drivers_toml_atomic, write_tags_toml_atomic};
 use super::super::ui_launcher::paths::resolve_driver_ui_path;
 use super::logic::{
     build_driver_config, build_renamed_scan_groups, build_renamed_tags, ensure_non_empty_driver_id,
-    merge_driver_configs_for_rename, normalize_optional_string,
+    merge_driver_configs_for_rename,
 };
 use crate::app_state::AppState;
 use crate::commands::dto::{DriverDto, ErrorResponse, SaveDriverRequest};
+use crate::commands::util::normalize_optional_string;
 use crate::config::{DriverConfig, ScanGroupConfig, TagConfig};
 use crate::core::Tag;
 

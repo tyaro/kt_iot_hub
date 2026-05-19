@@ -2,10 +2,6 @@ use crate::commands::dto::{ErrorResponse, SaveDriverRequest};
 use crate::config::{DriverConfig, ScanGroupConfig, TagConfig};
 use crate::core::Tag;
 
-pub(super) fn normalize_optional_string(value: Option<String>) -> Option<String> {
-    crate::commands::util::normalize_optional_string(value)
-}
-
 pub(super) fn build_driver_config(
     req: &SaveDriverRequest,
     driver_id: String,
