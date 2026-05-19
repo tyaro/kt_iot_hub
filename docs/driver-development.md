@@ -401,6 +401,31 @@ driver-ui/<driver_type>/registration-ui.exe
 driver-ui/<driver_type>/driver-<driver_type>.exe
 ```
 
+配置責務:
+
+- `driver-ui/<driver_type>/` は開発時正本（運用開始時の起点）
+- `src-tauri/driver-ui/<driver_type>/` は bundle staging（同梱直前の同期先）
+- staging は正本ではないため、直接編集しない
+
+実行時探索（通信ランタイム）:
+
+1. 設定された driver-ui ベースパス配下の同居配置
+2. `DRIVER_BIN_DIR` 配下
+3. 本体実行ファイルと同じディレクトリ
+4. `PATH`
+
+実行時探索（登録UI）:
+
+- `driver_ui_base_dir` 指定時はその配下を優先
+- 続いて resources / app directory などの実行環境由来候補を探索
+- 実装詳細は `src-tauri/src/commands/driver/ui_launcher/paths.rs` を参照
+
+スクリプト責務:
+
+- `build-*`: ビルドのみ（`target/` 出力）
+- `install-*`: `target/` から正本 `driver-ui/` へ配置
+- `stage-*`: 正本 `driver-ui/` から `src-tauri/driver-ui/` へ同期
+
 PowerShell スクリプトで配置できるようにする。
 
 - 既存:
