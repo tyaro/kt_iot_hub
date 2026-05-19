@@ -3,6 +3,13 @@ use std::path::{Path, PathBuf};
 pub const BRIDGE_EXE_NAME: &str = "joywatcher-bridge-x86.exe";
 pub const DLL_FILE_NAME: &str = "JoyWaApi.dll";
 
+pub fn syswow64_dll_path() -> Option<PathBuf> {
+    std::env::var("WINDIR")
+        .or_else(|_| std::env::var("SystemRoot"))
+        .ok()
+        .map(|windir| PathBuf::from(windir).join("SysWOW64").join(DLL_FILE_NAME))
+}
+
 pub fn bridge_exe_candidates() -> Vec<PathBuf> {
     let mut candidates = Vec::<PathBuf>::new();
 
@@ -57,56 +64,7 @@ pub fn bridge_exe_candidates() -> Vec<PathBuf> {
 }
 
 pub fn dll_file_candidates() -> Vec<PathBuf> {
-    let mut candidates = Vec::<PathBuf>::new();
-
-    if let Ok(configured_path) = std::env::var("JOYWATCHER_DLL_PATH") {
-        push_unique(&mut candidates, PathBuf::from(configured_path));
-    }
-
-    if let Ok(configured_dir) = std::env::var("JOYWATCHER_DLL_DIR") {
-        push_unique(&mut candidates, PathBuf::from(configured_dir).join(DLL_FILE_NAME));
-    }
-
-    if let Ok(windir) = std::env::var("WINDIR").or_else(|_| std::env::var("SystemRoot")) {
-        push_unique(
-            &mut candidates,
-            PathBuf::from(windir).join("SysWOW64").join(DLL_FILE_NAME),
-        );
-    }
-
-    if let Ok(current_dir) = std::env::current_dir() {
-        push_unique(&mut candidates, current_dir.join(DLL_FILE_NAME));
-        if let Some(parent) = current_dir.parent() {
-            push_unique(&mut candidates, parent.join(DLL_FILE_NAME));
-        }
-    }
-
-    if let Ok(current_exe) = std::env::current_exe() {
-        if let Some(exe_dir) = current_exe.parent() {
-            push_unique(&mut candidates, exe_dir.join(DLL_FILE_NAME));
-            if let Some(parent) = exe_dir.parent() {
-                push_unique(&mut candidates, parent.join(DLL_FILE_NAME));
-            }
-        }
-    }
-
-    if let Some(repo_root) = find_repo_root() {
-        push_unique(&mut candidates, repo_root.join("参考").join(DLL_FILE_NAME));
-        push_unique(
-            &mut candidates,
-            repo_root.join("参考").join("JoyWaApi").join(DLL_FILE_NAME),
-        );
-        push_unique(
-            &mut candidates,
-            repo_root
-                .join("参考")
-                .join("JoyWaApi")
-                .join("BC")
-                .join(DLL_FILE_NAME),
-        );
-    }
-
-    candidates
+    syswow64_dll_path().into_iter().collect()
 }
 
 pub fn find_repo_root() -> Option<PathBuf> {

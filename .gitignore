@@ -19,3 +19,7 @@ driver-ui/**/*.pdb
 src-tauri/driver-ui/**/*.exe
 src-tauri/driver-ui/**/*.dll
 src-tauri/driver-ui/**/*.pdb
+
+# build.rs が apps/common/ui-assets/ から同期するビルド成果物
+apps/joywatcher/ui/assets/_shared/
+apps/postgres/ui/assets/_shared/

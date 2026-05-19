@@ -5,6 +5,7 @@ use kt_driver_ui_protocol::{
     DriverUiLaunchContext, DriverUiLaunchData, DriverUiLaunchDriver, DriverUiLaunchScanGroup,
     DriverUiLaunchSession, DriverUiLaunchTag,
 };
+use tracing::{info, warn};
 
 pub(super) async fn build_driver_ui_launch_context(
     state: &tauri::State<'_, AppState>,
@@ -23,6 +24,28 @@ pub(super) async fn build_driver_ui_launch_context(
         .filter(|cfg| cfg.driver_type == driver_type)
         .map(|cfg| cfg.id.clone())
         .collect();
+
+    let total_tags_for_driver = tags
+        .iter()
+        .filter(|tag| {
+            if let Some(ref target_driver_id) = driver_id {
+                tag.driver_id == *target_driver_id
+            } else {
+                false
+            }
+        })
+        .count();
+
+    let total_scan_groups_for_driver = scan_groups
+        .iter()
+        .filter(|group| {
+            if let Some(ref target_driver_id) = driver_id {
+                group.driver == *target_driver_id
+            } else {
+                false
+            }
+        })
+        .count();
 
     let driver_settings = driver_id.as_ref().and_then(|target_driver_id| {
         driver_configs
@@ -88,6 +111,33 @@ pub(super) async fn build_driver_ui_launch_context(
             }
         })
         .collect();
+
+    let launched_tag_count = filtered_scan_groups
+        .iter()
+        .map(|group| group.tags.len())
+        .sum::<usize>();
+
+    info!(
+        "Driver UI launch context summary: driver_id={} driver_type={} scan_groups={} tags={} existing_same_type_driver_ids={}",
+        driver_id.clone().unwrap_or_else(|| "<new>".to_string()),
+        driver_type,
+        filtered_scan_groups.len(),
+        launched_tag_count,
+        existing_driver_ids.len(),
+    );
+
+    if driver_id.is_some() && (total_scan_groups_for_driver > 0 || total_tags_for_driver > 0)
+        && (filtered_scan_groups.is_empty() || launched_tag_count == 0)
+    {
+        warn!(
+            "Driver UI launch context might be incomplete: driver_id={} total_scan_groups_for_driver={} total_tags_for_driver={} filtered_scan_groups={} launched_tags={}",
+            driver_id.clone().unwrap_or_else(|| "<new>".to_string()),
+            total_scan_groups_for_driver,
+            total_tags_for_driver,
+            filtered_scan_groups.len(),
+            launched_tag_count,
+        );
+    }
 
     Ok(DriverUiLaunchContext {
         schema_version: 1,

@@ -11,5 +11,9 @@
     },
     "accessibility.signals.chatEditModifiedFile": {
         "sound": "on"
+    },
+    "chat.tools.terminal.autoApprove": {
+        "Test-Path": true,
+        "Get-FileHash": true
     }
 }

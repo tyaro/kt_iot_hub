@@ -190,7 +190,16 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
 
     fn browse_tags(&mut self) -> Result<Vec<String>> {
         let mut buffer = vec![0u8; TAGSEL2_BUFFER_SIZE];
+        info!(
+            buffer_size = TAGSEL2_BUFFER_SIZE,
+            "Calling JoyWatcher TagSel2 (dialog will block until user closes it)"
+        );
         let result = unsafe { (self.tag_sel2_fn)(buffer.as_mut_ptr().cast::<i8>()) };
+        info!(
+            raw_result = result,
+            raw_result_hex = format!("0x{result:08X}"),
+            "JoyWatcher TagSel2 returned"
+        );
         ensure_bool_like_success("TagSel2", result)?;
 
         parse_tagsel2_buffer(&buffer)

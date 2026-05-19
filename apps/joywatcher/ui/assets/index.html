@@ -35,6 +35,13 @@
       <p class="msg err" id="msgErr"></p>
       <p class="msg ok" id="outOk"></p>
       <p class="msg err" id="outErr"></p>
+      <section class="ui-log-panel" aria-label="JoyWatcher UI ログ">
+        <div class="ui-log-head">
+          <strong>UIログ (診断用)</strong>
+          <button id="btnClearUiLog" type="button" class="btn ghost">ログをクリア</button>
+        </div>
+        <div id="uiLogList" class="ui-log-list" role="log" aria-live="polite"></div>
+      </section>
       <input id="driverId" type="hidden" />
 
       <section class="step-stage" data-step-panel="1">

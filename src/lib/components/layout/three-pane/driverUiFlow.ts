@@ -11,6 +11,41 @@ export type DriverTypeOption = {
   description: string;
 };
 
+function toDriverUiErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) {
+    return error.message || fallback;
+  }
+
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error;
+  }
+
+  if (error && typeof error === 'object') {
+    const raw = error as Record<string, unknown>;
+    const code = typeof raw.code === 'string' ? raw.code : null;
+    const message = typeof raw.error === 'string'
+      ? raw.error
+      : typeof raw.message === 'string'
+        ? raw.message
+        : null;
+
+    if (message && code) {
+      return `${code}: ${message}`;
+    }
+    if (message) {
+      return message;
+    }
+
+    try {
+      return JSON.stringify(raw);
+    } catch {
+      return fallback;
+    }
+  }
+
+  return fallback;
+}
+
 function driverTypeLabel(driverType: string): string {
   switch (driverType) {
     case 'postgres':
@@ -107,7 +142,7 @@ export async function monitorDriverUiImport({
 
       setMessage('ドライバUIを開いています。完了後はこの画面へ自動反映します。');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'ドライバUI結果の取込に失敗しました';
+      const message = toDriverUiErrorMessage(error, 'ドライバUI結果の取込に失敗しました');
       setMessage(message);
       setPolling(false);
       notify(message);

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::path_utils::{find_repo_root, push_unique, DLL_FILE_NAME};
+use crate::path_utils::{syswow64_dll_path, DLL_FILE_NAME};
 
 const LIB_FILE_NAME: &str = "JoyWaApi.lib";
 
@@ -91,42 +91,10 @@ impl JoyWatcherArtifacts {
 }
 
 fn default_search_roots() -> Vec<PathBuf> {
-    let mut roots = Vec::<PathBuf>::new();
-
-    if let Ok(configured) = std::env::var("JOYWATCHER_DLL_DIR") {
-        push_unique(&mut roots, PathBuf::from(configured));
-    }
-
-    if cfg!(windows) {
-        if let Ok(windir) = std::env::var("WINDIR").or_else(|_| std::env::var("SystemRoot")) {
-            push_unique(&mut roots, PathBuf::from(windir).join("SysWOW64"));
-        }
-    }
-
-    if let Ok(current_dir) = std::env::current_dir() {
-        push_unique(&mut roots, current_dir.clone());
-        if let Some(parent) = current_dir.parent() {
-            push_unique(&mut roots, parent.to_path_buf());
-        }
-    }
-
-    if let Ok(current_exe) = std::env::current_exe() {
-        if let Some(exe_dir) = current_exe.parent() {
-            push_unique(&mut roots, exe_dir.to_path_buf());
-            if let Some(parent) = exe_dir.parent() {
-                push_unique(&mut roots, parent.to_path_buf());
-            }
-        }
-    }
-
-    if let Some(repo_root) = find_repo_root() {
-        push_unique(&mut roots, repo_root.join("driver-ui").join("joywatcher"));
-        push_unique(&mut roots, repo_root.join("参考"));
-        push_unique(&mut roots, repo_root.join("参考").join("JoyWaApi"));
-        push_unique(&mut roots, repo_root.join("参考").join("JoyWaApi").join("BC"));
-    }
-
-    roots
+    syswow64_dll_path()
+        .and_then(|path| path.parent().map(|parent| parent.to_path_buf()))
+        .into_iter()
+        .collect()
 }
 
 #[cfg(test)]

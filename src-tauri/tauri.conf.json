@@ -1,6 +1,6 @@
 {
   "productName": "kt_iot_hub",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "identifier": "com.example.kt-iot-hub",
   "build": {
     "beforeDevCommand": "npm run dev",

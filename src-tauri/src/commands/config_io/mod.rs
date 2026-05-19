@@ -5,11 +5,39 @@ use serde::Serialize;
 use std::path::Path;
 
 pub(crate) fn resolve_config_dir() -> std::path::PathBuf {
+    if let Ok(explicit_dir) = std::env::var("KT_IOT_HUB_CONFIG_DIR") {
+        return std::path::PathBuf::from(explicit_dir);
+    }
+
+    if !cfg!(debug_assertions) {
+        if let Some(user_dir) = resolve_user_config_dir() {
+            return user_dir;
+        }
+    }
+
     let relative = std::path::PathBuf::from("../config");
     if relative.exists() {
         return relative;
     }
+
+    if cfg!(debug_assertions) {
+        if let Some(user_dir) = resolve_user_config_dir() {
+            return user_dir;
+        }
+    }
+
     std::path::PathBuf::from("config")
+}
+
+fn resolve_user_config_dir() -> Option<std::path::PathBuf> {
+    std::env::var("APPDATA")
+        .or_else(|_| std::env::var("LOCALAPPDATA"))
+        .ok()
+        .map(|base| {
+            std::path::PathBuf::from(base)
+                .join("kt_iot_hub")
+                .join("config")
+        })
 }
 
 pub(crate) fn write_toml_atomic<T: Serialize>(

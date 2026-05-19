@@ -34,12 +34,7 @@ struct Args {
 }
 
 fn main() {
-    tracing_subscriber::fmt()
-        .with_target(true)
-        .with_level(true)
-        .with_writer(std::io::stderr)
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+    init_tracing();
 
     if let Err(error) = run() {
         error!("joywatcher-bridge-x86 terminated with error: {}", error);
@@ -47,7 +42,68 @@ fn main() {
     }
 }
 
+/// tracing-subscriber を stderr + ファイルへ分岐。
+/// 親が windows-subsystem だと stderr は破棄されるため、診断にはファイルが必須。
+fn init_tracing() {
+    use tracing_subscriber::{EnvFilter, fmt::writer::MakeWriterExt};
+
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    let log_path = resolve_log_path();
+    let file_writer = log_path.as_ref().and_then(|path| {
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .ok()
+    });
+
+    let builder = tracing_subscriber::fmt()
+        .with_target(true)
+        .with_level(true)
+        .with_env_filter(env_filter);
+
+    match file_writer {
+        Some(file) => {
+            let writer = std::io::stderr.and(std::sync::Mutex::new(file));
+            builder.with_writer(writer).init();
+            if let Some(path) = log_path {
+                tracing::info!(log_file = %path.display(), "bridge-x86 tracing initialized");
+            }
+        }
+        None => {
+            builder.with_writer(std::io::stderr).init();
+            tracing::warn!("bridge-x86 file log not available; using stderr only");
+        }
+    }
+}
+
+fn resolve_log_path() -> Option<PathBuf> {
+    // 優先: %LOCALAPPDATA%\kt_iot_hub\logs\joywatcher-bridge-x86.log
+    // フォールバック: %TEMP%\kt_iot_hub-joywatcher-bridge-x86.log
+    if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+        let mut dir = PathBuf::from(local);
+        dir.push("kt_iot_hub");
+        dir.push("logs");
+        if std::fs::create_dir_all(&dir).is_ok() {
+            return Some(dir.join("joywatcher-bridge-x86.log"));
+        }
+    }
+    if let Some(tmp) = std::env::var_os("TEMP") {
+        return Some(PathBuf::from(tmp).join("kt_iot_hub-joywatcher-bridge-x86.log"));
+    }
+    None
+}
+
 fn run() -> Result<()> {
+    // GUI subsystem の親（release driver-ui exe）から起動された場合、
+    // 子の console プロセスはコンソールを継承しない。
+    // JoyWaApi の TagSel2 ダイアログはオーナーHWND探索に GetConsoleWindow() を
+    // 参照する実装になっており、コンソール未割当だとダイアログが表示されない。
+    // ここで隠しコンソールを確保し、オーナーHWNDを取得可能にする。
+    #[cfg(windows)]
+    ensure_hidden_console();
+
     let args = Args::parse();
     let connect_convention = parse_connect_convention(&args.connect_convention)?;
     let api: Box<dyn connection::JoyWatcherBridgeApi> = match args.mode.as_str() {
@@ -112,4 +168,38 @@ fn write_response(stdout: &mut dyn Write, response: &BridgeResponse) -> Result<(
     writeln!(stdout).context("failed to write newline")?;
     stdout.flush().context("failed to flush stdout")?;
     Ok(())
+}
+
+#[cfg(windows)]
+fn ensure_hidden_console() {
+    // kernel32.dll: AllocConsole / GetConsoleWindow
+    // user32.dll  : ShowWindow
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn AllocConsole() -> i32;
+        fn GetConsoleWindow() -> *mut core::ffi::c_void;
+    }
+    #[link(name = "user32")]
+    extern "system" {
+        fn ShowWindow(hwnd: *mut core::ffi::c_void, n_cmd_show: i32) -> i32;
+    }
+    const SW_HIDE: i32 = 0;
+
+    unsafe {
+        if GetConsoleWindow().is_null() {
+            // 既にコンソールがある場合は何もしない（dev時等）。
+            // 失敗しても TagSel2 以外の動作には影響しないため戻り値は無視する。
+            if AllocConsole() != 0 {
+                let hwnd = GetConsoleWindow();
+                if !hwnd.is_null() {
+                    let _ = ShowWindow(hwnd, SW_HIDE);
+                    info!("AllocConsole succeeded; hidden console attached for owner HWND");
+                } else {
+                    warn!("AllocConsole succeeded but GetConsoleWindow returned null");
+                }
+            } else {
+                warn!("AllocConsole failed; TagSel2 dialog may not appear under GUI parent");
+            }
+        }
+    }
 }

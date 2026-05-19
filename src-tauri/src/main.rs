@@ -86,11 +86,11 @@ fn main() {
         ])
         .setup(|app| {
             info!("Tauri setup beginning");
-            let config = AppConfig::load_from_files("../config")
-                .or_else(|_| AppConfig::load_from_files("config"))
-                .map_err(|e| -> Box<dyn std::error::Error> {
-                    Box::new(std::io::Error::other(e.to_string()))
-                })?;
+            let config_dir = crate::commands::config_io::resolve_config_dir();
+            info!("Resolved config directory: {}", config_dir.display());
+            let config = AppConfig::load_from_files(&config_dir).map_err(
+                |e| -> Box<dyn std::error::Error> { Box::new(std::io::Error::other(e.to_string())) },
+            )?;
 
             let registry = TagRegistry::new();
             let tag_bus = TagBus::new();

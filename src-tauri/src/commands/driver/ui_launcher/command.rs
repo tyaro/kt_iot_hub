@@ -19,6 +19,14 @@ pub async fn launch_driver_ui(
     let requested_driver_type = normalize_optional_string(req.driver_type);
     let requested_driver_ui_base_dir = normalize_optional_string(req.driver_ui_base_dir);
 
+    info!(
+        "Driver UI launch request: requested_driver_id={} requested_driver_type={} requested_base_dir={} editing_tag_id={}",
+        requested_driver_id.clone().unwrap_or_else(|| "<none>".to_string()),
+        requested_driver_type.clone().unwrap_or_else(|| "<none>".to_string()),
+        requested_driver_ui_base_dir.clone().unwrap_or_else(|| "<default>".to_string()),
+        req.editing_tag_id.clone().unwrap_or_else(|| "<none>".to_string())
+    );
+
     if let Some(driver_ui_base_dir) = requested_driver_ui_base_dir.clone() {
         *state.driver_ui_base_dir.write().await = Some(driver_ui_base_dir);
     }
@@ -30,6 +38,16 @@ pub async fn launch_driver_ui(
         requested_driver_ui_base_dir.clone(),
         &driver_configs,
     )?;
+
+    info!(
+        "Driver UI launch resolved: driver_id={} driver_type={} executable={}",
+        resolved
+            .driver_id
+            .clone()
+            .unwrap_or_else(|| "<new>".to_string()),
+        resolved.driver_type,
+        resolved.executable_path
+    );
 
     let session_id = Uuid::new_v4().to_string();
     register_active_session(

@@ -3,7 +3,7 @@ import {
   formatError,
   invokeDirect,
   normalizeId
-} from '../../../common/ui-assets/tauri.js';
+} from './_shared/tauri.js';
 
 const invoke = (cmd, args = {}) => invokeDirect(cmd, args);
 
