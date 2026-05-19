@@ -10,13 +10,14 @@ $context = Get-DriverBuildContext -ScriptPath $PSCommandPath
 $scriptDir = $context.ScriptDir
 $repoRoot = $context.RepoRoot
 
-Invoke-CargoBuildManifest -RepoRoot $repoRoot -ManifestPath "drivers/joywatcher/ui/Cargo.toml" -Label "JoyWatcher driver-ui"
-
-$sourcePath = Join-Path $repoRoot "target\debug\driver_ui_joywatcher.exe"
-Assert-BuildArtifactExists -Path $sourcePath
-
-Write-Host ">>> build succeeded"
-Write-Host ">>> installing as JoyWatcher driver-ui..."
-Install-DriverUiBuildArtifact -ScriptDir $scriptDir -DriverType "joywatcher" -SourcePath $sourcePath -StageToBundle
+Invoke-DriverManifestBuildInstall `
+	-RepoRoot $repoRoot `
+	-ScriptDir $scriptDir `
+	-ManifestPath "drivers/joywatcher/ui/Cargo.toml" `
+	-Label "JoyWatcher driver-ui" `
+	-ArtifactPath (Join-Path $repoRoot "target\debug\driver_ui_joywatcher.exe") `
+	-DriverType "joywatcher" `
+	-ArtifactKind "ui" `
+	-StageToBundle
 
 Write-Host ">>> done: ops/driver-ui/joywatcher/registration-ui.exe installed and staged"

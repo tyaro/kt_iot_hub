@@ -153,3 +153,83 @@ function Install-DriverRuntimeBuildArtifact {
 
   & (Join-Path $ScriptDir "install-driver-runtime.ps1") -DriverType $DriverType -SourcePath $SourcePath
 }
+
+function Invoke-DriverManifestBuildInstall {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepoRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ScriptDir,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ManifestPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Label,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ArtifactPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$DriverType,
+
+    [Parameter(Mandatory = $true)]
+    [ValidateSet("ui", "runtime")]
+    [string]$ArtifactKind,
+
+    [string]$TargetFileName,
+
+    [ValidateSet("debug", "release")]
+    [string]$BuildKind = "debug",
+
+    [switch]$StageToBundle
+  )
+
+  Invoke-CargoBuildManifest -RepoRoot $RepoRoot -ManifestPath $ManifestPath -Label $Label -BuildKind $BuildKind
+  Assert-BuildArtifactExists -Path $ArtifactPath
+
+  if ($ArtifactKind -eq "ui") {
+    Install-DriverUiBuildArtifact -ScriptDir $ScriptDir -DriverType $DriverType -SourcePath $ArtifactPath -StageToBundle:$StageToBundle
+    return
+  }
+
+  Install-DriverRuntimeBuildArtifact -ScriptDir $ScriptDir -DriverType $DriverType -SourcePath $ArtifactPath -TargetFileName $TargetFileName -StageToBundle:$StageToBundle
+}
+
+function Invoke-DriverPackageTargetBuildInstall {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepoRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ScriptDir,
+
+    [Parameter(Mandatory = $true)]
+    [string]$PackageName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Target,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Label,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ArtifactPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$DriverType,
+
+    [string]$TargetFileName,
+
+    [ValidateSet("debug", "release")]
+    [string]$BuildKind = "debug",
+
+    [switch]$StageToBundle
+  )
+
+  Invoke-CargoBuildPackageTarget -RepoRoot $RepoRoot -PackageName $PackageName -Target $Target -Label $Label -BuildKind $BuildKind
+  Assert-BuildArtifactExists -Path $ArtifactPath
+
+  Install-DriverRuntimeBuildArtifact -ScriptDir $ScriptDir -DriverType $DriverType -SourcePath $ArtifactPath -TargetFileName $TargetFileName -StageToBundle:$StageToBundle
+}

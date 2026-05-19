@@ -10,14 +10,14 @@ $context = Get-DriverBuildContext -ScriptPath $PSCommandPath
 $scriptDir = $context.ScriptDir
 $repoRoot = $context.RepoRoot
 
-Invoke-CargoBuildManifest -RepoRoot $repoRoot -ManifestPath "drivers/postgres/driver/Cargo.toml" -Label "postgres runtime driver"
-
-$sourcePath = Join-Path $repoRoot "target\debug\driver-postgres.exe"
-Assert-BuildArtifactExists -Path $sourcePath
-
-Write-Host ">>> build succeeded"
-
-Write-Host ">>> installing beside registration UI..."
-Install-DriverRuntimeBuildArtifact -ScriptDir $scriptDir -DriverType "postgres" -SourcePath $sourcePath -StageToBundle
+Invoke-DriverManifestBuildInstall `
+	-RepoRoot $repoRoot `
+	-ScriptDir $scriptDir `
+	-ManifestPath "drivers/postgres/driver/Cargo.toml" `
+	-Label "postgres runtime driver" `
+	-ArtifactPath (Join-Path $repoRoot "target\debug\driver-postgres.exe") `
+	-DriverType "postgres" `
+	-ArtifactKind "runtime" `
+	-StageToBundle
 
 Write-Host ">>> done: ops/driver-ui/postgres/driver-postgres.exe installed and staged"
