@@ -1,6 +1,6 @@
-# Stages driver artifacts from driver-ui/<DriverType>/ (source of truth) to src-tauri/driver-ui/<DriverType>/.
+# Stages driver artifacts from ops/driver-ui/<DriverType>/ (source of truth) to core/src-tauri/driver-ui/<DriverType>/.
 # This script does not build binaries and does not copy in reverse direction.
-# Usage: .\scripts\stage-driver-artifacts.ps1 -DriverType postgres
+# Usage: .\ops\scripts\stage-driver-artifacts.ps1 -DriverType postgres
 
 param(
   [Parameter(Mandatory = $true)]
@@ -11,9 +11,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $PSCommandPath
-$repoRoot = Resolve-Path (Join-Path $scriptDir "..")
-$sourceDir = Join-Path $repoRoot "driver-ui\$DriverType"
-$targetDir = Join-Path $repoRoot "src-tauri\driver-ui\$DriverType"
+$repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
+$sourceDir = Join-Path $repoRoot "ops\driver-ui\$DriverType"
+$targetDir = Join-Path $repoRoot "core\src-tauri\driver-ui\$DriverType"
 
 if (-not (Test-Path $sourceDir -PathType Container)) {
   throw "Source driver directory not found: $sourceDir"
@@ -29,4 +29,4 @@ Write-Host "  Target : $targetDir"
 
 Copy-Item -Path (Join-Path $sourceDir "*") -Destination $targetDir -Recurse -Force
 
-Write-Host "Staged successfully (one-way): driver-ui/$DriverType -> src-tauri/driver-ui/$DriverType" -ForegroundColor Green
+Write-Host "Staged successfully (one-way): ops/driver-ui/$DriverType -> core/src-tauri/driver-ui/$DriverType" -ForegroundColor Green

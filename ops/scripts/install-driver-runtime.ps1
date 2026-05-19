@@ -1,4 +1,4 @@
-# Installs a runtime driver executable into driver-ui/<driver-type>/ (or a specified BinDir).
+# Installs a runtime driver executable into ops/driver-ui/<driver-type>/ (or a specified BinDir).
 # Typical source is target/release/*.exe; destination is development source of truth by default.
 
 param(
@@ -17,10 +17,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $PSCommandPath
-$repoRoot = Resolve-Path (Join-Path $scriptDir "..")
+$repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
 
 if ([string]::IsNullOrWhiteSpace($BinDir)) {
-  $BinDir = Join-Path $repoRoot.Path (Join-Path "driver-ui" $DriverType)
+  $BinDir = Join-Path $repoRoot.Path (Join-Path "ops/driver-ui" $DriverType)
 }
 
 if ([string]::IsNullOrWhiteSpace($TargetFileName)) {

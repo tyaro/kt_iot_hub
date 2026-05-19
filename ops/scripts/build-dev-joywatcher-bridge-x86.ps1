@@ -1,11 +1,11 @@
-# Build JoyWatcher x86 bridge EXE (debug) and install it under driver-ui/joywatcher/
-# Usage: .\scripts\build-dev-joywatcher-bridge-x86.ps1
+# Build JoyWatcher x86 bridge EXE (debug) and install it under ops/driver-ui/joywatcher/
+# Usage: .\ops\scripts\build-dev-joywatcher-bridge-x86.ps1
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $PSCommandPath
-$repoRoot = Resolve-Path (Join-Path $scriptDir "..")
+$repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
 $targetTriple = "i686-pc-windows-msvc"
 
 Write-Host ">>> cargo build joywatcher x86 bridge (debug / $targetTriple)..."
@@ -30,4 +30,4 @@ Write-Host ">>> installing beside JoyWatcher runtime..."
 	-SourcePath $sourcePath `
 	-TargetFileName "joywatcher-bridge-x86.exe"
 
-Write-Host ">>> done: driver-ui/joywatcher/joywatcher-bridge-x86.exe installed"
+Write-Host ">>> done: ops/driver-ui/joywatcher/joywatcher-bridge-x86.exe installed"

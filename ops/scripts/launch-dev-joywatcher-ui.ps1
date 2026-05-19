@@ -1,8 +1,8 @@
 # Launch JoyWatcher registration UI with a temporary launch-context JSON for manual verification.
 # Usage examples:
-#   .\scripts\launch-dev-joywatcher-ui.ps1 -Build
-#   .\scripts\launch-dev-joywatcher-ui.ps1 -Build -NoLaunch
-#   .\scripts\launch-dev-joywatcher-ui.ps1 -DriverId joywatcher-dev -Endpoint localhost -UserId 0
+#   .\ops\scripts\launch-dev-joywatcher-ui.ps1 -Build
+#   .\ops\scripts\launch-dev-joywatcher-ui.ps1 -Build -NoLaunch
+#   .\ops\scripts\launch-dev-joywatcher-ui.ps1 -DriverId joywatcher-dev -Endpoint localhost -UserId 0
 
 param(
   [switch]$Build,
@@ -23,7 +23,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $PSCommandPath
-$repoRoot = Resolve-Path (Join-Path $scriptDir "..")
+$repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
 
 if ([string]::IsNullOrWhiteSpace($SessionId)) {
   $SessionId = [guid]::NewGuid().ToString()
@@ -48,7 +48,7 @@ function Resolve-UiPath {
   }
 
   $candidates = @(
-    (Join-Path $RootPath "driver-ui\joywatcher\registration-ui.exe"),
+    (Join-Path $RootPath "ops\driver-ui\joywatcher\registration-ui.exe"),
     (Join-Path $RootPath "target\debug\driver_ui_joywatcher.exe")
   )
 
@@ -58,7 +58,7 @@ function Resolve-UiPath {
     }
   }
 
-  throw "JoyWatcher registration UI executable not found. Run .\scripts\build-dev-joywatcher-ui.ps1 first or pass -DriverUiPath."
+  throw "JoyWatcher registration UI executable not found. Run .\ops\scripts\build-dev-joywatcher-ui.ps1 first or pass -DriverUiPath."
 }
 
 $resolvedUiPath = Resolve-UiPath -ExplicitPath $DriverUiPath -RootPath $AppRoot

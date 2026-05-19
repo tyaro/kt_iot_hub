@@ -5,12 +5,12 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $PSCommandPath
-$repoRoot = Resolve-Path (Join-Path $scriptDir "..")
+$repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
 
 Write-Host ">>> cargo build postgres runtime driver (debug)..."
 Push-Location $repoRoot
 try {
-	cargo build --manifest-path apps/postgres/driver/Cargo.toml
+	cargo build --manifest-path drivers/postgres/driver/Cargo.toml
 	if ($LASTEXITCODE -ne 0) { throw "cargo build failed (exit code $LASTEXITCODE)" }
 } finally {
 	Pop-Location
@@ -28,4 +28,4 @@ Write-Host ">>> installing beside registration UI..."
 	-DriverType "postgres" `
 	-SourcePath $sourcePath
 
-Write-Host ">>> done: driver-ui/postgres/driver-postgres.exe installed"
+Write-Host ">>> done: ops/driver-ui/postgres/driver-postgres.exe installed"

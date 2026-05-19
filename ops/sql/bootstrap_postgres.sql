@@ -1,6 +1,6 @@
 -- PostgreSQL 接続確認用の最小セットアップ
 -- 例:
---   psql -U postgres -f sql/bootstrap_postgres.sql
+--   psql -U postgres -f ops/sql/bootstrap_postgres.sql
 
 DO
 $$

@@ -1,16 +1,16 @@
-# Build JoyWatcher driver UI EXE (debug) and install it under driver-ui/joywatcher/
-# Usage: .\scripts\build-dev-joywatcher-ui.ps1
+# Build JoyWatcher driver UI EXE (debug) and install it under ops/driver-ui/joywatcher/
+# Usage: .\ops\scripts\build-dev-joywatcher-ui.ps1
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $PSCommandPath
-$repoRoot = Resolve-Path (Join-Path $scriptDir "..")
+$repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
 
 Write-Host ">>> cargo build JoyWatcher driver-ui (debug)..."
 Push-Location $repoRoot
 try {
-    cargo build --manifest-path apps/joywatcher/ui/Cargo.toml
+    cargo build --manifest-path drivers/joywatcher/ui/Cargo.toml
     if ($LASTEXITCODE -ne 0) { throw "cargo build failed (exit code $LASTEXITCODE)" }
 } finally {
     Pop-Location
@@ -27,4 +27,4 @@ Write-Host ">>> installing as JoyWatcher driver-ui..."
     -DriverType "joywatcher" `
     -SourcePath $sourcePath
 
-Write-Host ">>> done: driver-ui/joywatcher/registration-ui.exe installed"
+Write-Host ">>> done: ops/driver-ui/joywatcher/registration-ui.exe installed"
