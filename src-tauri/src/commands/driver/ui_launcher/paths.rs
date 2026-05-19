@@ -67,9 +67,35 @@ pub(super) fn find_default_driver_ui_path(
     None
 }
 
+pub(super) fn describe_driver_ui_search_locations(
+    driver_type: &str,
+    driver_ui_base_dir: Option<&str>,
+) -> String {
+    let driver_type = driver_type.trim();
+    if driver_type.is_empty() {
+        return "<driver_type is empty>".to_string();
+    }
+
+    let mut locations = Vec::<String>::new();
+    for root in app_root_candidates(driver_ui_base_dir) {
+        locations.push(path_to_string(root.join("driver-ui").join(driver_type)));
+        locations.push(path_to_string(root.join(driver_type)));
+    }
+
+    let mut unique = Vec::<String>::new();
+    for path in locations {
+        if !unique.contains(&path) {
+            unique.push(path);
+        }
+    }
+
+    unique.join(", ")
+}
+
 fn app_root_candidates(driver_ui_base_dir: Option<&str>) -> Vec<PathBuf> {
     let mut roots = Vec::<PathBuf>::new();
 
+    // 優先順①: 設定画面で指定された base_dir
     if let Some(base_dir) = driver_ui_base_dir {
         let trimmed = base_dir.trim();
         if !trimmed.is_empty() {
@@ -77,7 +103,27 @@ fn app_root_candidates(driver_ui_base_dir: Option<&str>) -> Vec<PathBuf> {
         }
     }
 
-    // current_dir から祖先を辿って候補にする (tauri dev の cwd 差異に備える)
+    // 優先順②: DRIVER_BIN_DIR 環境変数
+    if let Ok(driver_bin_dir) = std::env::var("DRIVER_BIN_DIR") {
+        let trimmed = driver_bin_dir.trim();
+        if !trimmed.is_empty() {
+            roots.push(PathBuf::from(trimmed));
+        }
+    }
+
+    // 優先順③: 実行バイナリ配置場所（resources / app directory）
+    if let Ok(current_exe) = std::env::current_exe() {
+        if let Some(exe_dir) = current_exe.parent() {
+            roots.push(exe_dir.join("resources"));
+            if let Some(parent) = exe_dir.parent() {
+                roots.push(parent.join("Resources"));
+            }
+
+            roots.push(exe_dir.to_path_buf());
+        }
+    }
+
+    // 優先順④: 後方互換のための祖先探索（current_dir / exe_dir）
     if let Ok(current_dir) = std::env::current_dir() {
         let mut cursor = Some(current_dir.as_path());
         while let Some(path) = cursor {
@@ -86,15 +132,9 @@ fn app_root_candidates(driver_ui_base_dir: Option<&str>) -> Vec<PathBuf> {
         }
     }
 
-    // 実行バイナリ配置場所から祖先を辿って候補にする
     if let Ok(current_exe) = std::env::current_exe() {
         if let Some(exe_dir) = current_exe.parent() {
-            roots.push(exe_dir.join("resources"));
-            if let Some(parent) = exe_dir.parent() {
-                roots.push(parent.join("Resources"));
-            }
-
-            let mut cursor = Some(exe_dir);
+            let mut cursor = exe_dir.parent();
             while let Some(path) = cursor {
                 roots.push(path.to_path_buf());
                 cursor = path.parent();

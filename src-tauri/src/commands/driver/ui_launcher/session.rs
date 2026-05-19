@@ -1,4 +1,7 @@
-use super::paths::{resolve_driver_ui_path_for_type, resolve_driver_ui_path_with_base};
+use super::paths::{
+    describe_driver_ui_search_locations, resolve_driver_ui_path_for_type,
+    resolve_driver_ui_path_with_base,
+};
 use crate::app_state::{AppState, DriverUiSessionState};
 use crate::commands::dto::ErrorResponse;
 use crate::config::DriverConfig;
@@ -38,8 +41,13 @@ pub(super) fn resolve_launch_target(
         .ok_or(ErrorResponse::new(
             "NOT_CONFIGURED",
             format!(
-                "Driver UI executable not found for driver {} (place it under driver-ui/{}/registration-ui(.exe))",
-                driver_id, driver_config.driver_type
+                "Driver UI executable not found for driver {} (place it under driver-ui/{}/registration-ui(.exe)). searched in: {}",
+                driver_id,
+                driver_config.driver_type,
+                describe_driver_ui_search_locations(
+                    &driver_config.driver_type,
+                    requested_driver_ui_base_dir.as_deref(),
+                )
             ),
         ))?;
 
@@ -62,8 +70,13 @@ pub(super) fn resolve_launch_target(
     .ok_or(ErrorResponse::new(
         "NOT_CONFIGURED",
         format!(
-            "Driver UI executable not found for driver type {} (place it under driver-ui/{}/registration-ui(.exe))",
-            driver_type, driver_type
+            "Driver UI executable not found for driver type {} (place it under driver-ui/{}/registration-ui(.exe)). searched in: {}",
+            driver_type,
+            driver_type,
+            describe_driver_ui_search_locations(
+                &driver_type,
+                requested_driver_ui_base_dir.as_deref(),
+            )
         ),
     ))?;
 
