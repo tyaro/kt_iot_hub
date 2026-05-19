@@ -130,3 +130,7 @@
   - Phase 2: 候補一覧を discovery 結果へ切替
   - Phase 3: 埋め込み列挙を削除し legacy 探索を段階縮退
   - 詳細設計は `docs/driver-manifest-discovery-design.md` を正本とする。
+
+- **段階廃止時期（決定）**:
+  - v0.4.0: `knownDriverTypes` を deprecated とし、利用時に warn ログを出す。
+  - v0.5.0 以降: `knownDriverTypes` を削除し、manifest discovery を唯一の候補生成経路とする。

@@ -59,6 +59,12 @@
 - `<base>/driver-ui/<driver_type>/registration-ui.exe`
 - `<base>/driver-ui/<driver_type>/driver-<driver_type>.exe`
 
+補足（workspace 整理後の責務）:
+
+- 開発時正本は `driver-ui/<driver_type>/` とする
+- `src-tauri/driver-ui/<driver_type>/` は bundle staging とし、正本から同期する
+- manifest も正本側（`driver-ui/<driver_type>/driver-manifest.json`）へ配置する
+
 ### 5.3 後方互換
 
 - 既存の `driver-ui/<type>/registration-ui(.exe)` 探索は当面維持する。
@@ -199,6 +205,11 @@
 
 - 埋め込み `knownDriverTypes` を削除
 - legacy discovery を段階縮退（必要に応じて期限設定）
+
+移行時期（案）:
+
+- v0.4.0: `knownDriverTypes` を deprecated 扱いにし、起動時 warn ログを追加
+- v0.5.0 以降: `knownDriverTypes` を削除し、manifest discovery を既定にする
 
 ## 12. 受け入れ条件
 

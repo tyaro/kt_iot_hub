@@ -162,3 +162,12 @@
 | Beta | UI からタグ管理可能、Mosquitto インストーラ統合 |
 | RC | JoyWatcher ドライバが動作、複数ドライバ並行運用 |
 | v1.0 | SLMP ドライバ追加、基本的なドライバプラグイン構造確立 |
+
+## ドライバディスカバリ移行マイルストーン
+
+- v0.4.0
+  - `knownDriverTypes` を deprecated 化
+  - manifest discovery の利用を優先し、legacy discovery はフォールバック継続
+- v0.5.0 以降
+  - `knownDriverTypes` を削除
+  - `driver-manifest.json` ベースの discovery を既定化
