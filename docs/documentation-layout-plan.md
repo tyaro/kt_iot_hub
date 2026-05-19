@@ -1,5 +1,39 @@
 # ドキュメント配置再編案（ハイブリッド）
 
+## 実施状況（2026-05-19）
+
+### 完了済み
+
+- `docs/INDEX.md` を追加（入口一本化）
+- 領域別 README を追加
+  - `core/docs/README.md`
+  - `drivers/docs/README.md`
+  - `ops/docs/README.md`
+  - `drivers/joywatcher/docs/README.md`
+- driver 系文書を `drivers/docs/` へ移動
+  - `driver-development.md`
+  - `driver-implementation-flow.md`
+  - `templates/*`
+- core / ops / JoyWatcher 固有文書を領域配下へ移動
+  - `core/docs/mqtt-monitor.md`
+  - `ops/docs/deployment.md`
+  - `drivers/joywatcher/docs/{investigation.md, session-handoff.md, bridge-x86-design.md}`
+- 主要導線リンクを更新
+  - `README.md`
+  - `AGENTS.md`
+  - `.github/copilot-instructions.md`
+  - 関連 docs 内部リンク
+
+### セーブポイント（コミット）
+
+- `b23eaca`: docs(layout): driver系ドキュメントをdrivers/docsへ移設し索引を追加
+- `da8e291`: docs(layout): core/ops/joywatcher 文書を領域配下へ移設
+
+### 残タスク（軽微）
+
+- `docs/workspace-structure-cleanup-plan.md` 内の旧パス表記は、履歴記述として残置中（必要なら注釈付きで更新）
+- Markdown Lint 既存指摘（`docs/driver-property-extensibility-design.md` の `MD036`）は本作業スコープ外
+
 ## 目的
 
 - ルート `docs/` の可読性を維持しつつ、実装密着ドキュメントをコード近傍へ移す。
