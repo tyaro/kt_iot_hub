@@ -6,11 +6,64 @@ import {
   formatError,
   invokeWithGuard,
   normalizeId
-} from '../../../common/ui-assets/tauri.js'
+} from './_shared/tauri.js'
 
 const browserWindow = globalThis
 const tauriInvoke = bindTauriInvoke(browserWindow)
-const invoke = (cmd, args = {}) => invokeWithGuard(tauriInvoke, cmd, args)
+
+const UI_LOG_LIMIT = 300
+
+function formatLogDetail(detail) {
+  if (detail == null) return ''
+  if (typeof detail === 'string') return detail
+  try {
+    return JSON.stringify(detail)
+  } catch {
+    return String(detail)
+  }
+}
+
+function appendUiLog(level, message, detail = null) {
+  const list = el('uiLogList')
+  const time = new Date().toLocaleTimeString('ja-JP', { hour12: false })
+  const line = `[${time}] [${level.toUpperCase()}] ${message}${detail == null ? '' : ` :: ${formatLogDetail(detail)}`}`
+
+  if (list) {
+    const row = browserWindow.document.createElement('div')
+    row.className = `ui-log-row ${level}`
+    row.textContent = line
+    list.appendChild(row)
+
+    while (list.childElementCount > UI_LOG_LIMIT) {
+      list.removeChild(list.firstElementChild)
+    }
+
+    list.scrollTop = list.scrollHeight
+  }
+
+  if (level === 'error') {
+    console.error(line)
+  } else if (level === 'warn') {
+    console.warn(line)
+  } else {
+    console.log(line)
+  }
+}
+
+async function invoke(cmd, args = {}) {
+  const startedAt = browserWindow.performance?.now?.() ?? Date.now()
+  appendUiLog('info', `invoke start: ${cmd}`, args)
+  try {
+    const result = await invokeWithGuard(tauriInvoke, cmd, args)
+    const elapsed = (browserWindow.performance?.now?.() ?? Date.now()) - startedAt
+    appendUiLog('info', `invoke ok: ${cmd} (${elapsed.toFixed(1)}ms)`)
+    return result
+  } catch (error) {
+    const elapsed = (browserWindow.performance?.now?.() ?? Date.now()) - startedAt
+    appendUiLog('error', `invoke failed: ${cmd} (${elapsed.toFixed(1)}ms)`, formatError(error))
+    throw error
+  }
+}
 
 let launchContext = null
 let scanGroups = []
@@ -44,6 +97,13 @@ function clearMessages() {
     el('outOkReview'),
     el('outErrReview')
   ])
+}
+
+function clearUiLog() {
+  const list = el('uiLogList')
+  if (!list) return
+  list.innerHTML = ''
+  appendUiLog('info', 'UIログをクリアしました')
 }
 
 function connectionSettings() {
@@ -341,9 +401,41 @@ function findGroupIndex(groupId, node) {
   return scanGroups.findIndex((group) => group.id === groupId && group.node === node)
 }
 
+function findExistingTagIndexInGroup(group, nextTag) {
+  const normalizedPath = String(nextTag?.tagPath || '').trim()
+  const normalizedNativeTagId = Number(nextTag?.nativeTagId)
+  const hasNativeTagId = Number.isInteger(normalizedNativeTagId) && normalizedNativeTagId > 0
+
+  return group.tags.findIndex((tag) => {
+    const samePath = String(tag?.tagPath || '').trim() === normalizedPath
+    if (samePath) return true
+
+    if (!hasNativeTagId) return false
+    const existingNativeTagId = Number(tag?.nativeTagId)
+    return Number.isInteger(existingNativeTagId) && existingNativeTagId === normalizedNativeTagId
+  })
+}
+
+function buildTagIdFromParts(driverId, connectionId, groupId, nativeTagId, fallbackName = 'tag') {
+  const numericNativeTagId = Number(nativeTagId)
+  const nativePart = Number.isInteger(numericNativeTagId) && numericNativeTagId > 0
+    ? String(numericNativeTagId)
+    : (fallbackName || 'tag')
+
+  return normalizeId(`tag-${driverId}-${connectionId}-${groupId}-${nativePart}`)
+}
+
 function buildAutoTag(driverId, parsedTag) {
+  // nativeTagId は JoyWatcher 全体で一意とは限らず、別グループで再利用されるため、
+  // groupId も含めて本体側の tag.id として衝突しない形にする。
   return {
-    id: normalizeId(`tag-${driverId}-${parsedTag.connectionId}-${parsedTag.groupId}-${parsedTag.tagName}`),
+    id: buildTagIdFromParts(
+      driverId,
+      parsedTag.connectionId,
+      parsedTag.groupId,
+      parsedTag.nativeTagId,
+      parsedTag.tagName
+    ),
     name: parsedTag.tagName,
     dataType: 'f32',
     tagPath: parsedTag.raw,
@@ -354,6 +446,55 @@ function buildAutoTag(driverId, parsedTag) {
     comment: '',
     enabled: true
   }
+}
+
+function ensureUniqueTagIds() {
+  const seen = new Set()
+  let fixedCount = 0
+
+  scanGroups.forEach((group, groupIndex) => {
+    const connectionId = group?.node || launchContext?.driverId || 'jws'
+    const groupId = group?.id || `group-${groupIndex + 1}`
+    const groupDriverId = connectionId
+
+    group.tags.forEach((tag, tagIndex) => {
+      const currentId = String(tag.id || '').trim()
+      const fallbackName = tag.name || `tag${tagIndex + 1}`
+
+      let nextId = currentId || buildTagIdFromParts(
+        groupDriverId,
+        connectionId,
+        groupId,
+        tag.nativeTagId,
+        fallbackName
+      )
+
+      if (seen.has(nextId)) {
+        const baseId = buildTagIdFromParts(
+          groupDriverId,
+          connectionId,
+          groupId,
+          tag.nativeTagId,
+          fallbackName
+        )
+        let suffix = 2
+        nextId = baseId
+        while (seen.has(nextId)) {
+          nextId = normalizeId(`${baseId}-${suffix}`)
+          suffix += 1
+        }
+      }
+
+      if (nextId !== currentId) {
+        tag.id = nextId
+        fixedCount += 1
+      }
+
+      seen.add(nextId)
+    })
+  })
+
+  return fixedCount
 }
 
 function mapJoyWatcherDtypeToDataType(dtype, fallback = 'f32') {
@@ -545,7 +686,7 @@ function importBrowsedTags(parsedItems) {
 
     const group = scanGroups[targetIndex]
     const nextTag = buildAutoTag(driverId, item)
-    const existingIndex = group.tags.findIndex((tag) => tag.tagPath === nextTag.tagPath)
+    const existingIndex = findExistingTagIndexInGroup(group, nextTag)
 
     if (existingIndex >= 0) {
       group.tags.splice(existingIndex, 1, {
@@ -563,6 +704,11 @@ function importBrowsedTags(parsedItems) {
       importedGroupKeys.push(key)
     }
   })
+
+  const fixedCount = ensureUniqueTagIds()
+  if (fixedCount > 0) {
+    appendUiLog('warn', `tag.id の重複/空IDを ${fixedCount} 件再採番しました`)
+  }
 
   if (importedGroupKeys.length > 0) {
     syncDriverIdFromGroups()
@@ -885,6 +1031,7 @@ function validateReadyToSave() {
 }
 
 async function browseTags() {
+  appendUiLog('info', 'TagSel2 実行を開始します')
   validateConnection()
 
   const settings = connectionSettings()
@@ -898,6 +1045,8 @@ async function browseTags() {
     .map(parseResolvedBrowseItem)
     .filter(Boolean)
 
+  appendUiLog('info', `TagSel2 結果 ${parsedItems.length}件`)
+
   browsedTags = parsedItems
   importBrowsedTags(parsedItems)
 
@@ -905,6 +1054,7 @@ async function browseTags() {
   try {
     typeProbeSummary = await probeImportedTagTypes(parsedItems)
   } catch (error) {
+    appendUiLog('warn', '取込直後の型確認をスキップ', formatError(error))
     el('msgErr').textContent = `型確認はスキップしました: ${formatError(error)}`
   }
 
@@ -1047,6 +1197,14 @@ function renderReview() {
 function buildPayload() {
   validateReadyToSave()
 
+  const fixedCount = ensureUniqueTagIds()
+  if (fixedCount > 0) {
+    appendUiLog('warn', `保存前に tag.id を ${fixedCount} 件再採番しました`)
+    renderGroups()
+    renderTags()
+    refreshSummary()
+  }
+
   return {
     schemaVersion: 1,
     driver: {
@@ -1087,6 +1245,7 @@ function buildPayload() {
 }
 
 async function saveOutput() {
+  appendUiLog('info', '保存処理を開始します')
   clearMessages()
   try {
     const payload = buildPayload()
@@ -1103,6 +1262,7 @@ async function saveOutput() {
       void closeWindow()
     }, 200)
   } catch (error) {
+    appendUiLog('error', '保存処理に失敗しました', formatError(error))
     if (el('outErrReview')) {
       el('outErrReview').textContent = formatError(error)
     } else {
@@ -1112,18 +1272,22 @@ async function saveOutput() {
 }
 
 async function closeWindow() {
+  appendUiLog('info', 'ウィンドウクローズ要求')
   try {
     await invoke('close_driver_ui_window')
     return
   } catch {
+    appendUiLog('warn', 'close_driver_ui_window 失敗のため window.close() へフォールバック')
     browserWindow.close()
   }
 }
 
 async function init() {
+  appendUiLog('info', '初期化開始')
   clearMessages()
 
   if (!tauriInvoke) {
+    appendUiLog('warn', 'Tauri runtime 未検出 (静的プレビュー)')
     el('driverId').value = ''
     connectionState = {
       endpoint: 'localhost',
@@ -1146,6 +1310,10 @@ async function init() {
 
   try {
     launchContext = await invoke('get_driver_ui_launch_context')
+    appendUiLog('info', '起動コンテキストを取得しました', {
+      hasDriverId: Boolean(launchContext?.driverId),
+      hasContext: Boolean(launchContext?.context)
+    })
     const ctx = launchContext?.context || {}
     const settings = ctx.driverSettings && typeof ctx.driverSettings === 'object'
       ? ctx.driverSettings
@@ -1153,6 +1321,10 @@ async function init() {
 
     isEditMode = Boolean(launchContext?.driverId)
     scanGroups = restoreScanGroups(ctx.scanGroups)
+    const fixedCount = ensureUniqueTagIds()
+    if (fixedCount > 0) {
+      appendUiLog('warn', `既存定義の tag.id 重複を ${fixedCount} 件補正しました`)
+    }
 
     el('driverId').value = launchContext?.driverId || ''
     connectionState = {
@@ -1173,9 +1345,20 @@ async function init() {
     }
     setStep(1)
   } catch (error) {
+    appendUiLog('error', '初期化失敗', formatError(error))
     el('msgErr').textContent = formatError(error)
   }
 }
+
+browserWindow.addEventListener('error', (event) => {
+  appendUiLog('error', 'window.error', event?.message || 'unknown error')
+})
+
+browserWindow.addEventListener('unhandledrejection', (event) => {
+  appendUiLog('error', 'unhandledrejection', formatError(event?.reason))
+})
+
+el('btnClearUiLog')?.addEventListener('click', () => clearUiLog())
 
 el('btnStep2Next').addEventListener('click', () => setStep(2))
 el('btnStepReviewPrev').addEventListener('click', () => setStep(1))
@@ -1184,6 +1367,7 @@ el('btnSaveGroup').addEventListener('click', () => {
   try {
     upsertGroup()
   } catch (error) {
+    appendUiLog('error', 'グループ更新エラー', formatError(error))
     el('msgErr').textContent = formatError(error)
   }
 })
@@ -1199,6 +1383,7 @@ el('btnBrowseTags').addEventListener('click', async () => {
   try {
     await browseTags()
   } catch (error) {
+    appendUiLog('error', 'TagSel2 実行エラー', formatError(error))
     el('msgErr').textContent = formatError(error)
   }
 })
@@ -1210,6 +1395,7 @@ el('btnProbeTypes').addEventListener('click', async () => {
     const summary = await probeRegisteredTagTypes()
     el('msgOk').textContent = `型確認を実行しました。bool ${summary.counts.bool}件 / string ${summary.counts.string}件 / number ${summary.counts.number}件`
   } catch (error) {
+    appendUiLog('error', '型確認エラー', formatError(error))
     el('msgErr').textContent = formatError(error)
   } finally {
     setTypeProbeBusy(false)
