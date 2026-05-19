@@ -10,7 +10,9 @@ param(
 
   [string]$BinDir,
 
-  [string]$TargetFileName
+  [string]$TargetFileName,
+
+  [switch]$StageToBundle
 )
 
 Set-StrictMode -Version Latest
@@ -18,6 +20,10 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $PSCommandPath
 $repoRoot = Resolve-Path (Join-Path $scriptDir "../..")
+
+if ($StageToBundle -and -not [string]::IsNullOrWhiteSpace($BinDir)) {
+  throw "-StageToBundle は BinDir 未指定時のみ利用できます。ops/driver-ui を正本に install した後で staging してください。"
+}
 
 if ([string]::IsNullOrWhiteSpace($BinDir)) {
   $BinDir = Join-Path $repoRoot.Path (Join-Path "ops/driver-ui" $DriverType)
@@ -45,3 +51,8 @@ Write-Host "  Source     : $resolvedSource"
 Write-Host "  Target     : $targetPath"
 Write-Host ""
 Write-Host "Search order: configured driver-ui base path -> DRIVER_BIN_DIR -> main app directory -> PATH" -ForegroundColor Cyan
+
+if ($StageToBundle) {
+  Write-Host ">>> staging driver artifacts to core/src-tauri/driver-ui/..."
+  & (Join-Path $scriptDir "stage-driver-artifacts.ps1") -DriverType $DriverType
+}

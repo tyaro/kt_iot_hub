@@ -28,9 +28,7 @@ Write-Host ">>> installing beside JoyWatcher runtime..."
 & (Join-Path $scriptDir "install-driver-runtime.ps1") `
 	-DriverType "joywatcher" `
 	-SourcePath $sourcePath `
-	-TargetFileName "joywatcher-bridge-x86.exe"
-
-Write-Host ">>> staging JoyWatcher driver artifacts to core/src-tauri/driver-ui/..."
-& (Join-Path $scriptDir "stage-driver-artifacts.ps1") -DriverType "joywatcher"
+	-TargetFileName "joywatcher-bridge-x86.exe" `
+	-StageToBundle
 
 Write-Host ">>> done: ops/driver-ui/joywatcher/joywatcher-bridge-x86.exe installed and staged"

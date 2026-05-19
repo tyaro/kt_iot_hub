@@ -25,9 +25,7 @@ if (-not (Test-Path $sourcePath)) {
 Write-Host ">>> installing as postgres driver-ui..."
 & (Join-Path $scriptDir "install-driver-ui.ps1") `
     -DriverType "postgres" `
-    -SourcePath $sourcePath
-
-Write-Host ">>> staging postgres driver artifacts to core/src-tauri/driver-ui/..."
-& (Join-Path $scriptDir "stage-driver-artifacts.ps1") -DriverType "postgres"
+    -SourcePath $sourcePath `
+    -StageToBundle
 
 Write-Host ">>> done: ops/driver-ui/postgres/registration-ui.exe installed and staged"

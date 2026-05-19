@@ -26,9 +26,7 @@ Write-Host ">>> build succeeded"
 Write-Host ">>> installing beside registration UI..."
 & (Join-Path $scriptDir "install-driver-runtime.ps1") `
 	-DriverType "postgres" `
-	-SourcePath $sourcePath
-
-Write-Host ">>> staging postgres driver artifacts to core/src-tauri/driver-ui/..."
-& (Join-Path $scriptDir "stage-driver-artifacts.ps1") -DriverType "postgres"
+	-SourcePath $sourcePath `
+	-StageToBundle
 
 Write-Host ">>> done: ops/driver-ui/postgres/driver-postgres.exe installed and staged"

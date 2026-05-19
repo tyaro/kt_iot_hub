@@ -25,9 +25,7 @@ Write-Host ">>> build succeeded"
 Write-Host ">>> installing beside JoyWatcher registration UI..."
 & (Join-Path $scriptDir "install-driver-runtime.ps1") `
     -DriverType "joywatcher" `
-    -SourcePath $sourcePath
-
-Write-Host ">>> staging JoyWatcher driver artifacts to core/src-tauri/driver-ui/..."
-& (Join-Path $scriptDir "stage-driver-artifacts.ps1") -DriverType "joywatcher"
+    -SourcePath $sourcePath `
+    -StageToBundle
 
 Write-Host ">>> done: ops/driver-ui/joywatcher/driver-joywatcher.exe installed and staged"
