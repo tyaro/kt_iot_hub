@@ -9,6 +9,8 @@
 | [`overview.md`](./overview.md) | 目的、技術スタック、用語（DriverType/Connection/ScanGroup/Tag の正本）、非機能要件 |
 | [`architecture.md`](./architecture.md) | 全体構成、設計原則、ドメインモデル、Tag Bus、データフロー |
 | [`ui-registration.md`](./ui-registration.md) | 3ペイン UI、ドライバ別タグ登録 UI、PostgreSQL 登録フロー |
+| [`driver-property-extensibility-design.md`](./driver-property-extensibility-design.md) | タグ管理右ペインの接続先プロパティをドライバ拡張可能にする設計 |
+| [`driver-manifest-discovery-design.md`](./driver-manifest-discovery-design.md) | 設定したドライバフォルダからマニフェストで接続先ドライバ候補を自動発見する設計 |
 | [`driver-development.md`](./driver-development.md) | ドライバUI / 通信ドライバの作成手順、UI/UX 基準、実装チェックリスト |
 | [`driver-implementation-flow.md`](./driver-implementation-flow.md) | 新しい DriverType を追加するときの1ページ実装チェックフロー |
 | [`joywatcher-investigation.md`](./joywatcher-investigation.md) | JoyWatcher の DLL / OCX / JDF / CHM 調査結果と、`TagSel2` 採用判断 |

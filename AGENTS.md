@@ -18,6 +18,7 @@
 | 3 | [docs/design.md](docs/design.md) | 全体設計書 |
 | 4 | [docs/architecture.md](docs/architecture.md) | アーキ概要 |
 | 5 | [docs/decisions.md](docs/decisions.md) | 設計判断（ADR 相当） |
+| 6 | [docs/driver-manifest-discovery-design.md](docs/driver-manifest-discovery-design.md) | ドライバ候補を `driver-manifest.json` から自動発見する設計（埋め込み DriverType 縮退方針を含む） |
 
 ドライバ実装に着手する場合は加えて以下:
 
@@ -93,6 +94,7 @@ npm run check
 
 - **`write_tags_toml_atomic` が 2 箇所で重複定義**（`src-tauri/src/commands/driver/toml_io.rs:31` と `src-tauri/src/commands/tag.rs:215`）。tag CRUD を触る場合は **R-DEDUP-01** を先に終わらせるか、両方を同期させて編集する。
 - 同様の重複箇所は `docs/refactor-plan.md` §1.3 にまとめてある。
+- ドライバ候補は現状フロント埋め込み（`knownDriverTypes`）と実行ファイル探索の併用。**manifest 駆動へ移行中**のため、候補生成ロジックに変更を入れる際は `docs/driver-manifest-discovery-design.md` の Phase 計画（互換フォールバック維持）を必ず確認する。
 
 ---
 

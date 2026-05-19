@@ -274,6 +274,7 @@ npm run tauri build
 | 知りたいこと | 参照先 |
 | --- | --- |
 | アーキ全体・設計判断 | [docs/design.md](../docs/design.md), [docs/architecture.md](../docs/architecture.md), [docs/decisions.md](../docs/decisions.md) |
+| ドライバ候補の自動発見（manifest） | [docs/driver-manifest-discovery-design.md](../docs/driver-manifest-discovery-design.md), [docs/driver-property-extensibility-design.md](../docs/driver-property-extensibility-design.md) |
 | ドライバ実装フロー | [docs/driver-development.md](../docs/driver-development.md), [docs/driver-implementation-flow.md](../docs/driver-implementation-flow.md) |
 | 引き継ぎテンプレ | [docs/templates/driver-session-handoff-template.md](../docs/templates/driver-session-handoff-template.md) |
 | 設定ファイル仕様 | [docs/config-spec.md](../docs/config-spec.md) |
@@ -308,6 +309,7 @@ npm run tauri build
 - [ ] 既存不変条件（§0.2, §8.1）に抵触しないことを確認したか
 - [ ] 関連ドキュメント（最低: `docs/design.md`, 必要に応じ `docs/refactor-plan.md`）を確認したか
 - [ ] 既存実装の再利用可否（同等ロジックの有無）を確認したか
+- [ ] ドライバ候補・登録UI探索・`driverUiBaseDir` 周辺を変更する場合、`docs/driver-manifest-discovery-design.md` の Phase 計画と互換フォールバック方針を確認したか
 
 ### 9.3 実装手順（標準フロー）
 

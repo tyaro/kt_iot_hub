@@ -104,3 +104,29 @@
 
 - 原則 300 行以内を目指す。
 - ただし機械的な分割ではなく、責務単位での分割を優先する。
+
+## タグ管理右ペインの接続先プロパティ責務
+
+- **決定**: 接続先プロパティの正本は `driver.settings`（JSON）とし、DriverType 固有の入力 UX はドライバ UI（別プロセス）を主担当にする。
+- **決定**: 本体右ペインは共通情報表示（`id` / `driver_type` / `enabled`）と `settings` 要約表示を基本とし、編集は原則ドライバ UI 起動導線を優先する。
+- **理由**:
+  - JoyWatcher のように PostgreSQL 前提項目（Host/Port/Database/Username）へ適合しない DriverType が存在する。
+  - DriverType 追加のたびに本体 DTO/フォームへ固定項目を追加する方式は、保守コストと不整合リスクが高い。
+  - ドライバ固有知識（接続テスト、探索、補助入力）をドライバ UI 側へ閉じ込めることで、本体改修を最小化できる。
+- **移行方針**:
+  - 段階移行とし、既存 PostgreSQL フロー互換を維持しながら、JoyWatcher から固定フォーム依存を解消する。
+  - 詳細設計は `docs/driver-property-extensibility-design.md` を正本とする。
+
+## ドライバ候補のマニフェスト駆動ディスカバリ
+
+- **決定**: 接続先ドライバ候補は `driverUiBaseDir` 配下の `driver-manifest.json` を走査して自動生成する方式へ段階移行する。
+- **決定**: 本体の埋め込み DriverType 列挙（固定配列）は縮退対象とし、移行期間のみフォールバックとして維持する。
+- **理由**:
+  - ドライバ追加のたびに本体 UI 側の候補定義を改修する運用を解消するため。
+  - ドライバ配布物に自己記述情報（表示名、バージョン、実行ファイル、互換条件）を持たせ、検証可能な形にするため。
+  - manifest 不備や互換性不一致を UI/ログで明示し、運用時の切り分けを容易にするため。
+- **移行方針**:
+  - Phase 1: manifest 仕様導入 + discovery API 追加（既存探索併用）
+  - Phase 2: 候補一覧を discovery 結果へ切替
+  - Phase 3: 埋め込み列挙を削除し legacy 探索を段階縮退
+  - 詳細設計は `docs/driver-manifest-discovery-design.md` を正本とする。
