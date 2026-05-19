@@ -7,11 +7,13 @@
 //! - `transfer`    : タグ管理設定の JSON import/export と既定パス解決
 //! - `toml_io`     : drivers.toml / tags.toml のアトミック書き出し
 //! - `runtime_sync`: 設定変更後の DriverManager 反映処理
+//! - `discover`    : マニフェスト駆動ディスカバリ
 
 // 注意: `tauri::generate_handler!` マクロは `pub use` 越しの再エクスポートを辿らず、
 // 指定パス直下の `__cmd__<name>` シンボルを直接探す。
 // そのため main.rs からは `commands::driver::<submod>::<fn>` の形で参照すること。
 pub mod crud;
+pub mod discover;
 pub mod import;
 pub mod transfer;
 pub mod ui_launcher;

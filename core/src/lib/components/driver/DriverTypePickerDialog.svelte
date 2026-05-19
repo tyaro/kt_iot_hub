@@ -4,6 +4,7 @@
     label: string;
     available: boolean;
     description?: string;
+    statusMessage?: string;
   }
 
   interface Props {
@@ -59,6 +60,9 @@
             </span>
             {#if option.description}
               <span class="sub-row">{option.description}</span>
+            {/if}
+            {#if option.statusMessage}
+              <span class="status-message">{option.statusMessage}</span>
             {/if}
             {#if !option.available}
               <span class="warning">起動パス未設定のため選択できません</span>
@@ -174,6 +178,11 @@
   .warning {
     color: #b91c1c;
     font-size: 0.8rem;
+  }
+
+  .status-message {
+    color: #92400e;
+    font-size: 0.78rem;
   }
 
   .actions {

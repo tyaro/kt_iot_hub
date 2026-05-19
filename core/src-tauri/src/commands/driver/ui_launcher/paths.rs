@@ -1,6 +1,7 @@
 //! ドライバUI 実行ファイルのパス解決と、共通の文字列正規化ヘルパ。
 
 use crate::config::DriverConfig;
+use crate::drivers::manifest;
 use std::path::PathBuf;
 
 /// 単一ドライバ設定から登録UI 実行ファイルの絶対パスを解決する。
@@ -50,6 +51,10 @@ pub(super) fn find_default_driver_ui_path(
     ];
 
     for root in app_root_candidates(driver_ui_base_dir) {
+        if let Some(manifest_path) = resolve_manifest_driver_ui_path(driver_type, &root) {
+            return Some(path_to_string(manifest_path));
+        }
+
         for file_name in &file_names {
             // <root>/ops/driver-ui/<type>/<file> (新構成)
             let ops_root_style = root
@@ -74,6 +79,60 @@ pub(super) fn find_default_driver_ui_path(
     }
 
     None
+}
+
+fn resolve_manifest_driver_ui_path(driver_type: &str, root: &std::path::Path) -> Option<PathBuf> {
+    for manifest_path in manifest_candidates_for_root(driver_type, root) {
+        if !manifest_path.exists() {
+            continue;
+        }
+
+        let manifest_dir = manifest_path.parent()?;
+        let loaded_manifest = manifest::load_manifest(&manifest_path).ok()?;
+        if loaded_manifest.driver_type != driver_type {
+            continue;
+        }
+
+        let registration_ui_path = manifest_dir.join(&loaded_manifest.registration_ui);
+        if registration_ui_path.exists() {
+            return Some(registration_ui_path);
+        }
+    }
+
+    None
+}
+
+fn manifest_candidates_for_root(driver_type: &str, root: &std::path::Path) -> Vec<PathBuf> {
+    let mut candidates = Vec::<PathBuf>::new();
+
+    candidates.push(
+        root.join("ops")
+            .join("driver-ui")
+            .join(driver_type)
+            .join("driver-manifest.json"),
+    );
+    candidates.push(
+        root.join("driver-ui")
+            .join(driver_type)
+            .join("driver-manifest.json"),
+    );
+    candidates.push(root.join(driver_type).join("driver-manifest.json"));
+    candidates.push(
+        root.join("drivers")
+            .join(driver_type)
+            .join("driver-ui")
+            .join(driver_type)
+            .join("driver-manifest.json"),
+    );
+
+    let mut unique = Vec::<PathBuf>::new();
+    for candidate in candidates {
+        if !unique.contains(&candidate) {
+            unique.push(candidate);
+        }
+    }
+
+    unique
 }
 
 pub(super) fn describe_driver_ui_search_locations(
@@ -174,4 +233,102 @@ pub(in crate::commands::driver) fn normalize_optional_string(
     value: Option<String>,
 ) -> Option<String> {
     crate::commands::util::normalize_optional_string(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_temp_dir(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "kt_iot_hub_ui_launcher_{}_{}",
+            name,
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ))
+    }
+
+    #[test]
+    fn find_default_driver_ui_path_prefers_manifest_registration_ui() {
+        let root = unique_temp_dir("manifest_preferred");
+        let root_str = root.to_string_lossy().to_string();
+        let manifest_dir = root.join("driver-ui").join("postgres");
+        let manifest_path = manifest_dir.join("driver-manifest.json");
+        let registration_ui_path = manifest_dir.join("registration-ui.exe");
+        let runtime_path = manifest_dir.join("driver-postgres.exe");
+        let legacy_ui_path = root
+            .join("ops")
+            .join("driver-ui")
+            .join("postgres")
+            .join("driver-ui.exe");
+
+        fs::create_dir_all(&manifest_dir).unwrap();
+        fs::create_dir_all(legacy_ui_path.parent().unwrap()).unwrap();
+        fs::write(&registration_ui_path, b"test").unwrap();
+        fs::write(&runtime_path, b"test").unwrap();
+        fs::write(&legacy_ui_path, b"legacy").unwrap();
+        fs::write(
+            &manifest_path,
+            r#"{
+  "manifestVersion": 1,
+  "driverType": "postgres",
+  "displayName": "PostgreSQL 接続",
+  "registrationUi": "registration-ui.exe",
+  "runtime": "driver-postgres.exe",
+  "protocol": {
+    "driverUiRequestVersion": "1",
+    "driverUiResponseVersion": "1"
+  }
+}"#,
+        )
+        .unwrap();
+
+        let resolved = find_default_driver_ui_path("postgres", Some(&root_str));
+        assert_eq!(resolved, Some(path_to_string(registration_ui_path.clone())));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn find_default_driver_ui_path_falls_back_when_manifest_ui_missing() {
+        let root = unique_temp_dir("manifest_fallback");
+        let root_str = root.to_string_lossy().to_string();
+        let manifest_dir = root.join("driver-ui").join("postgres");
+        let manifest_path = manifest_dir.join("driver-manifest.json");
+        let runtime_path = manifest_dir.join("driver-postgres.exe");
+        let legacy_ui_path = root
+            .join("ops")
+            .join("driver-ui")
+            .join("postgres")
+            .join("registration-ui.exe");
+
+        fs::create_dir_all(&manifest_dir).unwrap();
+        fs::create_dir_all(legacy_ui_path.parent().unwrap()).unwrap();
+        fs::write(&runtime_path, b"test").unwrap();
+        fs::write(&legacy_ui_path, b"legacy").unwrap();
+        fs::write(
+            &manifest_path,
+            r#"{
+  "manifestVersion": 1,
+  "driverType": "postgres",
+  "displayName": "PostgreSQL 接続",
+  "registrationUi": "registration-ui.exe",
+  "runtime": "driver-postgres.exe",
+  "protocol": {
+    "driverUiRequestVersion": "1",
+    "driverUiResponseVersion": "1"
+  }
+}"#,
+        )
+        .unwrap();
+
+        let resolved = find_default_driver_ui_path("postgres", Some(&root_str));
+        assert_eq!(resolved, Some(path_to_string(legacy_ui_path.clone())));
+
+        let _ = fs::remove_dir_all(&root);
+    }
 }

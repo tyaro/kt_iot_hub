@@ -2,6 +2,8 @@
 // 各ドライバは独立したプロセスとして起動・管理される
 // 本体はプロセスのライフサイクルのみを担当し、通信処理はドライバプロセス側が実装する
 
+pub mod manifest;
+
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -148,13 +150,19 @@ impl DriverProcessManager {
     }
 
     /// executable のパスを解決する
-    /// 優先順位: driver-uiベースパス同居配置 > DRIVER_BIN_DIR > 本体と同じディレクトリ > 実行名そのまま
+    /// 優先順位: manifest > driver-uiベースパス同居配置 > DRIVER_BIN_DIR > 本体と同じディレクトリ > 実行名そのまま
     fn resolve_exe_path(
         &self,
         driver_type: &str,
         exe_name: &str,
         driver_ui_base_dir: Option<&str>,
     ) -> Option<PathBuf> {
+        if let Some(manifest_runtime_path) =
+            resolve_manifest_runtime_path(driver_type, driver_ui_base_dir)
+        {
+            return Some(manifest_runtime_path);
+        }
+
         for candidate in colocated_runtime_candidates(driver_type, exe_name, driver_ui_base_dir) {
             if candidate.exists() {
                 return Some(candidate);
@@ -180,6 +188,104 @@ impl DriverProcessManager {
     }
 }
 
+fn resolve_manifest_runtime_path(
+    driver_type: &str,
+    driver_ui_base_dir: Option<&str>,
+) -> Option<PathBuf> {
+    let driver_type = driver_type.trim();
+    if driver_type.is_empty() {
+        return None;
+    }
+
+    for manifest_path in manifest_candidates(driver_type, driver_ui_base_dir) {
+        if !manifest_path.exists() {
+            continue;
+        }
+
+        let Some(manifest_dir) = manifest_path.parent() else {
+            continue;
+        };
+
+        let loaded_manifest = match manifest::load_manifest(&manifest_path) {
+            Ok(manifest) => manifest,
+            Err(err) => {
+                info!(
+                    "Manifest runtime resolution skipped unreadable manifest: path={} error={}",
+                    manifest_path.display(),
+                    err
+                );
+                continue;
+            }
+        };
+
+        if loaded_manifest.driver_type != driver_type {
+            info!(
+                "Manifest runtime resolution skipped mismatched driver type: requested={} manifest={} path={}",
+                driver_type,
+                loaded_manifest.driver_type,
+                manifest_path.display()
+            );
+            continue;
+        }
+
+        match manifest::validate_manifest(&loaded_manifest, manifest_dir) {
+            Ok(package) => {
+                info!(
+                    "Resolved driver runtime from manifest: driver_type={} path={}",
+                    driver_type,
+                    package.runtime_path.display()
+                );
+                return Some(package.runtime_path);
+            }
+            Err(err) => {
+                info!(
+                    "Manifest runtime resolution fell back to legacy search: driver_type={} path={} reason={:?}",
+                    driver_type,
+                    manifest_path.display(),
+                    err
+                );
+            }
+        }
+    }
+
+    None
+}
+
+fn manifest_candidates(driver_type: &str, driver_ui_base_dir: Option<&str>) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    for root in app_root_candidates(driver_ui_base_dir) {
+        candidates.push(
+            root.join("ops")
+                .join("driver-ui")
+                .join(driver_type)
+                .join("driver-manifest.json"),
+        );
+        candidates.push(
+            root.join("driver-ui")
+                .join(driver_type)
+                .join("driver-manifest.json"),
+        );
+        candidates.push(root.join(driver_type).join("driver-manifest.json"));
+        candidates.push(
+            root.join("drivers")
+                .join(driver_type)
+                .join("driver-ui")
+                .join(driver_type)
+                .join("driver-manifest.json"),
+        );
+    }
+
+    let mut unique = Vec::new();
+    for candidate in candidates {
+        if !unique.contains(&candidate) {
+            unique.push(candidate);
+        }
+    }
+
+    unique
+}
+
 fn colocated_runtime_candidates(
     driver_type: &str,
     exe_name: &str,
@@ -188,7 +294,12 @@ fn colocated_runtime_candidates(
     let mut candidates = Vec::new();
 
     for root in app_root_candidates(driver_ui_base_dir) {
-        candidates.push(root.join("ops").join("driver-ui").join(driver_type).join(exe_name));
+        candidates.push(
+            root.join("ops")
+                .join("driver-ui")
+                .join(driver_type)
+                .join(exe_name),
+        );
         candidates.push(root.join("driver-ui").join(driver_type).join(exe_name));
         candidates.push(root.join(driver_type).join(exe_name));
     }
@@ -248,6 +359,19 @@ fn app_root_candidates(driver_ui_base_dir: Option<&str>) -> Vec<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_temp_dir(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "kt_iot_hub_{}_{}",
+            name,
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ))
+    }
 
     #[test]
     fn colocated_candidates_support_repo_root_base() {
@@ -288,5 +412,86 @@ mod tests {
                 .join("postgres")
                 .join("driver-postgres.exe")
         );
+    }
+
+    #[test]
+    fn resolve_exe_path_prefers_manifest_runtime_when_valid() {
+        let root = unique_temp_dir("manifest_runtime_valid");
+        let manifest_dir = root.join("driver-ui").join("postgres");
+        let registration_ui_path = manifest_dir.join("registration-ui.exe");
+        let runtime_path = manifest_dir.join("driver-postgres.exe");
+        let manifest_path = manifest_dir.join("driver-manifest.json");
+
+        fs::create_dir_all(&manifest_dir).unwrap();
+        fs::write(&registration_ui_path, b"test").unwrap();
+        fs::write(&runtime_path, b"test").unwrap();
+        fs::write(
+            &manifest_path,
+            r#"{
+  "manifestVersion": 1,
+  "driverType": "postgres",
+  "displayName": "PostgreSQL 接続",
+  "registrationUi": "registration-ui.exe",
+  "runtime": "driver-postgres.exe",
+  "protocol": {
+    "driverUiRequestVersion": "1",
+    "driverUiResponseVersion": "1"
+  }
+}"#,
+        )
+        .unwrap();
+
+        let manager = DriverProcessManager::new("127.0.0.1:50051");
+        let resolved = manager.resolve_exe_path(
+            "postgres",
+            "driver-postgres.exe",
+            Some(root.to_string_lossy().as_ref()),
+        );
+
+        assert_eq!(resolved, Some(runtime_path.clone()));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn resolve_exe_path_falls_back_when_manifest_is_invalid() {
+        let root = unique_temp_dir("manifest_runtime_fallback");
+        let manifest_dir = root.join("driver-ui").join("postgres");
+        let manifest_path = manifest_dir.join("driver-manifest.json");
+        let legacy_runtime_path = root
+            .join("ops")
+            .join("driver-ui")
+            .join("postgres")
+            .join("driver-postgres.exe");
+
+        fs::create_dir_all(&manifest_dir).unwrap();
+        fs::create_dir_all(legacy_runtime_path.parent().unwrap()).unwrap();
+        fs::write(&legacy_runtime_path, b"test").unwrap();
+        fs::write(
+            &manifest_path,
+            r#"{
+  "manifestVersion": 1,
+  "driverType": "postgres",
+  "displayName": "PostgreSQL 接続",
+  "registrationUi": "registration-ui.exe",
+  "runtime": "driver-postgres.exe",
+  "protocol": {
+    "driverUiRequestVersion": "1",
+    "driverUiResponseVersion": "1"
+  }
+}"#,
+        )
+        .unwrap();
+
+        let manager = DriverProcessManager::new("127.0.0.1:50051");
+        let resolved = manager.resolve_exe_path(
+            "postgres",
+            "driver-postgres.exe",
+            Some(root.to_string_lossy().as_ref()),
+        );
+
+        assert_eq!(resolved, Some(legacy_runtime_path.clone()));
+
+        let _ = fs::remove_dir_all(&root);
     }
 }

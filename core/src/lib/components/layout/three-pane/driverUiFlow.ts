@@ -1,5 +1,7 @@
 import type {
+  DiscoveredDriverPackageDto,
   DriverDto,
+  InvalidDriverPackageDto,
   ImportDriverUiResultResponse,
   LaunchDriverUiResponse,
 } from '$lib/ipc';
@@ -9,6 +11,7 @@ export type DriverTypeOption = {
   label: string;
   available: boolean;
   description: string;
+  statusMessage?: string;
 };
 
 function toDriverUiErrorMessage(error: unknown, fallback: string): string {
@@ -171,7 +174,8 @@ export function canUseDriverUiForDriver(
 
 export function buildDriverTypeOptions(
   drivers: DriverDto[],
-  knownDriverTypes: string[],
+  discoveredPackages: DiscoveredDriverPackageDto[],
+  invalidPackages: InvalidDriverPackageDto[],
   driverUiAvailableByType: Record<string, boolean>,
 ): DriverTypeOption[] {
   const byType = new Map<string, DriverDto[]>();
@@ -182,36 +186,73 @@ export function buildDriverTypeOptions(
     byType.get(driver.driver_type)!.push(driver);
   });
 
-  return knownDriverTypes.map((driverType) => {
+  const invalidByType = new Map<string, InvalidDriverPackageDto[]>();
+  invalidPackages.forEach((item) => {
+    if (!item.driver_type_hint) {
+      return;
+    }
+
+    const items = invalidByType.get(item.driver_type_hint) ?? [];
+    items.push(item);
+    invalidByType.set(item.driver_type_hint, items);
+  });
+
+  const orderedTypes: string[] = [];
+  const pushType = (driverType: string) => {
+    if (driverType.trim().length === 0 || orderedTypes.includes(driverType)) {
+      return;
+    }
+    orderedTypes.push(driverType);
+  };
+
+  discoveredPackages.forEach((pkg) => pushType(pkg.driver_type));
+  invalidPackages.forEach((pkg) => {
+    if (pkg.driver_type_hint) {
+      pushType(pkg.driver_type_hint);
+    }
+  });
+  drivers.forEach((driver) => pushType(driver.driver_type));
+
+  return orderedTypes.map((driverType) => {
     const samples = byType.get(driverType) ?? [];
+    const discovered = discoveredPackages.find((pkg) => pkg.driver_type === driverType) ?? null;
+    const invalids = invalidByType.get(driverType) ?? [];
     const available =
+      Boolean(discovered) ||
       samples.some((item) => item.registration_ui_available) ||
       (driverUiAvailableByType[driverType] ?? false);
 
+    const baseDescription = discovered?.display_name
+      ? `${discovered.display_name} / ${driverTypeDescription(driverType)}`
+      : driverTypeDescription(driverType);
+
+    const manifestDetails = discovered
+      ? [
+          discovered.version ? `version ${discovered.version}` : null,
+          discovered.vendor ? `vendor ${discovered.vendor}` : null,
+        ]
+          .filter((value): value is string => Boolean(value))
+          .join(' / ')
+      : '';
+
+    const invalidSummary = invalids[0]?.status_message ?? null;
+
     return {
       driverType,
-      label: driverTypeLabel(driverType),
+      label: discovered?.display_name ?? driverTypeLabel(driverType),
       available,
-      description: driverTypeDescription(driverType),
+      description: [baseDescription, manifestDetails].filter(Boolean).join(' / '),
+      statusMessage: invalidSummary ?? undefined,
     };
   });
 }
 
-export async function buildDriverUiAvailabilityByType(
-  knownDriverTypes: string[],
-  checkDriverUiAvailable: (driverType: string, baseDir: string | null) => Promise<boolean>,
-  baseDir: string | null,
-): Promise<Record<string, boolean>> {
-  const results = await Promise.all(
-    knownDriverTypes.map(async (driverType) => {
-      const available = await checkDriverUiAvailable(driverType, baseDir);
-      return [driverType, available] as const;
-    }),
-  );
-
+export function buildDriverUiAvailabilityByType(
+  discoveredPackages: DiscoveredDriverPackageDto[],
+): Record<string, boolean> {
   const map: Record<string, boolean> = {};
-  for (const [driverType, available] of results) {
-    map[driverType] = available;
+  for (const pkg of discoveredPackages) {
+    map[pkg.driver_type] = true;
   }
 
   return map;

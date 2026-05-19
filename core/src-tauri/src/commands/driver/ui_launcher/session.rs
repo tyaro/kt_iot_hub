@@ -41,7 +41,7 @@ pub(super) fn resolve_launch_target(
         .ok_or(ErrorResponse::new(
             "NOT_CONFIGURED",
             format!(
-                "Driver UI executable not found for driver {} (place it under driver-ui/{}/registration-ui(.exe)). searched in: {}",
+                "Driver UI executable not found for driver {} (manifest または driver-ui/{}/registration-ui(.exe) を配置してください). searched in: {}",
                 driver_id,
                 driver_config.driver_type,
                 describe_driver_ui_search_locations(
@@ -70,7 +70,7 @@ pub(super) fn resolve_launch_target(
     .ok_or(ErrorResponse::new(
         "NOT_CONFIGURED",
         format!(
-            "Driver UI executable not found for driver type {} (place it under driver-ui/{}/registration-ui(.exe)). searched in: {}",
+            "Driver UI executable not found for driver type {} (manifest または driver-ui/{}/registration-ui(.exe) を配置してください). searched in: {}",
             driver_type,
             driver_type,
             describe_driver_ui_search_locations(

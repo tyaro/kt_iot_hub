@@ -11,7 +11,6 @@
   import {
     defaultRuntimeStatus,
     isPageId,
-    knownDriverTypes,
     pages,
     type PageId,
   } from './constants';
@@ -55,9 +54,9 @@
     reloadAllRegistry,
   } from '$lib/stores/index';
   import {
-    checkDriverUiAvailable,
     checkDriverUiResult,
     deleteDriver,
+    discoverDriverPackages,
     deleteTag,
     exportTagManagementSettings,
     getDefaultDriverUiBaseDir,
@@ -71,6 +70,8 @@
     startRuntimeServices,
     stopRuntimeServices,
     type DriverDto,
+    type DiscoveredDriverPackageDto,
+    type InvalidDriverPackageDto,
     type RuntimeStatusDto,
     type DriverMetricsDto,
     type ScanGroupDto,
@@ -205,6 +206,8 @@
 
   let selectedDriver = $state<DriverDto | null>(null);
   let driverUiAvailableByType = $state<Record<string, boolean>>({});
+  let discoveredDriverPackages = $state<DiscoveredDriverPackageDto[]>([]);
+  let invalidDriverPackages = $state<InvalidDriverPackageDto[]>([]);
   let confirmDialogOpen = $state(false);
   let confirmDialogTitle = $state('確認');
   let confirmDialogMessage = $state('');
@@ -363,15 +366,48 @@
 
   $effect(() => {
     const baseDir = driverUiBaseDirSaved;
-    void buildDriverUiAvailabilityByType(knownDriverTypes, checkDriverUiAvailable, baseDir).then(
-      (map) => {
-        driverUiAvailableByType = map;
-      },
-    );
+    if (!baseDir) {
+      discoveredDriverPackages = [];
+      invalidDriverPackages = [];
+      driverUiAvailableByType = {};
+      return;
+    }
+
+    let disposed = false;
+
+    void discoverDriverPackages({ driver_ui_base_dir: baseDir })
+      .then((result) => {
+        if (disposed) {
+          return;
+        }
+
+        discoveredDriverPackages = result.available;
+        invalidDriverPackages = result.invalid;
+        driverUiAvailableByType = buildDriverUiAvailabilityByType(result.available);
+      })
+      .catch((error) => {
+        if (disposed) {
+          return;
+        }
+
+        discoveredDriverPackages = [];
+        invalidDriverPackages = [];
+        driverUiAvailableByType = {};
+        settingsMessage = extractErrorMessage(error, 'ドライバマニフェストの検出に失敗しました');
+      });
+
+    return () => {
+      disposed = true;
+    };
   });
 
   const driverTypeOptions = $derived.by<DriverTypeOption[]>(() =>
-    buildDriverTypeOptions($driversStore.items, knownDriverTypes, driverUiAvailableByType),
+    buildDriverTypeOptions(
+      $driversStore.items,
+      discoveredDriverPackages,
+      invalidDriverPackages,
+      driverUiAvailableByType,
+    ),
   );
 
   const scanCycleHealthSummary = $derived.by<ScanCycleHealthSummary>(() =>
@@ -432,6 +468,14 @@
     driverUiBaseDirInput,
     driverUiBaseDirSaved,
     settingsMessage,
+    discoveryAvailableCount: discoveredDriverPackages.length,
+    discoveryInvalidCount: invalidDriverPackages.length,
+    discoveryInvalidItems: invalidDriverPackages.map((item) => ({
+      manifestPath: item.manifest_path,
+      statusCode: item.status_code,
+      statusMessage: item.status_message,
+      driverTypeHint: item.driver_type_hint,
+    })),
     onNavigateTags: handleNavigateTags,
     onOpenMqttMonitor: openMqttMonitorWindow,
     onStartServers: handleStartServers,

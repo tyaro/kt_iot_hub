@@ -8,6 +8,7 @@
     label: string;
     available: boolean;
     description: string;
+    statusMessage?: string;
   };
 
   let {

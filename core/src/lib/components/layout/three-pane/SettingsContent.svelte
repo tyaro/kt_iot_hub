@@ -3,6 +3,9 @@
     driverUiBaseDirInput,
     driverUiBaseDirSaved,
     settingsMessage,
+    discoveryAvailableCount,
+    discoveryInvalidCount,
+    discoveryInvalidItems,
     onDriverUiBaseDirInput,
     onPickDriverUiBaseDir,
     onSaveDriverUiBaseDir,
@@ -11,6 +14,14 @@
     driverUiBaseDirInput: string;
     driverUiBaseDirSaved: string | null;
     settingsMessage: string;
+    discoveryAvailableCount: number;
+    discoveryInvalidCount: number;
+    discoveryInvalidItems: Array<{
+      manifestPath: string;
+      statusCode: string;
+      statusMessage: string;
+      driverTypeHint?: string | null;
+    }>;
     onDriverUiBaseDirInput: (value: string) => void;
     onPickDriverUiBaseDir: () => void | Promise<void>;
     onSaveDriverUiBaseDir: () => void;
@@ -47,6 +58,28 @@
     {#if settingsMessage}
       <p class="action-message">{settingsMessage}</p>
     {/if}
+
+    <div class="discovery-summary">
+      <h4>マニフェスト検出結果</h4>
+      <p class="settings-help">
+        利用可能: <strong>{discoveryAvailableCount}</strong> 件 / 無効: <strong>{discoveryInvalidCount}</strong> 件
+      </p>
+
+      {#if discoveryInvalidItems.length > 0}
+        <ul class="invalid-list">
+          {#each discoveryInvalidItems as item (`${item.manifestPath}:${item.statusCode}`)}
+            <li>
+              <div class="invalid-header">
+                <code>{item.driverTypeHint ?? 'unknown'}</code>
+                <span class="invalid-code">{item.statusCode}</span>
+              </div>
+              <div class="invalid-message">{item.statusMessage}</div>
+              <div class="invalid-path">{item.manifestPath}</div>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -125,6 +158,51 @@
     border: 1px solid #bfdbfe;
     border-radius: 6px;
     padding: 8px 10px;
+  }
+
+  .discovery-summary {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .discovery-summary h4 {
+    margin: 0 0 8px;
+    font-size: 0.88rem;
+    color: #1f2937;
+  }
+
+  .invalid-list {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .invalid-header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+
+  .invalid-code {
+    font-size: 0.74rem;
+    color: #92400e;
+    background: #fef3c7;
+    border-radius: 999px;
+    padding: 1px 8px;
+  }
+
+  .invalid-message {
+    font-size: 0.8rem;
+    color: #7c2d12;
+  }
+
+  .invalid-path {
+    font-size: 0.76rem;
+    color: #64748b;
+    word-break: break-all;
   }
 
   .btn-primary {

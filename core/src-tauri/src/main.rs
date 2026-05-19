@@ -53,6 +53,7 @@ fn main() {
             commands::driver::crud::list_drivers,
             commands::driver::crud::save_driver,
             commands::driver::crud::delete_driver,
+            commands::driver::discover::discover_driver_packages,
             commands::driver::transfer::export_tag_management_settings,
             commands::driver::transfer::import_tag_management_settings,
             commands::driver::transfer::get_default_driver_ui_base_dir,
@@ -89,7 +90,9 @@ fn main() {
             let config_dir = crate::commands::config_io::resolve_config_dir();
             info!("Resolved config directory: {}", config_dir.display());
             let config = AppConfig::load_from_files(&config_dir).map_err(
-                |e| -> Box<dyn std::error::Error> { Box::new(std::io::Error::other(e.to_string())) },
+                |e| -> Box<dyn std::error::Error> {
+                    Box::new(std::io::Error::other(e.to_string()))
+                },
             )?;
 
             let registry = TagRegistry::new();

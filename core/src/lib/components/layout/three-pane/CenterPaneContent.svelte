@@ -36,6 +36,14 @@
     driverUiBaseDirInput: string;
     driverUiBaseDirSaved: string | null;
     settingsMessage: string;
+    discoveryAvailableCount: number;
+    discoveryInvalidCount: number;
+    discoveryInvalidItems: Array<{
+      manifestPath: string;
+      statusCode: string;
+      statusMessage: string;
+      driverTypeHint?: string | null;
+    }>;
     onNavigateTags: () => void;
     onOpenMqttMonitor: () => void;
     onStartServers: () => Promise<void>;
@@ -76,6 +84,9 @@
     driverUiBaseDirInput,
     driverUiBaseDirSaved,
     settingsMessage,
+    discoveryAvailableCount,
+    discoveryInvalidCount,
+    discoveryInvalidItems,
     onNavigateTags,
     onOpenMqttMonitor,
     onStartServers,
@@ -147,6 +158,9 @@
       {driverUiBaseDirInput}
       {driverUiBaseDirSaved}
       {settingsMessage}
+      {discoveryAvailableCount}
+      {discoveryInvalidCount}
+      {discoveryInvalidItems}
       onDriverUiBaseDirInput={onDriverUiBaseDirInput}
       onPickDriverUiBaseDir={onPickDriverUiBaseDir}
       onSaveDriverUiBaseDir={onSaveDriverUiBaseDir}

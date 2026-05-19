@@ -126,7 +126,8 @@ pub(super) async fn build_driver_ui_launch_context(
         existing_driver_ids.len(),
     );
 
-    if driver_id.is_some() && (total_scan_groups_for_driver > 0 || total_tags_for_driver > 0)
+    if driver_id.is_some()
+        && (total_scan_groups_for_driver > 0 || total_tags_for_driver > 0)
         && (filtered_scan_groups.is_empty() || launched_tag_count == 0)
     {
         warn!(

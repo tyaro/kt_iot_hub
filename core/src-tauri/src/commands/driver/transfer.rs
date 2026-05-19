@@ -47,11 +47,18 @@ pub async fn export_tag_management_settings(
     };
 
     let json = serde_json::to_string_pretty(&payload).map_err(|error| {
-        ErrorResponse::serialize_error(format!("Failed to serialize tag management settings: {}", error))
+        ErrorResponse::serialize_error(format!(
+            "Failed to serialize tag management settings: {}",
+            error
+        ))
     })?;
 
     std::fs::write(&path, json).map_err(|error| {
-        ErrorResponse::io_error(format!("Failed to write export file {}: {}", path.display(), error))
+        ErrorResponse::io_error(format!(
+            "Failed to write export file {}: {}",
+            path.display(),
+            error
+        ))
     })?;
 
     Ok(ExportTagManagementSettingsResponse {
@@ -69,7 +76,11 @@ pub async fn import_tag_management_settings(
 ) -> Result<ImportTagManagementSettingsResponse, ErrorResponse> {
     let path = normalize_target_path(&req.path)?;
     let text = std::fs::read_to_string(&path).map_err(|error| {
-        ErrorResponse::io_error(format!("Failed to read import file {}: {}", path.display(), error))
+        ErrorResponse::io_error(format!(
+            "Failed to read import file {}: {}",
+            path.display(),
+            error
+        ))
     })?;
 
     let payload: TagManagementSettingsFile = serde_json::from_str(&text).map_err(|error| {
@@ -184,7 +195,11 @@ fn validate_import_payload(payload: &TagManagementSettingsFile) -> Result<(), Er
     )?;
     ensure_unique_ids(payload.tags.iter().map(|tag| tag.id.as_str()), "tag id")?;
 
-    let driver_ids: HashSet<&str> = payload.drivers.iter().map(|driver| driver.id.as_str()).collect();
+    let driver_ids: HashSet<&str> = payload
+        .drivers
+        .iter()
+        .map(|driver| driver.id.as_str())
+        .collect();
     let scan_group_ids: HashSet<&str> = payload
         .scan_groups
         .iter()
@@ -202,7 +217,10 @@ fn validate_import_payload(payload: &TagManagementSettingsFile) -> Result<(), Er
 
     for tag in &payload.tags {
         DataType::from_str(&tag.data_type).map_err(|error| {
-            ErrorResponse::validation_error(format!("Invalid data_type for tag {}: {}", tag.id, error))
+            ErrorResponse::validation_error(format!(
+                "Invalid data_type for tag {}: {}",
+                tag.id, error
+            ))
         })?;
 
         if !driver_ids.contains(tag.driver.as_str()) {
@@ -236,7 +254,10 @@ fn validate_import_payload(payload: &TagManagementSettingsFile) -> Result<(), Er
     Ok(())
 }
 
-fn ensure_unique_ids<'a>(ids: impl IntoIterator<Item = &'a str>, label: &str) -> Result<(), ErrorResponse> {
+fn ensure_unique_ids<'a>(
+    ids: impl IntoIterator<Item = &'a str>,
+    label: &str,
+) -> Result<(), ErrorResponse> {
     let mut seen = HashSet::new();
     for id in ids {
         if !seen.insert(id.to_string()) {

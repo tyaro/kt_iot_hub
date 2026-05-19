@@ -26,6 +26,35 @@ export interface TagManagementSettingsTransferResponse {
   tag_count: number;
 }
 
+export interface DiscoverDriverPackagesRequest {
+  driver_ui_base_dir: string;
+}
+
+export interface DiscoveredDriverPackageDto {
+  driver_type: string;
+  display_name: string;
+  manifest_path: string;
+  registration_ui_path: string;
+  runtime_path: string;
+  version?: string | null;
+  vendor?: string | null;
+  capabilities: string[];
+}
+
+export interface InvalidDriverPackageDto {
+  manifest_path: string;
+  status_code: string;
+  status_message: string;
+  driver_type_hint?: string | null;
+}
+
+export interface DiscoverDriverPackagesResponse {
+  available_count: number;
+  invalid_count: number;
+  available: DiscoveredDriverPackageDto[];
+  invalid: InvalidDriverPackageDto[];
+}
+
 /**
  * すべてのドライバ設定を取得する
  */
@@ -70,4 +99,17 @@ export async function importTagManagementSettings(
  */
 export async function getDefaultDriverUiBaseDir(): Promise<string | null> {
   return ipcInvoke('get_default_driver_ui_base_dir');
+}
+
+/**
+ * ドライバマニフェストを走査して利用可能なドライバ一覧を取得する
+ */
+export async function discoverDriverPackages(
+  req: DiscoverDriverPackagesRequest,
+): Promise<DiscoverDriverPackagesResponse> {
+  return ipcInvoke('discover_driver_packages', {
+    req: {
+      driverUiBaseDir: req.driver_ui_base_dir,
+    },
+  });
 }

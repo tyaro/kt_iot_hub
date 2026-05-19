@@ -130,3 +130,38 @@ pub struct DriverUiLaunchTag {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
 }
+
+/// ドライバマニフェスト（driver-manifest.json）
+/// ドライバパッケージが自己記述するメタ情報
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DriverManifest {
+    pub manifest_version: u32,
+    pub driver_type: String,
+    pub display_name: String,
+    pub registration_ui: String,
+    pub runtime: String,
+    pub protocol: ProtocolVersion,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub vendor: Option<String>,
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default)]
+    pub homepage: Option<String>,
+    #[serde(default)]
+    pub min_hub_version: Option<String>,
+    #[serde(default)]
+    pub max_hub_version: Option<String>,
+    #[serde(default)]
+    pub capabilities: Vec<String>,
+}
+
+/// マニフェストのプロトコルバージョン情報
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProtocolVersion {
+    pub driver_ui_request_version: String,
+    pub driver_ui_response_version: String,
+}
