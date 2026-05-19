@@ -6,6 +6,7 @@
 
 - 本体機能の運用・仕様補足
 - 本体内部の実装メモ
+- MQTT モニタ仕様: [`mqtt-monitor.md`](./mqtt-monitor.md)
 
 ## 参照
 

@@ -6,6 +6,7 @@
 
 - デプロイ手順
 - 運用手順
+- デプロイ手順（現行）: [`deployment.md`](./deployment.md)
 
 ## 参照
 

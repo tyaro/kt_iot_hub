@@ -279,7 +279,7 @@ npm run tauri build
 | 引き継ぎテンプレ | [drivers/docs/templates/driver-session-handoff-template.md](../drivers/docs/templates/driver-session-handoff-template.md) |
 | 設定ファイル仕様 | [docs/config-spec.md](../docs/config-spec.md) |
 | UI 登録仕様 | [docs/ui-registration.md](../docs/ui-registration.md) |
-| MQTT モニタ仕様 | [docs/mqtt-monitor.md](../docs/mqtt-monitor.md) |
+| MQTT モニタ仕様 | [core/docs/mqtt-monitor.md](../core/docs/mqtt-monitor.md) |
 | **リファクタ計画（本セクションの正本）** | [docs/refactor-plan.md](../docs/refactor-plan.md) |
 
 ---

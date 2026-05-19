@@ -21,7 +21,7 @@
 - `apps/joywatcher/driver/src/joywatcher_connection.rs` を追加し、`ConnectNet` / `DisconnectNet` / `DisconnectNetForce` を前提にした接続ライフサイクルラッパ雛形と単体テストを用意した
 - `apps/joywatcher/driver/src/joywatcher_ffi.rs` を追加し、`TCOM_DATA1` / `JWRead` / `JWGetTagIDS2` の最小 FFI 契約と値デコード補助を定義した
 - `apps/joywatcher/driver/src/joywatcher_artifacts.rs` を追加し、`JoyWaApi.dll` / `JoyWaApi.lib` / `Project2.dll` の探索と起動時警告を実装した
-- `docs/joywatcher-x86-bridge-design.md` を追加し、x86 ブリッジ方式の責務分担・IPC・配置案を整理した
+- `drivers/joywatcher/docs/bridge-x86-design.md` を追加し、x86 ブリッジ方式の責務分担・IPC・配置案を整理した
 - `apps/joywatcher/bridge-x86` を追加し、JSON Lines ベースの `joywatcher-bridge-x86` mock 実装を作成した
 - `apps/joywatcher/bridge-x86/src/dll_api.rs` を追加し、`LoadLibraryW` / `GetProcAddress` による DLL ローダを実装した
 - `scripts/build-dev-joywatcher-bridge-x86.ps1` を追加し、x86 bridge の開発用ビルド / 配置を自動化した
@@ -73,8 +73,8 @@
 - `scripts/build-dev-joywatcher-ui.ps1`
 - `scripts/build-dev-joywatcher-runtime.ps1`
 - `scripts/build-dev-joywatcher-suite.ps1`
-- `docs/joywatcher-x86-bridge-design.md`
-- `docs/joywatcher-session-handoff.md`
+- `drivers/joywatcher/docs/bridge-x86-design.md`
+- `drivers/joywatcher/docs/session-handoff.md`
 
 ## 手動確認済み
 
