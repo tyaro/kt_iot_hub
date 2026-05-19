@@ -24,7 +24,7 @@
   "bundle": {
     "active": false,
     "icon": [
-      "../../../src-tauri/icons/icon.ico"
+      "../../../core/src-tauri/icons/icon.ico"
     ]
   }
 }

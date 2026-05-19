@@ -20,11 +20,11 @@ fn main() {
 
 fn ensure_bundle_resource_placeholders() {
     let resource_paths = [
-        "driver-ui/postgres/registration-ui.exe",
-        "driver-ui/postgres/driver-postgres.exe",
-        "driver-ui/joywatcher/registration-ui.exe",
-        "driver-ui/joywatcher/driver-joywatcher.exe",
-        "driver-ui/joywatcher/joywatcher-bridge-x86.exe",
+        "../../ops/driver-ui/postgres/registration-ui.exe",
+        "../../ops/driver-ui/postgres/driver-postgres.exe",
+        "../../ops/driver-ui/joywatcher/registration-ui.exe",
+        "../../ops/driver-ui/joywatcher/driver-joywatcher.exe",
+        "../../ops/driver-ui/joywatcher/joywatcher-bridge-x86.exe",
     ];
 
     for relative in resource_paths {

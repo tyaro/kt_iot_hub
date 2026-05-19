@@ -2,7 +2,7 @@ fn main() {
     let protoc_path = protoc_bin_vendored::protoc_bin_path().expect("Failed to find protoc");
     std::env::set_var("PROTOC", protoc_path);
 
-    let proto_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../src-tauri/proto");
+    let proto_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../core/src-tauri/proto");
     let proto_file = format!("{}/driver_runtime.proto", proto_path);
 
     println!("cargo:rerun-if-changed={}", proto_file);

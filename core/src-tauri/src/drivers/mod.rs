@@ -188,6 +188,7 @@ fn colocated_runtime_candidates(
     let mut candidates = Vec::new();
 
     for root in app_root_candidates(driver_ui_base_dir) {
+        candidates.push(root.join("ops").join("driver-ui").join(driver_type).join(exe_name));
         candidates.push(root.join("driver-ui").join(driver_type).join(exe_name));
         candidates.push(root.join(driver_type).join(exe_name));
     }
@@ -259,6 +260,14 @@ mod tests {
         assert_eq!(
             candidates[0],
             PathBuf::from(r"D:\develop\kt_iot_hub")
+                .join("ops")
+                .join("driver-ui")
+                .join("postgres")
+                .join("driver-postgres.exe")
+        );
+        assert_eq!(
+            candidates[1],
+            PathBuf::from(r"D:\develop\kt_iot_hub")
                 .join("driver-ui")
                 .join("postgres")
                 .join("driver-postgres.exe")
@@ -274,7 +283,7 @@ mod tests {
         );
 
         assert_eq!(
-            candidates[1],
+            candidates[2],
             PathBuf::from(r"D:\develop\kt_iot_hub\driver-ui")
                 .join("postgres")
                 .join("driver-postgres.exe")

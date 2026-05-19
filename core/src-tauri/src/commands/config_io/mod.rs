@@ -15,9 +15,18 @@ pub(crate) fn resolve_config_dir() -> std::path::PathBuf {
         }
     }
 
-    let relative = std::path::PathBuf::from("../config");
-    if relative.exists() {
-        return relative;
+    let local_candidates = [
+        std::path::PathBuf::from("ops/config"),
+        std::path::PathBuf::from("../ops/config"),
+        std::path::PathBuf::from("../../ops/config"),
+        std::path::PathBuf::from("../config"),
+        std::path::PathBuf::from("config"),
+    ];
+
+    for relative in local_candidates {
+        if relative.exists() {
+            return relative;
+        }
     }
 
     if cfg!(debug_assertions) {
@@ -26,7 +35,7 @@ pub(crate) fn resolve_config_dir() -> std::path::PathBuf {
         }
     }
 
-    std::path::PathBuf::from("config")
+    std::path::PathBuf::from("ops/config")
 }
 
 fn resolve_user_config_dir() -> Option<std::path::PathBuf> {

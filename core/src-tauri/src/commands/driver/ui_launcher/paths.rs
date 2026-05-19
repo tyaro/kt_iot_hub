@@ -51,7 +51,16 @@ pub(super) fn find_default_driver_ui_path(
 
     for root in app_root_candidates(driver_ui_base_dir) {
         for file_name in &file_names {
-            // <root>/driver-ui/<type>/<file>
+            // <root>/ops/driver-ui/<type>/<file> (新構成)
+            let ops_root_style = root
+                .join("ops")
+                .join("driver-ui")
+                .join(driver_type)
+                .join(file_name);
+            if ops_root_style.exists() {
+                return Some(path_to_string(ops_root_style));
+            }
+            // <root>/driver-ui/<type>/<file> (後方互換)
             let app_root_style = root.join("driver-ui").join(driver_type).join(file_name);
             if app_root_style.exists() {
                 return Some(path_to_string(app_root_style));
@@ -78,6 +87,9 @@ pub(super) fn describe_driver_ui_search_locations(
 
     let mut locations = Vec::<String>::new();
     for root in app_root_candidates(driver_ui_base_dir) {
+        locations.push(path_to_string(
+            root.join("ops").join("driver-ui").join(driver_type),
+        ));
         locations.push(path_to_string(root.join("driver-ui").join(driver_type)));
         locations.push(path_to_string(root.join(driver_type)));
     }

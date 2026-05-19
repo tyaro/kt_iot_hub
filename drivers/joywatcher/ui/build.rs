@@ -15,6 +15,8 @@ fn sync_shared_ui_assets() {
     let src = manifest_dir
         .join("..")
         .join("..")
+        .join("..")
+        .join("apps")
         .join("common")
         .join("ui-assets")
         .join("tauri.js");

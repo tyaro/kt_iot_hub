@@ -8,8 +8,8 @@
     "moduleResolution": "bundler",
     "allowJs": true,
     "paths": {
-      "$lib/*": ["./src/lib/*"],
-      "$lib": ["./src/lib"]
+      "$lib/*": ["./core/src/lib/*"],
+      "$lib": ["./core/src/lib"]
     },
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -30,6 +30,6 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.svelte"],
+  "include": ["core/src/**/*.ts", "core/src/**/*.tsx", "core/src/**/*.svelte"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

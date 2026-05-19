@@ -1,14 +1,14 @@
 [workspace]
 resolver = "2"
 members = [
-  "src-tauri",
+  "core/src-tauri",
   "packages/protocol-rs",
   "packages/driver-ui-host",
-  "apps/postgres/ui",
-  "apps/postgres/driver",
-  "apps/joywatcher/ui",
-  "apps/joywatcher/driver",
-  "apps/joywatcher/bridge-x86",
+  "drivers/postgres/ui",
+  "drivers/postgres/driver",
+  "drivers/joywatcher/ui",
+  "drivers/joywatcher/driver",
+  "drivers/joywatcher/bridge-x86",
 ]
 
 [workspace.package]
