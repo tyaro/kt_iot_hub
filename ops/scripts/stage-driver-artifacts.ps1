@@ -1,5 +1,5 @@
-# Stages driver artifacts from ops/driver-ui/<DriverType>/ (source of truth) to core/src-tauri/driver-ui/<DriverType>/.
-# This script does not build binaries and does not copy in reverse direction.
+# Stages driver artifacts from ops/driver-ui/<DriverType>/ (source of truth) to core/src-tauri/driver-ui/<DriverType/>.
+# This script does not build binaries and performs one-way mirror sync for bundle staging.
 # Usage: .\ops\scripts\stage-driver-artifacts.ps1 -DriverType postgres
 
 param(
@@ -23,10 +23,36 @@ if (-not (Test-Path $targetDir)) {
   New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
 }
 
+function Get-RelativeChildPath([string]$basePath, [string]$fullPath) {
+  return [System.IO.Path]::GetRelativePath($basePath, $fullPath)
+}
+
+function Remove-StaleArtifacts([string]$sourcePath, [string]$targetPath) {
+  $sourceEntries = Get-ChildItem -Path $sourcePath -Recurse -Force
+  $knownPaths = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+
+  foreach ($entry in $sourceEntries) {
+    $relativePath = Get-RelativeChildPath $sourcePath $entry.FullName
+    [void]$knownPaths.Add($relativePath)
+  }
+
+  $targetEntries = Get-ChildItem -Path $targetPath -Recurse -Force |
+    Sort-Object -Property FullName -Descending
+
+  foreach ($entry in $targetEntries) {
+    $relativePath = Get-RelativeChildPath $targetPath $entry.FullName
+    if (-not $knownPaths.Contains($relativePath)) {
+      Write-Host "  Removing stale artifact: $relativePath" -ForegroundColor DarkYellow
+      Remove-Item -Path $entry.FullName -Recurse -Force
+    }
+  }
+}
+
 Write-Host ">>> staging driver artifacts"
 Write-Host "  Source : $sourceDir"
 Write-Host "  Target : $targetDir"
 
+Remove-StaleArtifacts -sourcePath $sourceDir -targetPath $targetDir
 Copy-Item -Path (Join-Path $sourceDir "*") -Destination $targetDir -Recurse -Force
 
-Write-Host "Staged successfully (one-way): ops/driver-ui/$DriverType -> core/src-tauri/driver-ui/$DriverType" -ForegroundColor Green
+Write-Host "Staged successfully (mirror sync): ops/driver-ui/$DriverType -> core/src-tauri/driver-ui/$DriverType" -ForegroundColor Green
