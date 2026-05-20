@@ -73,7 +73,7 @@ MQTT Explorer に近い 2 カラム構成を採用する。
 - topic ツリー
 - ルートに broker 名
 - `$SYS` ノード
-- publisher topic 配下（例: `plant`）
+- publisher topic 配下（例: `plant/postgresql/bte1w/w0400`）
 
 #### 右ペイン
 
@@ -233,6 +233,9 @@ topic filter は monitor 側で指定する。
 - `topic = plant` → `plant/#`
 - `$SYS` 表示有効時は内部的に `$SYS/#` も購読対象へ含める
 - 空文字 → `#`
+
+publisher が実際に publish する topic は `<topic>/<接続先ID>/<グループ>/<タグ名>` である。
+そのため monitor の topic ツリーでも、`/` 区切りの階層として接続先 ID → グループ → タグ名 を表示する。
 
 ## エラー処理
 

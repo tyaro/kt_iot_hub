@@ -49,28 +49,6 @@ function toDriverUiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function driverTypeLabel(driverType: string): string {
-  switch (driverType) {
-    case 'postgres':
-      return 'PostgreSQL 接続先';
-    case 'joywatcher':
-      return 'JoyWatcher 接続先';
-    default:
-      return driverType;
-  }
-}
-
-function driverTypeDescription(driverType: string): string {
-  switch (driverType) {
-    case 'postgres':
-      return '接続先情報、テーブル由来の Scan グループ、タグを専用UIで一括登録します。';
-    case 'joywatcher':
-      return 'TagSel2 でタグを取り込み、接続先・Scan グループ・タグを専用UIでまとめて登録します。';
-    default:
-      return '専用UIで接続先・Scanグループ・タグを登録します。';
-  }
-}
-
 export type MonitorDriverUiImportDeps = {
   result: LaunchDriverUiResponse;
   token: number;
@@ -222,26 +200,23 @@ export function buildDriverTypeOptions(
       samples.some((item) => item.registration_ui_available) ||
       (driverUiAvailableByType[driverType] ?? false);
 
-    const baseDescription = discovered?.display_name
-      ? `${discovered.display_name} / ${driverTypeDescription(driverType)}`
-      : driverTypeDescription(driverType);
-
-    const manifestDetails = discovered
+    const descriptionParts = discovered
       ? [
           discovered.version ? `version ${discovered.version}` : null,
           discovered.vendor ? `vendor ${discovered.vendor}` : null,
-        ]
-          .filter((value): value is string => Boolean(value))
-          .join(' / ')
-      : '';
+          discovered.capabilities.length > 0
+            ? `capabilities: ${discovered.capabilities.join(', ')}`
+            : null,
+        ].filter((value): value is string => Boolean(value))
+      : [];
 
     const invalidSummary = invalids[0]?.status_message ?? null;
 
     return {
       driverType,
-      label: discovered?.display_name ?? driverTypeLabel(driverType),
+      label: discovered?.display_name ?? driverType,
       available,
-      description: [baseDescription, manifestDetails].filter(Boolean).join(' / '),
+      description: descriptionParts.length > 0 ? descriptionParts.join(' / ') : driverType,
       statusMessage: invalidSummary ?? undefined,
     };
   });

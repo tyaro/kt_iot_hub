@@ -1,6 +1,7 @@
 // ドライバ実行ファイルのパス解決ヘルパー
 // DriverProcessManager から分離した候補生成・manifest 解決ロジック
 
+use anyhow::{anyhow, Result};
 use std::path::{Path, PathBuf};
 use tracing::info;
 
@@ -55,10 +56,10 @@ pub(super) fn app_root_candidates(driver_ui_base_dir: Option<&str>) -> Vec<PathB
 pub(super) fn resolve_manifest_runtime_path_for_root(
     driver_type: &str,
     root: &Path,
-) -> Option<PathBuf> {
+) -> Result<Option<PathBuf>> {
     let driver_type = driver_type.trim();
     if driver_type.is_empty() {
-        return None;
+        return Ok(None);
     }
 
     for manifest_path in manifest_candidates_for_root(driver_type, root) {
@@ -73,23 +74,21 @@ pub(super) fn resolve_manifest_runtime_path_for_root(
         let loaded_manifest = match manifest::load_manifest(&manifest_path) {
             Ok(manifest) => manifest,
             Err(err) => {
-                info!(
-                    "Manifest runtime resolution skipped unreadable manifest: path={} error={}",
+                return Err(anyhow!(
+                    "Manifest runtime resolution failed: path={} reason={}",
                     manifest_path.display(),
                     err
-                );
-                continue;
+                ));
             }
         };
 
         if loaded_manifest.driver_type != driver_type {
-            info!(
-                "Manifest runtime resolution skipped mismatched driver type: requested={} manifest={} path={}",
+            return Err(anyhow!(
+                "Manifest runtime resolution failed: path={} requested_driver_type={} manifest_driver_type={}",
+                manifest_path.display(),
                 driver_type,
-                loaded_manifest.driver_type,
-                manifest_path.display()
-            );
-            continue;
+                loaded_manifest.driver_type
+            ));
         }
 
         match manifest::validate_manifest(&loaded_manifest, manifest_dir) {
@@ -99,20 +98,19 @@ pub(super) fn resolve_manifest_runtime_path_for_root(
                     driver_type,
                     package.runtime_path.display()
                 );
-                return Some(package.runtime_path);
+                return Ok(Some(package.runtime_path));
             }
             Err(err) => {
-                info!(
-                    "Manifest runtime resolution fell back to legacy search: driver_type={} path={} reason={:?}",
-                    driver_type,
+                return Err(anyhow!(
+                    "Manifest runtime resolution failed: path={} reason={:?}",
                     manifest_path.display(),
                     err
-                );
+                ));
             }
         }
     }
 
-    None
+    Ok(None)
 }
 
 /// 指定 root における driver-manifest.json 候補パスを列挙する

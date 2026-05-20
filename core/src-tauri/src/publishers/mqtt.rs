@@ -73,7 +73,6 @@ impl MqttPublisher {
         self.config
             .settings
             .get("topic")
-            .or_else(|| self.config.settings.get("topic_prefix"))
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string()
@@ -321,7 +320,7 @@ impl Publisher for MqttPublisher {
 
 fn normalize_publish_mode(mode: &str) -> &'static str {
     match mode.trim().to_ascii_lowercase().as_str() {
-        "on_change" | "change_only" | "changed_only" => MQTT_PUBLISH_MODE_ON_CHANGE,
+        "on_change" => MQTT_PUBLISH_MODE_ON_CHANGE,
         _ => MQTT_PUBLISH_MODE_SCAN_INTERVAL,
     }
 }
@@ -350,10 +349,10 @@ fn build_topic(
     let tag_segment = normalize_topic_segment(tag_name).unwrap_or(tag_id);
 
     if topic_root.is_empty() {
-        format!("{}/tags/{}/{}", driver_id, scan_group_id, tag_segment)
+        format!("{}/{}/{}", driver_id, scan_group_id, tag_segment)
     } else {
         format!(
-            "{}/{}/tags/{}/{}",
+            "{}/{}/{}/{}",
             topic_root, driver_id, scan_group_id, tag_segment
         )
     }
@@ -397,7 +396,7 @@ mod tests {
                 Some("w0400"),
                 "tag-001"
             ),
-            "plant/postgresql1/tags/whr096/w0400"
+            "plant/postgresql1/whr096/w0400"
         );
         assert_eq!(
             build_topic(
@@ -407,7 +406,7 @@ mod tests {
                 Some("w0400"),
                 "tag-001"
             ),
-            "postgresql1/tags/whr096/w0400"
+            "postgresql1/whr096/w0400"
         );
     }
 
@@ -421,7 +420,7 @@ mod tests {
                 Some(""),
                 "tag-001"
             ),
-            "plant/postgresql1/tags/whr096/tag-001"
+            "plant/postgresql1/whr096/tag-001"
         );
     }
 

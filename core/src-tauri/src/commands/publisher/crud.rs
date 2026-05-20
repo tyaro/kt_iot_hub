@@ -58,7 +58,6 @@ pub async fn list_publishers(
             topic: cfg
                 .settings
                 .get("topic")
-                .or_else(|| cfg.settings.get("topic_prefix"))
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
@@ -322,7 +321,7 @@ pub async fn set_mqtt_publish_mode(
 
 fn normalize_publish_mode(mode: &str) -> &'static str {
     match mode.trim().to_ascii_lowercase().as_str() {
-        "on_change" | "change_only" | "changed_only" => MQTT_PUBLISH_MODE_ON_CHANGE,
+        "on_change" => MQTT_PUBLISH_MODE_ON_CHANGE,
         _ => MQTT_PUBLISH_MODE_SCAN_INTERVAL,
     }
 }

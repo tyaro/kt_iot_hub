@@ -241,9 +241,10 @@ topic = "plant"
 - `qos`: 0 / 1 / 2
 - `retain`: retain フラグ（省略時 `false`）
 - `topic`: MQTT トピックのベースパス（省略時は空文字）
-- 実際の publish topic は `<topic>/<driver_id>/tags/<scan_group_id>/<tag_name>`
-- 例: `plant/postgresql/tags/bte1w/w0400`
-- `topic` が空文字の場合は `<driver_id>/tags/<scan_group_id>/<tag_name>`
+- 実際の publish topic は `<topic>/<driver_id>/<scan_group_id>/<tag_name>`
+- 旧形式は `<topic>/<driver_id>/tags/<scan_group_id>/<tag_name>` だったが、現在は `tags` セグメントを挟まない
+- 例: `plant/postgresql/bte1w/w0400`
+- `topic` が空文字の場合は `<driver_id>/<scan_group_id>/<tag_name>`
 - payload はタグ値そのもののスカラー値を publish する
 - ダッシュボードの開始ボタンでは `enabled` の状態に関わらず、設定済みのドライバ / パブリッシャを起動する
 

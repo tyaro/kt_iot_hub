@@ -51,14 +51,14 @@ impl DriverProcessManager {
 
         let exe_name = executable_name(driver_type);
         let exe_path = self
-            .resolve_exe_path(driver_type, &exe_name, driver_ui_base_dir)
+            .resolve_exe_path(driver_type, &exe_name, driver_ui_base_dir)?
             .ok_or_else(|| {
-            anyhow!(
-                "Driver executable not found for type '{}'. Looked for '{}' near the configured driver-ui base path, DRIVER_BIN_DIR, and the app directory. Build/install the runtime driver beside the registration UI (for dev, use `npm run driver-runtime:dev`).",
-                driver_type,
-                exe_name
-            )
-        })?;
+                anyhow!(
+                    "Driver executable not found for type '{}'. Looked for '{}' near the configured driver-ui base path, DRIVER_BIN_DIR, and the app directory. Build/install the runtime driver beside the registration UI (for dev, use `npm run driver-runtime:dev`).",
+                    driver_type,
+                    exe_name
+                )
+            })?;
 
         info!(
             "Starting driver process: id={} exe={}",
@@ -158,19 +158,20 @@ impl DriverProcessManager {
         driver_type: &str,
         exe_name: &str,
         driver_ui_base_dir: Option<&str>,
-    ) -> Option<PathBuf> {
+    ) -> Result<Option<PathBuf>> {
         for root in path_resolver::app_root_candidates(driver_ui_base_dir) {
             if let Some(manifest_runtime_path) =
                 path_resolver::resolve_manifest_runtime_path_for_root(driver_type, &root)
+                ?
             {
-                return Some(manifest_runtime_path);
+                return Ok(Some(manifest_runtime_path));
             }
 
             for candidate in
                 path_resolver::colocated_runtime_candidates_for_root(driver_type, exe_name, &root)
             {
                 if candidate.exists() {
-                    return Some(candidate);
+                    return Ok(Some(candidate));
                 }
             }
         }
@@ -178,19 +179,19 @@ impl DriverProcessManager {
         if let Ok(bin_dir) = std::env::var("DRIVER_BIN_DIR") {
             let candidate = PathBuf::from(bin_dir).join(exe_name);
             if candidate.exists() {
-                return Some(candidate);
+                return Ok(Some(candidate));
             }
         }
         if let Ok(exe) = std::env::current_exe() {
             if let Some(dir) = exe.parent() {
                 let candidate = dir.join(exe_name);
                 if candidate.exists() {
-                    return Some(candidate);
+                    return Ok(Some(candidate));
                 }
             }
         }
 
-        Some(PathBuf::from(exe_name))
+        Ok(Some(PathBuf::from(exe_name)))
     }
 }
 
@@ -214,7 +215,7 @@ mod tests {
     #[test]
     fn resolve_exe_path_prefers_manifest_runtime_when_valid() {
         let root = unique_temp_dir("manifest_runtime_valid");
-        let manifest_dir = root.join("driver-ui").join("postgres");
+        let manifest_dir = root.join("ops").join("driver-ui").join("postgres");
         let registration_ui_path = manifest_dir.join("registration-ui.exe");
         let runtime_path = manifest_dir.join("driver-postgres.exe");
         let manifest_path = manifest_dir.join("driver-manifest.json");
@@ -245,21 +246,17 @@ mod tests {
             Some(root.to_string_lossy().as_ref()),
         );
 
-        assert_eq!(resolved, Some(runtime_path.clone()));
+        assert_eq!(resolved.unwrap(), Some(runtime_path.clone()));
 
         let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
-    fn resolve_exe_path_falls_back_when_manifest_is_invalid() {
+    fn resolve_exe_path_errors_when_manifest_is_invalid() {
         let root = unique_temp_dir("manifest_runtime_fallback");
-        let manifest_dir = root.join("driver-ui").join("postgres");
+        let manifest_dir = root.join("ops").join("driver-ui").join("postgres");
         let manifest_path = manifest_dir.join("driver-manifest.json");
-        let legacy_runtime_path = root
-            .join("ops")
-            .join("driver-ui")
-            .join("postgres")
-            .join("driver-postgres.exe");
+        let legacy_runtime_path = root.join("postgres").join("driver-postgres.exe");
 
         fs::create_dir_all(&manifest_dir).unwrap();
         fs::create_dir_all(legacy_runtime_path.parent().unwrap()).unwrap();
@@ -268,7 +265,7 @@ mod tests {
             &manifest_path,
             r#"{
   "manifestVersion": 1,
-  "driverType": "postgres",
+  "driverType": "joywatcher",
   "displayName": "PostgreSQL 接続",
   "registrationUi": "registration-ui.exe",
   "runtime": "driver-postgres.exe",
@@ -287,7 +284,7 @@ mod tests {
             Some(root.to_string_lossy().as_ref()),
         );
 
-        assert_eq!(resolved, Some(legacy_runtime_path.clone()));
+        assert!(resolved.is_err());
 
         let _ = fs::remove_dir_all(&root);
     }

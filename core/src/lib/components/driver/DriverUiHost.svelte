@@ -1,5 +1,4 @@
 <script lang="ts">
-  import PostgresRegistrationPanel from './PostgresRegistrationPanel.svelte';
   import type { DriverUiLaunchContextDto } from '$lib/ipc/index';
 
   interface Props {
@@ -10,14 +9,11 @@
 </script>
 
 <div class="driver-ui-host">
-  {#if context.driverType === 'postgres'}
-    <PostgresRegistrationPanel {context} />
-  {:else}
-    <div class="unsupported">
-      <p>未対応のドライバタイプ: {context.driverType ?? '(不明)'}</p>
-      <p class="hint">対応パネルが実装されると、ここに表示されます。</p>
-    </div>
-  {/if}
+  <div class="unsupported">
+    <p>外部プロセス UI を起動してください。</p>
+    <p>ドライバタイプ: {context.driverType ?? '(不明)'}</p>
+    <p class="hint">この画面は外部登録UIの起動先としてのみ使われます。</p>
+  </div>
 </div>
 
 <style>
