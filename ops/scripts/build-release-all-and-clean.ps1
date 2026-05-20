@@ -34,12 +34,44 @@ function Remove-ReleaseIntermediateDirectories {
     "build",
     "deps",
     "examples",
-    "incremental"
+    "incremental",
+    "nsis",
+    "resources",
+    "wix"
   )
 
   foreach ($name in $intermediateNames) {
     Remove-PathIfExists -Path (Join-Path $BaseReleaseDir $name)
   }
+}
+
+function Remove-ReleaseSidecarFiles {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$BaseReleaseDir
+  )
+
+  if (-not (Test-Path -LiteralPath $BaseReleaseDir)) {
+    return
+  }
+
+  $unwantedExtensions = @(
+    ".cargo-lock",
+    ".d",
+    ".pdb",
+    ".nsi",
+    ".nsh",
+    ".wixobj",
+    ".wixpdb",
+    ".wxl"
+  )
+
+  Get-ChildItem -LiteralPath $BaseReleaseDir -Recurse -File |
+    Where-Object { $unwantedExtensions -contains $_.Extension } |
+    ForEach-Object {
+      Remove-Item -LiteralPath $_.FullName -Force
+      Write-Host "removed: $($_.FullName)"
+    }
 }
 
 $scriptDir = Split-Path -Parent $PSCommandPath
@@ -60,6 +92,8 @@ try {
   }
 
   Write-Host ">>> step 3/3: cleanup release intermediate files"
+  Remove-ReleaseSidecarFiles -BaseReleaseDir (Join-Path $repoRoot "target\release")
+  Remove-ReleaseSidecarFiles -BaseReleaseDir (Join-Path $repoRoot "target\i686-pc-windows-msvc\release")
   Remove-ReleaseIntermediateDirectories -BaseReleaseDir (Join-Path $repoRoot "target\release")
   Remove-ReleaseIntermediateDirectories -BaseReleaseDir (Join-Path $repoRoot "target\i686-pc-windows-msvc\release")
   Remove-PathIfExists -Path (Join-Path $repoRoot "target\i686-pc-windows-msvc\.fingerprint")

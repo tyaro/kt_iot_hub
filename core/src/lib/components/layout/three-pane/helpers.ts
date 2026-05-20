@@ -27,8 +27,19 @@ export function saveDriverUiBaseDirToStorage(value: string | null): void {
 }
 
 export function notify(message: string): void {
-  if (typeof globalThis.alert === 'function') {
+  if (typeof globalThis.alert !== 'function') {
+    // eslint-disable-next-line no-console
+    console.warn(message);
+    return;
+  }
+
+  try {
     globalThis.alert(message);
+  } catch {
+    // Tauri 環境によっては alert が dialog.message 権限に紐づくため、
+    // 権限不足時は UI を止めずにログへフォールバックする。
+    // eslint-disable-next-line no-console
+    console.warn(message);
   }
 }
 

@@ -12,7 +12,8 @@ fn main() {
 
 fn sync_shared_ui_assets() {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let src = manifest_dir
+    let dst_dir = manifest_dir.join("assets").join("_shared");
+    let tauri_src = manifest_dir
         .join("..")
         .join("..")
         .join("..")
@@ -20,10 +21,16 @@ fn sync_shared_ui_assets() {
         .join("common")
         .join("ui-assets")
         .join("tauri.js");
-    let dst_dir = manifest_dir.join("assets").join("_shared");
-    let dst = dst_dir.join("tauri.js");
+    let ui_stepper_src = manifest_dir
+        .join("..")
+        .join("..")
+        .join("..")
+        .join("drivers")
+        .join("_shared-assets")
+        .join("ui-stepper.js");
 
-    println!("cargo:rerun-if-changed={}", src.display());
+    println!("cargo:rerun-if-changed={}", tauri_src.display());
+    println!("cargo:rerun-if-changed={}", ui_stepper_src.display());
 
     if let Err(error) = fs::create_dir_all(&dst_dir) {
         panic!(
@@ -31,7 +38,12 @@ fn sync_shared_ui_assets() {
             dst_dir.display()
         );
     }
-    if let Err(error) = fs::copy(&src, &dst) {
+    copy_shared_asset(&tauri_src, &dst_dir.join("tauri.js"));
+    copy_shared_asset(&ui_stepper_src, &dst_dir.join("ui-stepper.js"));
+}
+
+fn copy_shared_asset(src: &PathBuf, dst: &PathBuf) {
+    if let Err(error) = fs::copy(src, dst) {
         panic!(
             "failed to copy shared ui-asset {} -> {}: {error}",
             src.display(),

@@ -55,6 +55,66 @@ export interface DiscoverDriverPackagesResponse {
   invalid: InvalidDriverPackageDto[];
 }
 
+type ApiDiscoveredDriverPackageDto = {
+  driverType: string;
+  displayName: string;
+  manifestPath: string;
+  registrationUiPath: string;
+  runtimePath: string;
+  version?: string | null;
+  vendor?: string | null;
+  capabilities: string[];
+};
+
+type ApiInvalidDriverPackageDto = {
+  manifestPath: string;
+  statusCode: string;
+  statusMessage: string;
+  driverTypeHint?: string | null;
+};
+
+type ApiDiscoverDriverPackagesResponse = {
+  availableCount: number;
+  invalidCount: number;
+  available: ApiDiscoveredDriverPackageDto[];
+  invalid: ApiInvalidDriverPackageDto[];
+};
+
+function mapDiscoveredDriverPackageFromApi(
+  api: ApiDiscoveredDriverPackageDto,
+): DiscoveredDriverPackageDto {
+  return {
+    driver_type: api.driverType,
+    display_name: api.displayName,
+    manifest_path: api.manifestPath,
+    registration_ui_path: api.registrationUiPath,
+    runtime_path: api.runtimePath,
+    version: api.version,
+    vendor: api.vendor,
+    capabilities: api.capabilities,
+  };
+}
+
+function mapInvalidDriverPackageFromApi(api: ApiInvalidDriverPackageDto): InvalidDriverPackageDto {
+  return {
+    manifest_path: api.manifestPath,
+    status_code: api.statusCode,
+    status_message: api.statusMessage,
+    driver_type_hint: api.driverTypeHint,
+  };
+}
+
+function mapDiscoverDriverPackagesResponseFromApi(
+  api: ApiDiscoverDriverPackagesResponse,
+): DiscoverDriverPackagesResponse {
+  return {
+    available_count: api.availableCount,
+    invalid_count: api.invalidCount,
+    available: api.available.map(mapDiscoveredDriverPackageFromApi),
+    invalid: api.invalid.map(mapInvalidDriverPackageFromApi),
+  };
+}
+
 /**
  * すべてのドライバ設定を取得する
  */
@@ -107,9 +167,11 @@ export async function getDefaultDriverUiBaseDir(): Promise<string | null> {
 export async function discoverDriverPackages(
   req: DiscoverDriverPackagesRequest,
 ): Promise<DiscoverDriverPackagesResponse> {
-  return ipcInvoke('discover_driver_packages', {
+  const api = await ipcInvoke<ApiDiscoverDriverPackagesResponse>('discover_driver_packages', {
     req: {
       driverUiBaseDir: req.driver_ui_base_dir,
     },
   });
+
+  return mapDiscoverDriverPackagesResponseFromApi(api);
 }

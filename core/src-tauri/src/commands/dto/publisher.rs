@@ -52,7 +52,9 @@ pub struct SavePublisherRequest {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(crate = "serde", rename_all = "camelCase")]
 pub struct GetMqttPublishModeRequest {
+    #[serde(rename = "driver_id", alias = "driverId")]
     pub driver_id: String,
+    #[serde(rename = "scan_group_id", alias = "scanGroupId")]
     pub scan_group_id: Option<String>,
 }
 
@@ -67,9 +69,12 @@ pub struct GetMqttPublishModeResponse {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(crate = "serde", rename_all = "camelCase")]
 pub struct SetMqttPublishModeRequest {
+    #[serde(rename = "publisher_id", alias = "publisherId")]
     pub publisher_id: Option<String>,
     pub scope: String,
+    #[serde(rename = "driver_id", alias = "driverId")]
     pub driver_id: String,
+    #[serde(rename = "scan_group_id", alias = "scanGroupId")]
     pub scan_group_id: Option<String>,
     pub mode: String,
 }

@@ -176,11 +176,16 @@ export function buildDriverTypeOptions(
   });
 
   const orderedTypes: string[] = [];
-  const pushType = (driverType: string) => {
-    if (driverType.trim().length === 0 || orderedTypes.includes(driverType)) {
+  const pushType = (driverType: unknown) => {
+    if (typeof driverType !== 'string') {
       return;
     }
-    orderedTypes.push(driverType);
+
+    const normalized = driverType.trim();
+    if (normalized.length === 0 || orderedTypes.includes(normalized)) {
+      return;
+    }
+    orderedTypes.push(normalized);
   };
 
   discoveredPackages.forEach((pkg) => pushType(pkg.driver_type));
