@@ -66,15 +66,23 @@ impl DriverProcessManager {
             exe_path.display()
         );
 
-        let child = tokio::process::Command::new(&exe_path)
-            .arg("--driver-id")
+        let mut cmd = tokio::process::Command::new(&exe_path);
+        cmd.arg("--driver-id")
             .arg(driver_id)
             .arg("--driver-kind")
             .arg(driver_type)
             .arg("--grpc-addr")
             .arg(&self.grpc_addr)
-            .kill_on_drop(true)
-            .spawn()
+            .kill_on_drop(true);
+        // Windows: 子プロセスがコンソールサブシステムであっても
+        // コンソールウィンドウを生成しないようフラグを設定する。
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
+        let child = cmd.spawn()
             .map_err(|e| {
                 anyhow!(
                     "Failed to spawn driver process '{}': {}",

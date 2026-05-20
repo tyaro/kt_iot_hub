@@ -1,3 +1,7 @@
+// リリースビルドでコンソールウィンドウが表示されないよう Windows サブシステムとして宣言。
+// ドライバは gRPC バックグラウンドサービスのためコンソールは不要。
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 #[path = "../../../../apps/common/driver_runtime_grpc_client.rs"]
 mod grpc_client;
 mod joywatcher_artifacts;
