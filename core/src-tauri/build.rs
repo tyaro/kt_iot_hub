@@ -74,7 +74,7 @@ fn manifest_placeholder(path: &std::path::Path) -> Option<&'static str> {
             r#"{
   "manifestVersion": 1,
   "driverType": "joywatcher",
-  "displayName": "JoyWatcher ジョイスティック",
+  "displayName": "JoyWatcher 接続",
   "registrationUi": "registration-ui.exe",
   "runtime": "driver-joywatcher.exe",
   "protocol": {
