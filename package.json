@@ -21,7 +21,9 @@
     "joywatcher-ui:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/build-dev-joywatcher-ui.ps1",
     "joywatcher-suite:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/build-dev-joywatcher-suite.ps1",
     "joywatcher-ui:launch": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/launch-dev-joywatcher-ui.ps1",
-    "tauri-build:bundle-drivers": "npm run driver-suite:release && npm run tauri-build"
+    "tauri-build:bundle-drivers": "npm run driver-suite:release && npm run tauri-build",
+    "release:all": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/build-release-all-and-clean.ps1",
+    "cleanup:debug": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/cleanup-debug-workspace.ps1"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",
