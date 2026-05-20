@@ -97,6 +97,17 @@
       </select>
     </label>
 
+    <label>
+      既定配信モード
+      <select
+        value={form.publish_mode_default}
+        onchange={(event) => onFieldChange('publish_mode_default', (event.currentTarget as HTMLSelectElement).value)}
+      >
+        <option value="scan_interval">SCAN周期ごとに配信</option>
+        <option value="on_change">値が変わった時のみ配信</option>
+      </select>
+    </label>
+
     <label class="full-width">
       Topic
       <input
@@ -110,6 +121,7 @@
       配信先は <code>&lt;topic&gt;/&lt;接続先ID&gt;/tags/&lt;groupId&gt;/&lt;tagName&gt;</code> です。<br />
       例: <code>plant/postgresql/tags/bte1w/w0400</code><br />
       Topic が空欄なら <code>&lt;接続先ID&gt;/tags/&lt;groupId&gt;/&lt;tagName&gt;</code> を使い、payload はスカラー値を送ります。<br />
+      接続先/ScanGroupごとの配信モードは「タグ管理」画面の右ペインから設定できます。<br />
       下のチェックを入れると、アプリ起動時にドライバと MQTT 配信を自動開始します。未チェック時はダッシュボードの開始ボタンで起動します。
     </p>
 

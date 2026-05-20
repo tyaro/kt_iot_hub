@@ -1,3 +1,7 @@
+// リリースビルドでコンソールウィンドウが表示されないよう Windows サブシステムとして宣言。
+// AllocConsole() は run() 内で明示的に呼び出して隠しコンソールを確保する。
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod connection;
 mod dll_api;
 mod dll_ffi;
@@ -50,6 +54,9 @@ fn init_tracing() {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     let log_path = resolve_log_path();
+    if let Some(path) = &log_path {
+        rotate_log_if_needed(path);
+    }
     let file_writer = log_path.as_ref().and_then(|path| {
         std::fs::OpenOptions::new()
             .create(true)
@@ -74,6 +81,18 @@ fn init_tracing() {
         None => {
             builder.with_writer(std::io::stderr).init();
             tracing::warn!("bridge-x86 file log not available; using stderr only");
+        }
+    }
+}
+
+/// ログファイルが MAX_LOG_SIZE を超えていたら .1 にリネームしてローテーション（1世代保持）。
+fn rotate_log_if_needed(path: &PathBuf) {
+    const MAX_LOG_SIZE: u64 = 10 * 1024 * 1024; // 10 MB
+    if let Ok(meta) = std::fs::metadata(path) {
+        if meta.len() >= MAX_LOG_SIZE {
+            let rotated = path.with_extension("log.1");
+            // 失敗しても起動を止めない（古い .1 が残っていても上書き）
+            let _ = std::fs::rename(path, &rotated);
         }
     }
 }

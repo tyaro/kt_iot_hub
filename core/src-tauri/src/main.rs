@@ -65,6 +65,8 @@ fn main() {
             commands::driver::import::import_driver_ui_result,
             commands::publisher::crud::list_publishers,
             commands::publisher::crud::save_publisher,
+            commands::publisher::crud::get_mqtt_publish_mode,
+            commands::publisher::crud::set_mqtt_publish_mode,
             commands::subscriber::monitor::open_mqtt_monitor_window,
             commands::subscriber::monitor::list_mqtt_monitor_publishers,
             commands::subscriber::monitor::get_mqtt_monitor_status,

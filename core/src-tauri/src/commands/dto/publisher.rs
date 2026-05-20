@@ -16,6 +16,12 @@ pub struct PublisherDto {
     pub qos: u8,
     pub retain: bool,
     pub topic: String,
+    #[serde(default)]
+    pub publish_mode_default: String,
+    #[serde(default)]
+    pub publish_mode_by_driver: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    pub publish_mode_by_scan_group: std::collections::HashMap<String, String>,
 }
 
 /// パブリッシャ作成/更新リクエスト DTO
@@ -35,4 +41,45 @@ pub struct SavePublisherRequest {
     pub qos: u8,
     pub retain: bool,
     pub topic: String,
+    #[serde(default)]
+    pub publish_mode_default: Option<String>,
+    #[serde(default)]
+    pub publish_mode_by_driver: Option<std::collections::HashMap<String, String>>,
+    #[serde(default)]
+    pub publish_mode_by_scan_group: Option<std::collections::HashMap<String, String>>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(crate = "serde", rename_all = "camelCase")]
+pub struct GetMqttPublishModeRequest {
+    pub driver_id: String,
+    pub scan_group_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(crate = "serde", rename_all = "camelCase")]
+pub struct GetMqttPublishModeResponse {
+    pub publisher_id: String,
+    pub mode: String,
+    pub source: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(crate = "serde", rename_all = "camelCase")]
+pub struct SetMqttPublishModeRequest {
+    pub publisher_id: Option<String>,
+    pub scope: String,
+    pub driver_id: String,
+    pub scan_group_id: Option<String>,
+    pub mode: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(crate = "serde", rename_all = "camelCase")]
+pub struct SetMqttPublishModeResponse {
+    pub publisher_id: String,
+    pub scope: String,
+    pub driver_id: String,
+    pub scan_group_id: Option<String>,
+    pub mode: String,
 }

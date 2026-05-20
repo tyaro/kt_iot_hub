@@ -31,13 +31,13 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "../../ops/driver-ui/postgres/registration-ui.exe",
-      "../../ops/driver-ui/postgres/driver-postgres.exe",
-      "../../ops/driver-ui/postgres/driver-manifest.json",
-      "../../ops/driver-ui/joywatcher/registration-ui.exe",
-      "../../ops/driver-ui/joywatcher/driver-joywatcher.exe",
-      "../../ops/driver-ui/joywatcher/joywatcher-bridge-x86.exe",
-      "../../ops/driver-ui/joywatcher/driver-manifest.json"
+      "driver-ui/postgres/registration-ui.exe",
+      "driver-ui/postgres/driver-postgres.exe",
+      "driver-ui/postgres/driver-manifest.json",
+      "driver-ui/joywatcher/registration-ui.exe",
+      "driver-ui/joywatcher/driver-joywatcher.exe",
+      "driver-ui/joywatcher/joywatcher-bridge-x86.exe",
+      "driver-ui/joywatcher/driver-manifest.json"
     ],
     "windows": {
       "wix": {

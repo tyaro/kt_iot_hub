@@ -2,7 +2,14 @@
   import TagDetailPanel from '../../tag/TagDetailPanel.svelte';
   import TagEditorPanel from '../../tag/TagEditorPanel.svelte';
   import DriverDetailPanel from '../../driver/DriverDetailPanel.svelte';
-  import type { DriverDto, ScanGroupDto, TagDto } from '$lib/ipc';
+  import {
+    getMqttPublishMode,
+    setMqttPublishMode,
+    type DriverDto,
+    type MqttPublishMode,
+    type ScanGroupDto,
+    type TagDto,
+  } from '$lib/ipc';
 
   let {
     currentPage,
@@ -44,6 +51,10 @@
   let scanGroupRateMs = $state(1000);
   let updatingDriverBulkRate = $state(false);
   let updatingScanGroupRate = $state(false);
+  let driverMqttPublishMode = $state<MqttPublishMode>('scan_interval');
+  let scanGroupMqttPublishMode = $state<MqttPublishMode>('scan_interval');
+  let updatingDriverMqttMode = $state(false);
+  let updatingScanGroupMqttMode = $state(false);
   let localErrorMessage = $state('');
 
   $effect(() => {
@@ -59,6 +70,61 @@
     if (selectedScanGroup?.scan_rate_ms != null) {
       scanGroupRateMs = selectedScanGroup.scan_rate_ms;
     }
+  });
+
+  $effect(() => {
+    if (!selectedDriver) {
+      return;
+    }
+
+    let disposed = false;
+    void getMqttPublishMode({
+      driver_id: selectedDriver.id,
+    })
+      .then((result) => {
+        if (disposed) {
+          return;
+        }
+        driverMqttPublishMode = result.mode;
+      })
+      .catch(() => {
+        if (disposed) {
+          return;
+        }
+        driverMqttPublishMode = 'scan_interval';
+      });
+
+    return () => {
+      disposed = true;
+    };
+  });
+
+  $effect(() => {
+    if (!selectedScanGroup) {
+      return;
+    }
+
+    let disposed = false;
+    void getMqttPublishMode({
+      driver_id: selectedScanGroup.driver_id,
+      scan_group_id: selectedScanGroup.id,
+    })
+      .then((result) => {
+        if (disposed) {
+          return;
+        }
+        scanGroupMqttPublishMode = result.mode;
+      })
+      .catch(() => {
+        if (disposed) {
+          return;
+        }
+        scanGroupMqttPublishMode = 'scan_interval';
+      });
+
+    return () => {
+      disposed = true;
+    };
   });
 
   function validateScanRateMs(value: number): string | null {
@@ -113,6 +179,47 @@
       updatingScanGroupRate = false;
     }
   }
+
+  async function submitDriverMqttMode() {
+    if (!selectedDriver) {
+      return;
+    }
+
+    localErrorMessage = '';
+    updatingDriverMqttMode = true;
+    try {
+      await setMqttPublishMode({
+        scope: 'driver',
+        driver_id: selectedDriver.id,
+        mode: driverMqttPublishMode,
+      });
+    } catch (error) {
+      localErrorMessage = error instanceof Error ? error.message : '接続先のMQTT配信モード更新に失敗しました。';
+    } finally {
+      updatingDriverMqttMode = false;
+    }
+  }
+
+  async function submitScanGroupMqttMode() {
+    if (!selectedScanGroup) {
+      return;
+    }
+
+    localErrorMessage = '';
+    updatingScanGroupMqttMode = true;
+    try {
+      await setMqttPublishMode({
+        scope: 'scan_group',
+        driver_id: selectedScanGroup.driver_id,
+        scan_group_id: selectedScanGroup.id,
+        mode: scanGroupMqttPublishMode,
+      });
+    } catch (error) {
+      localErrorMessage = error instanceof Error ? error.message : 'ScanGroup のMQTT配信モード更新に失敗しました。';
+    } finally {
+      updatingScanGroupMqttMode = false;
+    }
+  }
 </script>
 
 <div class="right-pane">
@@ -133,42 +240,6 @@
           onRequestDelete={onTagDetailDelete}
           onRequestClose={onTagDetailClose}
         />
-      {:else if selectedDriver}
-        <div class="info-panel stacked-panel">
-          <DriverDetailPanel
-            driver={selectedDriver}
-            mode="detail"
-            onRequestDelete={onDriverDelete}
-            onDone={onDriverDone}
-          />
-
-          <section class="edit-section">
-            <h4>接続先配下の周期一括変更</h4>
-            <p class="helper-text compact">この接続先に属する全 ScanGroup の周期を同一値へ更新します。</p>
-            <label class="field-label" for="driver-bulk-scan-rate">周期 (ms)</label>
-            <div class="inline-form">
-              <input
-                id="driver-bulk-scan-rate"
-                type="number"
-                min={MIN_SCAN_RATE_MS}
-                step="100"
-                bind:value={driverBulkScanRateMs}
-                disabled={updatingDriverBulkRate}
-              />
-              <button
-                class="btn-primary"
-                onclick={submitDriverBulkRate}
-                disabled={updatingDriverBulkRate}
-              >
-                {updatingDriverBulkRate ? '更新中...' : '全 ScanGroup に適用'}
-              </button>
-            </div>
-          </section>
-
-          {#if localErrorMessage}
-            <p class="error-text">{localErrorMessage}</p>
-          {/if}
-        </div>
       {:else if selectedScanGroup}
         <div class="info-panel">
           <div class="panel-header compact">
@@ -203,10 +274,91 @@
               </button>
             </div>
           </section>
+          <section class="edit-section">
+            <h4>MQTT配信モード</h4>
+            <p class="helper-text compact">この ScanGroup の配信モードを設定します（接続先設定より優先）。</p>
+            <label class="field-label" for="scan-group-mqtt-mode">モード</label>
+            <div class="inline-form">
+              <select
+                id="scan-group-mqtt-mode"
+                bind:value={scanGroupMqttPublishMode}
+                disabled={updatingScanGroupMqttMode}
+              >
+                <option value="scan_interval">SCAN周期に合わせて配信</option>
+                <option value="on_change">値が変わった時のみ配信</option>
+              </select>
+              <button
+                class="btn-primary"
+                onclick={submitScanGroupMqttMode}
+                disabled={updatingScanGroupMqttMode}
+              >
+                {updatingScanGroupMqttMode ? '更新中...' : 'この ScanGroup に適用'}
+              </button>
+            </div>
+          </section>
           {#if localErrorMessage}
             <p class="error-text">{localErrorMessage}</p>
           {/if}
           <p class="helper-text">Scanグループの追加・削除・構造変更は接続先ドライバ専用UI側で行います。</p>
+        </div>
+      {:else if selectedDriver}
+        <div class="info-panel stacked-panel">
+          <DriverDetailPanel
+            driver={selectedDriver}
+            mode="detail"
+            onRequestDelete={onDriverDelete}
+            onDone={onDriverDone}
+          />
+
+          <section class="edit-section">
+            <h4>接続先配下の周期一括変更</h4>
+            <p class="helper-text compact">この接続先に属する全 ScanGroup の周期を同一値へ更新します。</p>
+            <label class="field-label" for="driver-bulk-scan-rate">周期 (ms)</label>
+            <div class="inline-form">
+              <input
+                id="driver-bulk-scan-rate"
+                type="number"
+                min={MIN_SCAN_RATE_MS}
+                step="100"
+                bind:value={driverBulkScanRateMs}
+                disabled={updatingDriverBulkRate}
+              />
+              <button
+                class="btn-primary"
+                onclick={submitDriverBulkRate}
+                disabled={updatingDriverBulkRate}
+              >
+                {updatingDriverBulkRate ? '更新中...' : '全 ScanGroup に適用'}
+              </button>
+            </div>
+          </section>
+
+          <section class="edit-section">
+            <h4>MQTT配信モード（接続先）</h4>
+            <p class="helper-text compact">この接続先配下の既定配信モードを設定します。</p>
+            <label class="field-label" for="driver-mqtt-mode">モード</label>
+            <div class="inline-form">
+              <select
+                id="driver-mqtt-mode"
+                bind:value={driverMqttPublishMode}
+                disabled={updatingDriverMqttMode}
+              >
+                <option value="scan_interval">SCAN周期に合わせて配信</option>
+                <option value="on_change">値が変わった時のみ配信</option>
+              </select>
+              <button
+                class="btn-primary"
+                onclick={submitDriverMqttMode}
+                disabled={updatingDriverMqttMode}
+              >
+                {updatingDriverMqttMode ? '更新中...' : 'この接続先に適用'}
+              </button>
+            </div>
+          </section>
+
+          {#if localErrorMessage}
+            <p class="error-text">{localErrorMessage}</p>
+          {/if}
         </div>
       {:else}
         <div class="empty-right">
@@ -337,6 +489,15 @@
   }
 
   .inline-form input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font: inherit;
+    box-sizing: border-box;
+  }
+
+  .inline-form select {
     width: 100%;
     padding: 8px 10px;
     border: 1px solid #cbd5e1;

@@ -9,9 +9,12 @@ use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::time::{timeout, Duration, Instant};
 use tracing::{info, warn};
+use std::collections::HashMap;
 
 const MQTT_CLIENT_REQUEST_CAPACITY: usize = 4096;
 const MQTT_PUBLISH_QUEUE_CAPACITY: usize = 32768;
+const MQTT_PUBLISH_MODE_SCAN_INTERVAL: &str = "scan_interval";
+const MQTT_PUBLISH_MODE_ON_CHANGE: &str = "on_change";
 
 pub struct MqttPublisher {
     id: String,
@@ -75,6 +78,32 @@ impl MqttPublisher {
             .unwrap_or("")
             .to_string()
     }
+
+    fn get_publish_mode_default(&self) -> String {
+        self.config
+            .settings
+            .get("publish_mode_default")
+            .and_then(|v| v.as_str())
+            .map(normalize_publish_mode)
+            .unwrap_or(MQTT_PUBLISH_MODE_SCAN_INTERVAL)
+            .to_string()
+    }
+
+    fn get_publish_mode_map(&self, key: &str) -> HashMap<String, String> {
+        self.config
+            .settings
+            .get(key)
+            .and_then(|v| v.as_object())
+            .map(|obj| {
+                obj.iter()
+                    .filter_map(|(k, v)| {
+                        v.as_str()
+                            .map(|mode| (k.clone(), normalize_publish_mode(mode).to_string()))
+                    })
+                    .collect::<HashMap<_, _>>()
+            })
+            .unwrap_or_default()
+    }
 }
 
 #[async_trait]
@@ -98,6 +127,9 @@ impl Publisher for MqttPublisher {
         let qos = self.get_u8_setting("qos", 1);
         let retain = self.get_bool_setting("retain", false);
         let topic = self.get_topic_setting();
+        let publish_mode_default = self.get_publish_mode_default();
+        let publish_mode_by_driver = self.get_publish_mode_map("publish_mode_by_driver");
+        let publish_mode_by_scan_group = self.get_publish_mode_map("publish_mode_by_scan_group");
 
         let mut options = MqttOptions::new(client_id, broker, port);
         options.set_keep_alive(std::time::Duration::from_secs(30));
@@ -141,13 +173,42 @@ impl Publisher for MqttPublisher {
             let publish_registry = registry.clone();
             let publish_topic_root = topic_root.clone();
             let publish_publisher_id = publisher_id.clone();
+            let mut last_published_values: HashMap<String, serde_json::Value> = HashMap::new();
             let mut publish_task = tokio::spawn(async move {
                 while let Some(value) = publish_rx.recv().await {
                     let tag = publish_registry.get(&value.tag_id).await;
+                    let driver_id = tag
+                        .as_ref()
+                        .map(|tag| tag.driver_id.as_str())
+                        .unwrap_or("unknown-driver");
+                    let scan_group_id = tag
+                        .as_ref()
+                        .map(|tag| tag.scan_group_id.as_str())
+                        .unwrap_or("unknown-group");
+
+                    let scan_group_key = format!("{}::{}", driver_id, scan_group_id);
+                    let publish_mode = publish_mode_by_scan_group
+                        .get(&scan_group_key)
+                        .or_else(|| publish_mode_by_driver.get(driver_id))
+                        .map(String::as_str)
+                        .unwrap_or(publish_mode_default.as_str());
+
+                    if publish_mode == MQTT_PUBLISH_MODE_ON_CHANGE {
+                        let key = value.tag_id.0.clone();
+                        let should_publish = match last_published_values.get(&key) {
+                            Some(previous) => previous != &value.value,
+                            None => true,
+                        };
+                        if !should_publish {
+                            continue;
+                        }
+                        last_published_values.insert(key, value.value.clone());
+                    }
+
                     let topic = build_topic(
                         &publish_topic_root,
-                        tag.as_ref().map(|tag| tag.driver_id.as_str()),
-                        tag.as_ref().map(|tag| tag.scan_group_id.as_str()),
+                        Some(driver_id),
+                        Some(scan_group_id),
                         tag.as_ref().map(|tag| tag.name.as_str()),
                         value.tag_id.0.as_str(),
                     );
@@ -255,6 +316,13 @@ impl Publisher for MqttPublisher {
     async fn test_connection(&self) -> Result<()> {
         let _ = self.get_string_setting("broker", Some("127.0.0.1"))?;
         Ok(())
+    }
+}
+
+fn normalize_publish_mode(mode: &str) -> &'static str {
+    match mode.trim().to_ascii_lowercase().as_str() {
+        "on_change" | "change_only" | "changed_only" => MQTT_PUBLISH_MODE_ON_CHANGE,
+        _ => MQTT_PUBLISH_MODE_SCAN_INTERVAL,
     }
 }
 

@@ -13,6 +13,9 @@ export function createDefaultForm(): SavePublisherRequest {
     qos: 1,
     retain: false,
     topic: '',
+    publish_mode_default: 'scan_interval',
+    publish_mode_by_driver: {},
+    publish_mode_by_scan_group: {},
   };
 }
 
