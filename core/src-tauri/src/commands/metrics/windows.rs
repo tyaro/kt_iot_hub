@@ -1,11 +1,12 @@
-use crate::app_state::{AppCpuSampleState, RuntimeMetricsCacheState};
+use crate::app_state::{AppCpuSampleState, RuntimeMetricsCacheState, SystemCpuSampleState};
 use crate::commands::dto::ErrorResponse;
 use chrono::Utc;
+use sysinfo::System;
 use windows_sys::Win32::{
     Foundation::FILETIME,
     System::{
         ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS},
-        Threading::{GetCurrentProcess, GetProcessTimes},
+        Threading::{GetCurrentProcess, GetProcessTimes, GetSystemTimes},
     },
 };
 
@@ -109,5 +110,64 @@ pub(super) fn get_process_metrics(
         }
 
         Ok((process_cpu_percent, Some(counters.WorkingSetSize as u64)))
+    }
+}
+
+pub(super) fn get_system_cpu_percent(
+    cache: &mut RuntimeMetricsCacheState,
+    system: &System,
+) -> Result<Option<f32>, ErrorResponse> {
+    unsafe {
+        let mut idle_time = FILETIME {
+            dwLowDateTime: 0,
+            dwHighDateTime: 0,
+        };
+        let mut kernel_time = FILETIME {
+            dwLowDateTime: 0,
+            dwHighDateTime: 0,
+        };
+        let mut user_time = FILETIME {
+            dwLowDateTime: 0,
+            dwHighDateTime: 0,
+        };
+
+        if GetSystemTimes(&mut idle_time, &mut kernel_time, &mut user_time) == 0 {
+            return Err(ErrorResponse::new(
+                "METRICS_SYSTEM_TIMES_ERROR",
+                "GetSystemTimes failed",
+            ));
+        }
+
+        let current_sample = SystemCpuSampleState {
+            idle_time: filetime_to_u64(idle_time),
+            kernel_time: filetime_to_u64(kernel_time),
+            user_time: filetime_to_u64(user_time),
+        };
+
+        let system_cpu_percent = cache
+            .last_system_cpu_sample
+            .as_ref()
+            .and_then(|previous| {
+                let idle_delta = current_sample.idle_time.saturating_sub(previous.idle_time);
+                let kernel_delta = current_sample
+                    .kernel_time
+                    .saturating_sub(previous.kernel_time);
+                let user_delta = current_sample.user_time.saturating_sub(previous.user_time);
+                let total_delta = kernel_delta.saturating_add(user_delta);
+
+                if total_delta == 0 {
+                    None
+                } else {
+                    let busy_delta = total_delta.saturating_sub(idle_delta.min(total_delta));
+                    Some(
+                        ((busy_delta as f64 / total_delta as f64) * 100.0).clamp(0.0, 100.0) as f32,
+                    )
+                }
+            })
+            .or_else(|| Some(system.global_cpu_usage().clamp(0.0, 100.0)));
+
+        cache.last_system_cpu_sample = Some(current_sample);
+
+        Ok(system_cpu_percent)
     }
 }

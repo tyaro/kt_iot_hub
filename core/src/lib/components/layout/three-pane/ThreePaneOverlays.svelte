@@ -78,23 +78,25 @@
   }: Props = $props();
 </script>
 
-<TagRightPane
-  {currentPage}
-  {tagMode}
-  {selectedTag}
-  {selectedDriver}
-  {selectedScanGroup}
-  {editorDriverId}
-  onUpdateScanGroupRate={onUpdateScanGroupRate}
-  onBulkUpdateDriverScanGroupRate={onBulkUpdateDriverScanGroupRate}
-  onTagEditorDone={onTagEditorDone}
-  onTagEditorCancel={onTagEditorCancel}
-  onTagDetailEdit={onTagDetailEdit}
-  onTagDetailDelete={onTagDetailDelete}
-  onTagDetailClose={onTagDetailClose}
-  onDriverDelete={onDriverDelete}
-  onDriverDone={onDriverDone}
-/>
+{#if currentPage === 'tags'}
+  <TagRightPane
+    {currentPage}
+    {tagMode}
+    {selectedTag}
+    {selectedDriver}
+    {selectedScanGroup}
+    {editorDriverId}
+    onUpdateScanGroupRate={onUpdateScanGroupRate}
+    onBulkUpdateDriverScanGroupRate={onBulkUpdateDriverScanGroupRate}
+    onTagEditorDone={onTagEditorDone}
+    onTagEditorCancel={onTagEditorCancel}
+    onTagDetailEdit={onTagDetailEdit}
+    onTagDetailDelete={onTagDetailDelete}
+    onTagDetailClose={onTagDetailClose}
+    onDriverDelete={onDriverDelete}
+    onDriverDone={onDriverDone}
+  />
+{/if}
 
 <DriverUiDialogs
   {driverPickerOpen}

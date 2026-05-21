@@ -3,7 +3,7 @@ mod driver_ui_session;
 mod mqtt_monitor;
 mod scan_metrics;
 
-pub use app_cpu::{AppCpuSampleState, RuntimeMetricsCacheState};
+pub use app_cpu::{AppCpuSampleState, RuntimeMetricsCacheState, SystemCpuSampleState};
 pub use driver_ui_session::DriverUiSessionState;
 pub use mqtt_monitor::{MqttMonitorMessageState, MqttMonitorStatusState};
 pub use scan_metrics::{DriverIoSampleState, DriverIoTotalState, ScanGroupRuntimeMetricState};

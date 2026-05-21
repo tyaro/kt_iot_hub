@@ -275,9 +275,10 @@ pub async fn set_mqtt_publish_mode(
                 ErrorResponse::not_found(format!("Publisher not found: {}", target_publisher_id))
             })?;
 
-        let settings = target.settings.as_object_mut().ok_or_else(|| {
-            ErrorResponse::invalid_input("publisher settings must be an object")
-        })?;
+        let settings = target
+            .settings
+            .as_object_mut()
+            .ok_or_else(|| ErrorResponse::invalid_input("publisher settings must be an object"))?;
 
         let scope = req.scope.trim().to_ascii_lowercase();
         match scope.as_str() {
@@ -291,7 +292,9 @@ pub async fn set_mqtt_publish_mode(
                     .map(str::trim)
                     .filter(|v| !v.is_empty())
                     .ok_or_else(|| {
-                        ErrorResponse::invalid_input("scan_group_id is required for scan_group scope")
+                        ErrorResponse::invalid_input(
+                            "scan_group_id is required for scan_group scope",
+                        )
                     })?;
                 let key = format!("{}::{}", driver_id, scan_group_id);
                 upsert_publish_mode_entry(settings, "publish_mode_by_scan_group", &key, &mode)?;
@@ -326,10 +329,7 @@ fn normalize_publish_mode(mode: &str) -> &'static str {
     }
 }
 
-fn read_publish_mode_map(
-    settings: &serde_json::Value,
-    key: &str,
-) -> HashMap<String, String> {
+fn read_publish_mode_map(settings: &serde_json::Value, key: &str) -> HashMap<String, String> {
     settings
         .get(key)
         .and_then(|v| v.as_object())
@@ -366,9 +366,9 @@ fn upsert_publish_mode_entry(
     let target = settings
         .entry(key.to_string())
         .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
-    let object = target.as_object_mut().ok_or_else(|| {
-        ErrorResponse::invalid_input(format!("{} must be an object", key))
-    })?;
+    let object = target
+        .as_object_mut()
+        .ok_or_else(|| ErrorResponse::invalid_input(format!("{} must be an object", key)))?;
     object.insert(
         entry_key.to_string(),
         serde_json::Value::String(normalize_publish_mode(mode).to_string()),

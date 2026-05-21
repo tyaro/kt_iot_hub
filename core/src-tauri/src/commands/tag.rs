@@ -137,12 +137,11 @@ pub async fn bulk_update_driver_scan_group_rate(
 
     let updated_count = {
         let existing_scan_groups = state.scan_groups.read().await.clone();
-        let (updated_scan_groups, updated_driver_groups) =
-            update_driver_scan_group_rate_internal(
-                &existing_scan_groups,
-                &req.driver_id,
-                req.scan_rate_ms,
-            )?;
+        let (updated_scan_groups, updated_driver_groups) = update_driver_scan_group_rate_internal(
+            &existing_scan_groups,
+            &req.driver_id,
+            req.scan_rate_ms,
+        )?;
 
         let tags = build_tag_configs_from_registry(&state).await;
         write_tags_toml_atomic(&updated_scan_groups, &tags)?;
@@ -305,7 +304,9 @@ fn update_single_scan_group_rate_internal(
     scan_rate_ms: u32,
 ) -> Result<(Vec<ScanGroupConfig>, ScanGroupConfig), ErrorResponse> {
     if scan_group_id.trim().is_empty() {
-        return Err(ErrorResponse::invalid_input("scan_group_id cannot be empty"));
+        return Err(ErrorResponse::invalid_input(
+            "scan_group_id cannot be empty",
+        ));
     }
 
     let mut found = None;
@@ -414,9 +415,8 @@ mod tests {
     fn single_scan_group_rate_update_fails_when_target_missing() {
         let groups = vec![sample_group("driver-a", "group-1", 1000)];
 
-        let error =
-            update_single_scan_group_rate_internal(&groups, "driver-b", "group-1", 2500)
-                .expect_err("missing target should fail");
+        let error = update_single_scan_group_rate_internal(&groups, "driver-b", "group-1", 2500)
+            .expect_err("missing target should fail");
 
         assert_eq!(error.code, "NOT_FOUND");
     }

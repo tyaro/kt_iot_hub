@@ -78,18 +78,16 @@ impl DriverProcessManager {
         // コンソールウィンドウを生成しないようフラグを設定する。
         #[cfg(windows)]
         {
-            use std::os::windows::process::CommandExt;
             const CREATE_NO_WINDOW: u32 = 0x0800_0000;
             cmd.creation_flags(CREATE_NO_WINDOW);
         }
-        let child = cmd.spawn()
-            .map_err(|e| {
-                anyhow!(
-                    "Failed to spawn driver process '{}': {}",
-                    exe_path.display(),
-                    e
-                )
-            })?;
+        let child = cmd.spawn().map_err(|e| {
+            anyhow!(
+                "Failed to spawn driver process '{}': {}",
+                exe_path.display(),
+                e
+            )
+        })?;
 
         self.processes.insert(driver_id.to_string(), child);
         info!("Driver process started: {}", driver_id);
@@ -169,8 +167,7 @@ impl DriverProcessManager {
     ) -> Result<Option<PathBuf>> {
         for root in path_resolver::app_root_candidates(driver_ui_base_dir) {
             if let Some(manifest_runtime_path) =
-                path_resolver::resolve_manifest_runtime_path_for_root(driver_type, &root)
-                ?
+                path_resolver::resolve_manifest_runtime_path_for_root(driver_type, &root)?
             {
                 return Ok(Some(manifest_runtime_path));
             }

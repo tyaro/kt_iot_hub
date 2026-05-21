@@ -1,6 +1,99 @@
 # kt_iot_hub
 
-オフライン環境向け IoT HUB（Tauri v2 + Rust + Svelte）です。
+**工場・現場などのオフライン環境**で稼働する IoT ハブアプリケーションです。  
+各種 IoT 機器・SCADA・データベースからタグ値を収集し、MQTT を介してシステム内へ配信します。  
+Tauri v2（Rust バックエンド + Svelte 5 フロントエンド）で構築された Windows デスクトップアプリです。
+
+## ダウンロード
+
+インストーラは [GitHub Releases](../../releases) からダウンロードできます。  
+`kt_iot_hub_x.x.x_x64-setup.exe` を実行してインストールしてください。
+
+---
+
+## 主な機能
+
+### タグ管理
+
+- ドライバ種別（PostgreSQL / JoyWatcher）→ 接続先 → スキャングループ → タグ の階層でタグを一元管理
+- TOML ファイル（`ops/config/tags.toml` / `drivers.toml`）を正本として永続化
+- タグ定義の JSON インポート / エクスポート
+
+### ドライバ対応
+
+| ドライバ | 概要 |
+| --- | --- |
+| **PostgreSQL** | テーブル単位でカラム値を定期ポーリング。登録 UI で接続先・カラムを探索してタグを一括生成できる |
+| **JoyWatcher** | JoyWatcher DLL を x86 ブリッジ経由で呼び出し（TagSel2 / JWGetTagIDS2 / JWRead）。Shift_JIS（cp932）の日本語タグ名にも対応 |
+
+- 各ドライバは **独立した別プロセス**（通信ランタイム）として起動し、gRPC で本体と通信します
+- 登録 UI も別プロセスで起動し、タグ探索・登録フローを提供します
+- ドライバ障害は本体に波及せず、個別に停止・再起動できます
+
+### MQTT 配信
+
+- 収集したタグ値を外部 MQTT ブローカー（Mosquitto / EMQX 等）へ publish
+- トピック: `<topic_prefix>/<tag_id>`（設定可能）
+- `retain` フラグの設定に対応
+
+### MQTT モニタ
+
+- 購読中のトピックと流れているメッセージをリアルタイムで確認
+- ダッシュボードから専用ウィンドウで開く
+
+### ダッシュボード
+
+- アプリ全体の稼働状況（ドライバ稼働数・MQTT 接続状態）の一覧表示
+- CPU / メモリ使用量のリアルタイム表示
+- ドライバプロセスの I/O 転送量（B/s）の表示
+- スキャングループ単位の実測通信周期の表示
+
+### 設定管理
+
+- 接続先・スキャングループ・パブリッシャをアプリ UI から設定・保存
+- 設定変更時のホットリロード対応
+- ドライバ UI の探索ベースパス（`driverUiBaseDir`）を UI から変更可能
+
+---
+
+## 技術スタック
+
+| 区分 | 採用技術 |
+| --- | --- |
+| アプリ基盤 | Tauri v2 |
+| バックエンド | Rust (Edition 2021) / Tokio |
+| フロントエンド | Svelte 5 Runes / SvelteKit (adapter-static, SSR off) |
+| ドライバ IPC | gRPC (`tonic`) |
+| MQTT | `rumqttc` |
+| 設定 | TOML (`serde` + `toml`) |
+| ロギング | `tracing` + `tracing-subscriber` |
+
+---
+
+## システム要件
+
+- **OS**: Windows 10 / 11（x64）
+- **MQTT ブローカー**: Mosquitto または EMQX 等の外部ブローカー（本体に内蔵しません）
+- **JoyWatcher ドライバ使用時**: JoyWatcher クライアントライブラリ（`JwComApi.ocx` 等）がインストール済みであること
+
+---
+
+## ビルド・起動
+
+```powershell
+# 依存インストール
+npm install
+
+# 開発モード起動
+npm run tauri dev
+
+# リリースビルド
+npm run tauri build
+```
+
+ドライバを使う場合は事前に各ドライバのビルドが必要です。詳細は [drivers/docs/driver-development.md](./drivers/docs/driver-development.md) を参照してください。
+
+---
 
 ## ドキュメント入口
 

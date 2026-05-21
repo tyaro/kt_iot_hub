@@ -10,9 +10,9 @@ mod fallback;
 mod windows;
 
 #[cfg(not(target_os = "windows"))]
-use fallback::get_process_metrics;
+use fallback::{get_process_metrics, get_system_cpu_percent};
 #[cfg(target_os = "windows")]
-use windows::get_process_metrics;
+use windows::{get_process_metrics, get_system_cpu_percent};
 
 #[tauri::command]
 pub async fn get_app_metrics(
@@ -23,12 +23,18 @@ pub async fn get_app_metrics(
     system.refresh_memory();
     let logical_cpu_count = system.cpus().len().max(1);
 
-    let (process_cpu_percent, process_memory_bytes) = {
+    let (process_cpu_percent, process_memory_bytes, system_cpu_percent) = {
         let mut cache = state.runtime_metrics_cache.write().await;
-        get_process_metrics(&mut cache, logical_cpu_count)?
+        let (process_cpu_percent, process_memory_bytes) =
+            get_process_metrics(&mut cache, logical_cpu_count)?;
+        let system_cpu_percent = get_system_cpu_percent(&mut cache, &system)?;
+        (
+            process_cpu_percent,
+            process_memory_bytes,
+            system_cpu_percent,
+        )
     };
 
-    let system_cpu_percent = Some(system.global_cpu_usage());
     let system_memory_total_bytes = Some(system.total_memory());
     let system_memory_used_bytes = Some(system.used_memory());
 

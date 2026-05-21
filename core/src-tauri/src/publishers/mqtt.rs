@@ -4,12 +4,12 @@ use crate::publishers::Publisher;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use rumqttc::{AsyncClient, EventLoop, MqttOptions, QoS};
+use std::collections::HashMap;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::time::{timeout, Duration, Instant};
 use tracing::{info, warn};
-use std::collections::HashMap;
 
 const MQTT_CLIENT_REQUEST_CAPACITY: usize = 4096;
 const MQTT_PUBLISH_QUEUE_CAPACITY: usize = 32768;
@@ -266,8 +266,7 @@ impl Publisher for MqttPublisher {
 
             info!(
                 "MqttPublisher {} receiver loop finished: {}",
-                publisher_id,
-                shutdown_reason
+                publisher_id, shutdown_reason
             );
             drop(publish_tx);
 

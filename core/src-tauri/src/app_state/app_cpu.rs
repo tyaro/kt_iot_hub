@@ -9,6 +9,13 @@ pub struct AppCpuSampleState {
     pub sampled_at: DateTime<Utc>,
 }
 
+#[derive(Clone, Debug)]
+pub struct SystemCpuSampleState {
+    pub idle_time: u64,
+    pub kernel_time: u64,
+    pub user_time: u64,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct RuntimeMetricsCacheState {
     pub last_network_rx_bytes: Option<u64>,
@@ -19,4 +26,5 @@ pub struct RuntimeMetricsCacheState {
     pub last_driver_reported_io_totals: HashMap<String, DriverIoTotalState>,
     pub last_driver_reported_io_samples: HashMap<String, DriverIoSampleState>,
     pub last_app_cpu_sample: Option<AppCpuSampleState>,
+    pub last_system_cpu_sample: Option<SystemCpuSampleState>,
 }
