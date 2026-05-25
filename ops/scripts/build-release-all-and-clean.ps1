@@ -193,7 +193,7 @@ try {
   $totalSteps = if ($Bump) { 4 } else { 3 }
 
   if ($Bump) {
-    Write-Host ">>> step 1/$totalSteps: bump project version ($Bump)"
+    Write-Host ">>> step 1/${totalSteps}: bump project version ($Bump)"
     Bump-ProjectVersions -BumpType $Bump -RepoRoot $repoRoot
   }
 
@@ -201,19 +201,19 @@ try {
   $appStep = if ($Bump) { 3 } else { 2 }
   $cleanupStep = if ($Bump) { 4 } else { 3 }
 
-  Write-Host ">>> step $driverStep/$totalSteps: build release driver suite"
+  Write-Host ">>> step ${driverStep}/${totalSteps}: build release driver suite"
   & (Join-Path $scriptDir "build-release-driver-suite.ps1")
   if ($LASTEXITCODE -ne 0) {
     throw "build-release-driver-suite.ps1 failed (exit code $LASTEXITCODE)"
   }
 
-  Write-Host ">>> step $appStep/$totalSteps: build release app bundle"
+  Write-Host ">>> step ${appStep}/${totalSteps}: build release app bundle"
   & npm run tauri-build
   if ($LASTEXITCODE -ne 0) {
     throw "npm run tauri-build failed (exit code $LASTEXITCODE)"
   }
 
-  Write-Host ">>> step $cleanupStep/$totalSteps: cleanup release intermediate files"
+  Write-Host ">>> step ${cleanupStep}/${totalSteps}: cleanup release intermediate files"
   Remove-ReleaseSidecarFiles -BaseReleaseDir (Join-Path $repoRoot "target\release")
   Remove-ReleaseSidecarFiles -BaseReleaseDir (Join-Path $repoRoot "target\i686-pc-windows-msvc\release")
   Remove-ReleaseIntermediateDirectories -BaseReleaseDir (Join-Path $repoRoot "target\release")
