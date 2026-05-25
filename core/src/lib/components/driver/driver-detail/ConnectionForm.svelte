@@ -20,6 +20,16 @@
     onSave: () => void;
     onCancel: () => void;
   } = $props();
+
+  function parseOptionalNumber(value: string): number | null {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
 </script>
 
 <div class="form">
@@ -87,6 +97,105 @@
       oninput={(event) => onFieldChange('password', (event.currentTarget as HTMLInputElement).value)}
     />
   </label>
+  <label>
+    Password Key（任意）
+    <input
+      value={form.password_key ?? ''}
+      placeholder="driver.postgres.main"
+      oninput={(event) => {
+        const value = (event.currentTarget as HTMLInputElement).value.trim();
+        onFieldChange('password_key', value ? value : null);
+      }}
+    />
+  </label>
+
+  <label class="check-label">
+    <input
+      type="checkbox"
+      checked={form.tls_enabled}
+      onchange={(event) => onFieldChange('tls_enabled', (event.currentTarget as HTMLInputElement).checked)}
+    />
+    TLS を有効化
+  </label>
+
+  <label>
+    TLS CA 証明書パス（任意）
+    <input
+      value={form.tls_ca_path ?? ''}
+      placeholder="C:/certs/ca.pem"
+      oninput={(event) => {
+        const value = (event.currentTarget as HTMLInputElement).value.trim();
+        onFieldChange('tls_ca_path', value ? value : null);
+      }}
+    />
+  </label>
+
+  <label>
+    TLS クライアント証明書パス（任意）
+    <input
+      value={form.tls_client_cert_path ?? ''}
+      placeholder="C:/certs/client.crt"
+      oninput={(event) => {
+        const value = (event.currentTarget as HTMLInputElement).value.trim();
+        onFieldChange('tls_client_cert_path', value ? value : null);
+      }}
+    />
+  </label>
+
+  <label>
+    TLS クライアント鍵パス（任意）
+    <input
+      value={form.tls_client_key_path ?? ''}
+      placeholder="C:/certs/client.key"
+      oninput={(event) => {
+        const value = (event.currentTarget as HTMLInputElement).value.trim();
+        onFieldChange('tls_client_key_path', value ? value : null);
+      }}
+    />
+  </label>
+
+  <label>
+    接続タイムアウト ms（任意）
+    <input
+      type="number"
+      min="0"
+      value={form.connect_timeout_ms ?? ''}
+      placeholder="5000"
+      oninput={(event) => onFieldChange('connect_timeout_ms', parseOptionalNumber((event.currentTarget as HTMLInputElement).value))}
+    />
+  </label>
+
+  <label>
+    クエリタイムアウト ms（任意）
+    <input
+      type="number"
+      min="0"
+      value={form.statement_timeout_ms ?? ''}
+      placeholder="10000"
+      oninput={(event) => onFieldChange('statement_timeout_ms', parseOptionalNumber((event.currentTarget as HTMLInputElement).value))}
+    />
+  </label>
+
+  <label class="check-label">
+    <input
+      type="checkbox"
+      checked={form.auto_restart}
+      onchange={(event) => onFieldChange('auto_restart', (event.currentTarget as HTMLInputElement).checked)}
+    />
+    ドライバ自動再起動
+  </label>
+
+  <label>
+    1分あたり最大再起動回数（任意）
+    <input
+      type="number"
+      min="0"
+      value={form.max_restart_per_minute ?? ''}
+      placeholder="3"
+      oninput={(event) => onFieldChange('max_restart_per_minute', parseOptionalNumber((event.currentTarget as HTMLInputElement).value))}
+    />
+  </label>
+
   <label class="check-label">
     <input
       type="checkbox"

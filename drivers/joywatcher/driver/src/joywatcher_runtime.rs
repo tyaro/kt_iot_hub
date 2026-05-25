@@ -56,7 +56,11 @@ impl PollGroup {
         tag_ids
     }
 
-    fn build_messages(&self, values: &[BridgeReadValue], io_totals: &mut DriverIoTotals) -> Vec<TagValueMessage> {
+    fn build_messages(
+        &self,
+        values: &[BridgeReadValue],
+        io_totals: &mut DriverIoTotals,
+    ) -> Vec<TagValueMessage> {
         let mut tags_by_native_id = HashMap::<i32, Vec<&RuntimeTag>>::new();
         for tag in &self.tags {
             tags_by_native_id
@@ -122,8 +126,7 @@ impl JoyWatcherPollPlan {
             if group.scan_rate_ms == 0 {
                 warn!(
                     "JoyWatcher scan group {} has invalid scan_rate_ms=0; fallback to {}ms",
-                    group.id,
-                    DEFAULT_SCAN_RATE_MS
+                    group.id, DEFAULT_SCAN_RATE_MS
                 );
             }
             groups_by_id.insert(
@@ -149,8 +152,7 @@ impl JoyWatcherPollPlan {
             let Some(group) = groups_by_id.get_mut(&tag.scan_group_id) else {
                 warn!(
                     "JoyWatcher tag {} references unknown scan group {}; skipping",
-                    tag.id,
-                    tag.scan_group_id
+                    tag.id, tag.scan_group_id
                 );
                 continue;
             };
@@ -165,7 +167,10 @@ impl JoyWatcherPollPlan {
             .into_values()
             .filter_map(|group| {
                 if group.tags.is_empty() {
-                    debug!("JoyWatcher scan group {} has no enabled tags; skipping", group.id);
+                    debug!(
+                        "JoyWatcher scan group {} has no enabled tags; skipping",
+                        group.id
+                    );
                     return None;
                 }
                 Some(group)
@@ -181,7 +186,9 @@ impl JoyWatcherPollPlan {
         tx: mpsc::Sender<TagValueMessage>,
     ) -> Result<()> {
         if self.groups.is_empty() {
-            return Err(anyhow!("JoyWatcher poll plan has no scan groups with enabled tags"));
+            return Err(anyhow!(
+                "JoyWatcher poll plan has no scan groups with enabled tags"
+            ));
         }
 
         bridge.ensure_connection(&self.connection)?;
@@ -214,7 +221,10 @@ impl JoyWatcherPollPlan {
                 let values = bridge.read_tags(&native_tag_ids)?;
                 let messages = group.build_messages(&values, &mut io_totals);
                 if messages.is_empty() {
-                    debug!("JoyWatcher scan group {} produced no mapped messages", group.id);
+                    debug!(
+                        "JoyWatcher scan group {} produced no mapped messages",
+                        group.id
+                    );
                     continue;
                 }
 
@@ -287,9 +297,7 @@ mod tests {
         settings.insert("password".to_string(), "pw".to_string());
 
         let definition = GetDriverDefinitionResponse {
-            connection: Some(ConnectionSettings {
-                settings,
-            }),
+            connection: Some(ConnectionSettings { settings }),
             scan_groups: vec![ScanGroupDef {
                 id: "g1".to_string(),
                 scan_rate_ms: 500,
@@ -328,11 +336,14 @@ mod tests {
         };
 
         let mut io_totals = DriverIoTotals::default();
-        let messages = group.build_messages(&[BridgeReadValue {
-            native_tag_id: 77,
-            quality: "good".to_string(),
-            value: BridgeValue::Number(9.5),
-        }], &mut io_totals);
+        let messages = group.build_messages(
+            &[BridgeReadValue {
+                native_tag_id: 77,
+                quality: "good".to_string(),
+                value: BridgeValue::Number(9.5),
+            }],
+            &mut io_totals,
+        );
 
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].tag_id, "tag-1");

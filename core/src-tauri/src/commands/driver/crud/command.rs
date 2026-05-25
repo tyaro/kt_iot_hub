@@ -7,6 +7,10 @@ use super::logic::{
 };
 use crate::app_state::AppState;
 use crate::commands::dto::{DriverDto, ErrorResponse, SaveDriverRequest};
+use crate::commands::secret_store::{
+    default_password_key, delete_password_from_keyring, read_password_setting_with_override,
+    write_password_to_keyring,
+};
 use crate::commands::util::normalize_optional_string;
 use crate::config::{DriverConfig, ScanGroupConfig, TagConfig};
 use crate::core::Tag;
@@ -46,6 +50,49 @@ pub async fn list_drivers(
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
+            password_key: cfg
+                .settings
+                .get("password_key")
+                .and_then(|v| v.as_str())
+                .map(ToString::to_string),
+            tls_enabled: cfg
+                .settings
+                .get("tls_enabled")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
+            tls_ca_path: cfg
+                .settings
+                .get("tls_ca_path")
+                .and_then(|v| v.as_str())
+                .map(ToString::to_string),
+            tls_client_cert_path: cfg
+                .settings
+                .get("tls_client_cert_path")
+                .and_then(|v| v.as_str())
+                .map(ToString::to_string),
+            tls_client_key_path: cfg
+                .settings
+                .get("tls_client_key_path")
+                .and_then(|v| v.as_str())
+                .map(ToString::to_string),
+            connect_timeout_ms: cfg
+                .settings
+                .get("connect_timeout_ms")
+                .and_then(|v| v.as_u64()),
+            statement_timeout_ms: cfg
+                .settings
+                .get("statement_timeout_ms")
+                .and_then(|v| v.as_u64()),
+            auto_restart: cfg
+                .settings
+                .get("auto_restart")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(true),
+            max_restart_per_minute: cfg
+                .settings
+                .get("max_restart_per_minute")
+                .and_then(|v| v.as_u64())
+                .map(|v| v as u32),
         })
         .collect())
 }
@@ -68,6 +115,50 @@ pub async fn save_driver(
         .find(|d| d.id == original_driver_id)
         .cloned();
 
+    let existing_password_key = existing
+        .as_ref()
+        .and_then(|cfg| cfg.settings.get("password_key"))
+        .and_then(|value| value.as_str())
+        .filter(|value| !value.trim().is_empty())
+        .map(ToString::to_string);
+
+    let password_key = normalize_optional_string(req.password_key.clone())
+        .or_else(|| existing_password_key.clone())
+        .or_else(|| {
+            if req.password.trim().is_empty() {
+                None
+            } else {
+                Some(default_password_key("driver", &driver_id))
+            }
+        });
+
+    let password_value = if req.password.trim().is_empty() {
+        existing
+            .as_ref()
+            .map(|cfg| {
+                read_password_setting_with_override(&cfg.settings, req.password_key.as_deref())
+            })
+            .unwrap_or_else(|| {
+                read_password_setting_with_override(
+                    &serde_json::Value::Null,
+                    req.password_key.as_deref(),
+                )
+            })
+    } else {
+        Some(req.password.clone())
+    };
+
+    if let (Some(password_key), Some(password_value)) =
+        (password_key.as_ref(), password_value.as_ref())
+    {
+        write_password_to_keyring(password_key, password_value)?;
+        if let Some(previous_password_key) = existing_password_key.as_ref() {
+            if previous_password_key != password_key {
+                delete_password_from_keyring(previous_password_key);
+            }
+        }
+    }
+
     if renaming {
         ensure_driver_ui_session_not_active(&state, &original_driver_id).await?;
     }
@@ -79,7 +170,7 @@ pub async fn save_driver(
         ));
     }
 
-    let config = build_driver_config(&req, driver_id.clone(), existing.as_ref());
+    let config = build_driver_config(&req, driver_id.clone(), existing.as_ref(), password_key);
 
     if renaming {
         apply_driver_id_rename(&state, &original_driver_id, &config, existing_configs).await?;

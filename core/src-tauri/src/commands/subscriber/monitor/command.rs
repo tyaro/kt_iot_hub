@@ -7,6 +7,7 @@ use crate::commands::dto::{
     MqttMonitorMessageDto, MqttMonitorPublisherDto, MqttMonitorStatusDto,
     MqttMonitorTopicDetailDto, MqttMonitorTopicNodeDto, StartMqttMonitorRequest,
 };
+use crate::commands::secret_store::read_password_setting;
 use crate::subscribers::mqtt_monitor::MqttMonitorStartOptions;
 use std::collections::HashSet;
 
@@ -173,12 +174,7 @@ pub async fn start_mqtt_monitor(
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string(),
-        password: config
-            .settings
-            .get("password")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string(),
+        password: read_password_setting(&config.settings).unwrap_or_default(),
         topic_filter,
         include_sys: req.include_sys,
     };

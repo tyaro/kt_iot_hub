@@ -14,6 +14,17 @@ pub struct DriverDto {
     pub port: u16,
     pub database: String,
     pub username: String,
+    pub password_key: Option<String>,
+    #[serde(default)]
+    pub tls_enabled: bool,
+    pub tls_ca_path: Option<String>,
+    pub tls_client_cert_path: Option<String>,
+    pub tls_client_key_path: Option<String>,
+    pub connect_timeout_ms: Option<u64>,
+    pub statement_timeout_ms: Option<u64>,
+    #[serde(default = "default_true")]
+    pub auto_restart: bool,
+    pub max_restart_per_minute: Option<u32>,
 }
 
 /// ドライバ作成/更新リクエスト DTO
@@ -31,6 +42,28 @@ pub struct SaveDriverRequest {
     pub database: String,
     pub username: String,
     pub password: String,
+    #[serde(default, alias = "password_key")]
+    pub password_key: Option<String>,
+    #[serde(default, alias = "tls_enabled")]
+    pub tls_enabled: bool,
+    #[serde(default, alias = "tls_ca_path")]
+    pub tls_ca_path: Option<String>,
+    #[serde(default, alias = "tls_client_cert_path")]
+    pub tls_client_cert_path: Option<String>,
+    #[serde(default, alias = "tls_client_key_path")]
+    pub tls_client_key_path: Option<String>,
+    #[serde(default, alias = "connect_timeout_ms")]
+    pub connect_timeout_ms: Option<u64>,
+    #[serde(default, alias = "statement_timeout_ms")]
+    pub statement_timeout_ms: Option<u64>,
+    #[serde(default = "default_true", alias = "auto_restart")]
+    pub auto_restart: bool,
+    #[serde(default, alias = "max_restart_per_minute")]
+    pub max_restart_per_minute: Option<u32>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Clone, Debug, Deserialize)]

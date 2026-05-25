@@ -64,7 +64,11 @@ pub(super) fn extract_string_array_field(text: &str, key: &str) -> Option<Vec<St
 
     Some(
         body.split("\",\"")
-            .map(|item| item.trim_matches('"').replace("\\\"", "\"").replace("\\\\", "\\"))
+            .map(|item| {
+                item.trim_matches('"')
+                    .replace("\\\"", "\"")
+                    .replace("\\\\", "\\")
+            })
             .filter(|item| !item.is_empty())
             .collect(),
     )
@@ -247,7 +251,8 @@ mod tests {
 
     #[test]
     fn extract_tag_id_from_resolved_response() {
-        let response = r#"{"type":"resolvedTags","items":[{"tagPath":"Line1/Tank/Level","tagId":101}]}"#;
+        let response =
+            r#"{"type":"resolvedTags","items":[{"tagPath":"Line1/Tank/Level","tagId":101}]}"#;
         assert_eq!(extract_i32_field(response, "\"tagId\":"), Some(101));
     }
 

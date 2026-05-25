@@ -5,6 +5,10 @@ use crate::commands::dto::{
     ErrorResponse, GetMqttPublishModeRequest, GetMqttPublishModeResponse, PublisherDto,
     SavePublisherRequest, SetMqttPublishModeRequest, SetMqttPublishModeResponse,
 };
+use crate::commands::secret_store::{
+    default_password_key, delete_password_from_keyring, read_password_setting_with_override,
+    write_password_to_keyring,
+};
 use crate::config::PublisherConfig;
 use std::collections::HashMap;
 
@@ -60,6 +64,39 @@ pub async fn list_publishers(
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
+            password_key: cfg
+                .settings
+                .get("password_key")
+                .and_then(|v| v.as_str())
+                .map(ToString::to_string),
+            tls_enabled: cfg
+                .settings
+                .get("tls_enabled")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
+            tls_ca_path: cfg
+                .settings
+                .get("tls_ca_path")
+                .and_then(|v| v.as_str())
+                .map(ToString::to_string),
+            tls_client_cert_path: cfg
+                .settings
+                .get("tls_client_cert_path")
+                .and_then(|v| v.as_str())
+                .map(ToString::to_string),
+            tls_client_key_path: cfg
+                .settings
+                .get("tls_client_key_path")
+                .and_then(|v| v.as_str())
+                .map(ToString::to_string),
+            reconnect_backoff_ms: cfg
+                .settings
+                .get("reconnect_backoff_ms")
+                .and_then(|v| v.as_u64()),
+            max_reconnect_backoff_ms: cfg
+                .settings
+                .get("max_reconnect_backoff_ms")
+                .and_then(|v| v.as_u64()),
             publish_mode_default: cfg
                 .settings
                 .get("publish_mode_default")
@@ -106,15 +143,52 @@ pub async fn save_publisher(
         .find(|cfg| cfg.id == publisher_id)
         .cloned();
 
-    let password = if req.password.trim().is_empty() {
+    let existing_password_key = existing
+        .as_ref()
+        .and_then(|cfg| cfg.settings.get("password_key"))
+        .and_then(|value| value.as_str())
+        .filter(|value| !value.trim().is_empty())
+        .map(ToString::to_string);
+
+    let password_key = req
+        .password_key
+        .clone()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| existing_password_key.clone())
+        .or_else(|| {
+            if req.password.trim().is_empty() {
+                None
+            } else {
+                Some(default_password_key("publisher", &publisher_id))
+            }
+        });
+
+    let password_value = if req.password.trim().is_empty() {
         existing
             .as_ref()
-            .and_then(|cfg| cfg.settings.get("password"))
-            .cloned()
-            .unwrap_or_else(|| serde_json::Value::String(String::new()))
+            .map(|cfg| {
+                read_password_setting_with_override(&cfg.settings, req.password_key.as_deref())
+            })
+            .unwrap_or_else(|| {
+                read_password_setting_with_override(
+                    &serde_json::Value::Null,
+                    req.password_key.as_deref(),
+                )
+            })
     } else {
-        serde_json::Value::String(req.password.clone())
+        Some(req.password.clone())
     };
+
+    if let (Some(password_key), Some(password_value)) =
+        (password_key.as_ref(), password_value.as_ref())
+    {
+        write_password_to_keyring(password_key, password_value)?;
+        if let Some(previous_password_key) = existing_password_key.as_ref() {
+            if previous_password_key != password_key {
+                delete_password_from_keyring(previous_password_key);
+            }
+        }
+    }
 
     let mut settings = existing
         .as_ref()
@@ -130,7 +204,61 @@ pub async fn save_publisher(
         "username".to_string(),
         serde_json::Value::String(req.username.trim().to_string()),
     );
-    settings.insert("password".to_string(), password);
+    if let Some(password_key) = password_key {
+        settings.insert(
+            "password_key".to_string(),
+            serde_json::Value::String(password_key),
+        );
+    }
+    settings.insert(
+        "tls_enabled".to_string(),
+        serde_json::Value::Bool(req.tls_enabled),
+    );
+    if let Some(value) = req
+        .tls_ca_path
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    {
+        settings.insert(
+            "tls_ca_path".to_string(),
+            serde_json::Value::String(value.to_string()),
+        );
+    }
+    if let Some(value) = req
+        .tls_client_cert_path
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    {
+        settings.insert(
+            "tls_client_cert_path".to_string(),
+            serde_json::Value::String(value.to_string()),
+        );
+    }
+    if let Some(value) = req
+        .tls_client_key_path
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    {
+        settings.insert(
+            "tls_client_key_path".to_string(),
+            serde_json::Value::String(value.to_string()),
+        );
+    }
+    if let Some(value) = req.reconnect_backoff_ms {
+        settings.insert(
+            "reconnect_backoff_ms".to_string(),
+            serde_json::Value::from(value),
+        );
+    }
+    if let Some(value) = req.max_reconnect_backoff_ms {
+        settings.insert(
+            "max_reconnect_backoff_ms".to_string(),
+            serde_json::Value::from(value),
+        );
+    }
     settings.insert(
         "client_id".to_string(),
         serde_json::Value::String(req.client_id.trim().to_string()),

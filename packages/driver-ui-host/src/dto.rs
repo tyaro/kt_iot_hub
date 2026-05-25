@@ -13,6 +13,18 @@ pub struct PostgresConnectionParams {
     pub username: String,
     pub password: String,
     pub ssl_mode: Option<String>,
+    #[serde(default, alias = "tls_enabled")]
+    pub tls_enabled: bool,
+    #[serde(default, alias = "tls_ca_path")]
+    pub tls_ca_path: Option<String>,
+    #[serde(default, alias = "tls_client_cert_path")]
+    pub tls_client_cert_path: Option<String>,
+    #[serde(default, alias = "tls_client_key_path")]
+    pub tls_client_key_path: Option<String>,
+    #[serde(default, alias = "connect_timeout_ms")]
+    pub connect_timeout_ms: Option<u64>,
+    #[serde(default, alias = "statement_timeout_ms")]
+    pub statement_timeout_ms: Option<u64>,
 }
 
 /// PostgreSQL 接続テスト結果 DTO

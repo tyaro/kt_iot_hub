@@ -41,7 +41,10 @@ impl DriverRuntimeGrpcClient {
         let stream = ReceiverStream::new(rx);
         let response = self.client.stream_tag_values(stream).await?;
         let ack = response.into_inner();
-        info!("StreamTagValues ack: success={} msg={}", ack.success, ack.message);
+        info!(
+            "StreamTagValues ack: success={} msg={}",
+            ack.success, ack.message
+        );
         Ok(ack)
     }
 }

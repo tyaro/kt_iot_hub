@@ -158,6 +158,28 @@ pub(super) async fn restart_enabled_drivers(
     state: &tauri::State<'_, AppState>,
 ) -> Result<(), ErrorResponse> {
     let driver_ui_base_dir = state.driver_ui_base_dir.read().await.clone();
+    let driver_settings: std::collections::HashMap<String, (bool, Option<u32>)> = state
+        .driver_configs
+        .read()
+        .await
+        .iter()
+        .map(|cfg| {
+            (
+                cfg.id.clone(),
+                (
+                    cfg.settings
+                        .get("auto_restart")
+                        .and_then(|value| value.as_bool())
+                        .unwrap_or(true),
+                    cfg.settings
+                        .get("max_restart_per_minute")
+                        .and_then(|value| value.as_u64())
+                        .map(|value| value as u32),
+                ),
+            )
+        })
+        .collect();
+
     let drivers_to_start: Vec<(String, String)> = state
         .driver_configs
         .read()
@@ -171,7 +193,23 @@ pub(super) async fn restart_enabled_drivers(
     let mut manager = state.drivers.write().await;
     for (driver_id, driver_type) in drivers_to_start {
         manager
-            .start_driver(&driver_id, &driver_type, driver_ui_base_dir.as_deref())
+            .start_driver(
+                state.drivers.clone(),
+                state.runtime_status.clone(),
+                &driver_id,
+                &driver_type,
+                driver_ui_base_dir.as_deref(),
+                driver_settings
+                    .get(&driver_id)
+                    .copied()
+                    .unwrap_or((true, None))
+                    .0,
+                driver_settings
+                    .get(&driver_id)
+                    .copied()
+                    .unwrap_or((true, None))
+                    .1,
+            )
             .await
             .map_err(ErrorResponse::from)?;
     }

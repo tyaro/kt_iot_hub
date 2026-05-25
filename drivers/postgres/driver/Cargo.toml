@@ -18,6 +18,8 @@ prost = "0.13"
 
 # Database
 tokio-postgres = "0.7"
+native-tls = "0.2"
+postgres-native-tls = "0.5"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

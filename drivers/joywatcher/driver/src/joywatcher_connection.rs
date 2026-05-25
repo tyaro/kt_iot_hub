@@ -1,6 +1,6 @@
+use crate::joywatcher_ffi::REQUIRED_FFI_SYMBOLS;
 use anyhow::{anyhow, Result};
 use tracing::warn;
-use crate::joywatcher_ffi::REQUIRED_FFI_SYMBOLS;
 
 pub trait JoyWatcherApi {
     fn connect_net(&mut self) -> Result<()>;
@@ -71,9 +71,7 @@ impl<A: JoyWatcherApi> JoyWatcherConnectionManager<A> {
 
     fn release_one(&mut self) -> Result<()> {
         if self.active_connections == 0 {
-            return Err(anyhow!(
-                "DisconnectNet called more times than ConnectNet"
-            ));
+            return Err(anyhow!("DisconnectNet called more times than ConnectNet"));
         }
 
         self.api.disconnect_net()?;
@@ -176,6 +174,8 @@ mod tests {
         let mut manager = JoyWatcherConnectionManager::new(api);
 
         let error = manager.release_one().expect_err("should detect imbalance");
-        assert!(error.to_string().contains("DisconnectNet called more times"));
+        assert!(error
+            .to_string()
+            .contains("DisconnectNet called more times"));
     }
 }

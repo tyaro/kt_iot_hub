@@ -30,10 +30,7 @@ pub trait JoyWatcherBridgeApi {
     }
 
     fn read_tags(&self, _tag_ids: &[i32]) -> Result<Vec<ReadValuePayload>> {
-        Err(anyhow!(
-            "Read is not implemented for {} mode",
-            self.mode()
-        ))
+        Err(anyhow!("Read is not implemented for {} mode", self.mode()))
     }
 }
 

@@ -6,10 +6,17 @@ interface PublisherCoreFields {
   broker: string;
   port: number;
   username: string;
+  password_key?: string | null;
   client_id: string;
   qos: 0 | 1 | 2;
   retain: boolean;
   topic: string;
+  tls_enabled: boolean;
+  tls_ca_path?: string | null;
+  tls_client_cert_path?: string | null;
+  tls_client_key_path?: string | null;
+  reconnect_backoff_ms?: number | null;
+  max_reconnect_backoff_ms?: number | null;
   publish_mode_default: MqttPublishMode;
   publish_mode_by_driver: Record<string, MqttPublishMode>;
   publish_mode_by_scan_group: Record<string, MqttPublishMode>;

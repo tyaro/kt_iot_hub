@@ -1,3 +1,4 @@
+use crate::commands::secret_store::read_password_setting;
 use crate::config::PublisherConfig;
 use crate::core::{TagBus, TagRegistry};
 use crate::publishers::Publisher;
@@ -139,12 +140,7 @@ impl Publisher for MqttPublisher {
             .get("username")
             .and_then(|v| v.as_str())
             .unwrap_or_default();
-        let password = self
-            .config
-            .settings
-            .get("password")
-            .and_then(|v| v.as_str())
-            .unwrap_or_default();
+        let password = read_password_setting(&self.config.settings).unwrap_or_default();
         if !username.is_empty() {
             options.set_credentials(username, password);
         }

@@ -126,6 +126,23 @@
 
 必要性が出た時点で、MQTT TLS + 認証、ドライバ間の通信暗号化を検討する。
 
+### v0.6.0 監視システム強化計画
+
+- 監視システムとしての本番運用性を高めるため、まずは `docs/monitoring-system-hardening-plan-v0.6.0.md` に従って実装する。
+- この段階では **TLS を必須化せずオプション化**し、同時に **秘匿情報の平文保存解消** と **ドライバ死活監視** を優先する。
+- 先行タスクの完了条件は以下を満たすこと。
+  - `v0.6.0` へバージョン表記を更新する
+  - `docs/config-spec.md` に設定仕様を追記する
+  - `cargo fmt` / `cargo test` / `npm run check` を通す
+  - 既存の JSON / TOML / gRPC 互換性を維持する
+
+- 参照:
+  - [監視システム強化 実装計画（v0.6.0）](./monitoring-system-hardening-plan-v0.6.0.md)
+  - [監視システム強化 実装差分計画（v0.6.0）](./monitoring-system-diff-plan-v0.6.0.md)
+  - [監視システム強化 実装手順書（v0.6.0）](./monitoring-system-implementation-steps-v0.6.0.md)
+  - [監視システム強化 実装メモ（v0.6.0）](./monitoring-system-implementation-notes-v0.6.0.md)
+  - [監視システム観点 改善候補レビュー](./monitoring-system-review-2026-05.md)
+
 ## 技術検討事項
 
 | 機能 | 候補 | 状態 |

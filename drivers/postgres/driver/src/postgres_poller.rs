@@ -1,10 +1,13 @@
 use crate::proto::{GetDriverDefinitionResponse, TagDef, TagValueMessage};
 use anyhow::{anyhow, Result};
 use chrono::Utc;
+use native_tls::{Certificate, TlsConnector};
+use postgres_native_tls::MakeTlsConnector;
 use std::collections::HashMap;
+use std::fs;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
-use tokio_postgres::NoTls;
+use tokio_postgres::{Config, NoTls};
 use tracing::{debug, warn};
 
 const BASE_TICK_MS: u64 = 100;
@@ -63,9 +66,21 @@ struct GroupRuntime {
 }
 
 pub struct PostgresPoller {
-    dsn: String,
+    connection: PostgresConnectionOptions,
     groups: Vec<GroupRuntime>,
     tags_by_group: HashMap<String, Vec<TagRuntime>>,
+}
+
+struct PostgresConnectionOptions {
+    host: String,
+    port: u16,
+    database: String,
+    username: String,
+    password: String,
+    tls_enabled: bool,
+    tls_ca_path: Option<String>,
+    connect_timeout_ms: Option<u64>,
+    statement_timeout_ms: Option<u64>,
 }
 
 #[derive(Debug, Default)]
@@ -87,8 +102,8 @@ impl PostgresPoller {
             .unwrap_or_else(|| "127.0.0.1".to_string());
         let port = settings
             .get("port")
-            .cloned()
-            .unwrap_or_else(|| "5432".to_string());
+            .and_then(|v| v.parse::<u16>().ok())
+            .unwrap_or(5432);
         let database = settings
             .get("database")
             .or_else(|| settings.get("dbname"))
@@ -100,15 +115,26 @@ impl PostgresPoller {
             .cloned()
             .ok_or_else(|| anyhow!("username setting is missing"))?;
         let password = settings.get("password").cloned().unwrap_or_default();
-        let ssl_mode = settings
-            .get("ssl_mode")
-            .cloned()
-            .unwrap_or_else(|| "disable".to_string());
+        let tls_enabled = parse_bool_setting(settings.get("tls_enabled"))
+            || settings
+                .get("ssl_mode")
+                .map(|mode| !mode.trim().is_empty() && !mode.eq_ignore_ascii_case("disable"))
+                .unwrap_or(false);
+        let tls_ca_path = settings.get("tls_ca_path").cloned();
+        let connect_timeout_ms = parse_u64_setting(settings.get("connect_timeout_ms"));
+        let statement_timeout_ms = parse_u64_setting(settings.get("statement_timeout_ms"));
 
-        let dsn = format!(
-            "host={} port={} dbname={} user={} password={} sslmode={}",
-            host, port, database, username, password, ssl_mode
-        );
+        let connection = PostgresConnectionOptions {
+            host,
+            port,
+            database,
+            username,
+            password,
+            tls_enabled,
+            tls_ca_path,
+            connect_timeout_ms,
+            statement_timeout_ms,
+        };
 
         let groups: Vec<GroupRuntime> = def
             .scan_groups
@@ -160,7 +186,7 @@ impl PostgresPoller {
         }
 
         Ok(Self {
-            dsn,
+            connection,
             groups,
             tags_by_group,
         })
@@ -170,7 +196,7 @@ impl PostgresPoller {
         let mut reconnect_backoff = Duration::from_millis(INITIAL_RECONNECT_BACKOFF_MS);
 
         loop {
-            let (client, connection) = match tokio_postgres::connect(&self.dsn, NoTls).await {
+            let (client, mut connection_task) = match connect_client(&self.connection).await {
                 Ok(pair) => {
                     reconnect_backoff = Duration::from_millis(INITIAL_RECONNECT_BACKOFF_MS);
                     pair
@@ -184,12 +210,6 @@ impl PostgresPoller {
                     continue;
                 }
             };
-
-            let mut connection_task = tokio::spawn(async move {
-                if let Err(e) = connection.await {
-                    warn!("PostgreSQL connection task failed: {}", e);
-                }
-            });
 
             let mut ticker = tokio::time::interval(Duration::from_millis(BASE_TICK_MS));
             ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -330,6 +350,92 @@ fn build_group_query(group: &GroupRuntime, tags: &[TagRuntime]) -> Result<String
         ))
     } else {
         Ok(format!("SELECT {col_list} FROM {relation} LIMIT 1"))
+    }
+}
+
+fn parse_bool_setting(value: Option<&String>) -> bool {
+    value.and_then(|v| v.parse::<bool>().ok()).unwrap_or(false)
+}
+
+fn parse_u64_setting(value: Option<&String>) -> Option<u64> {
+    value.and_then(|v| v.parse::<u64>().ok())
+}
+
+fn build_config(conn: &PostgresConnectionOptions) -> Config {
+    let mut config = Config::new();
+    config.host(&conn.host);
+    config.port(conn.port);
+    config.dbname(&conn.database);
+    config.user(&conn.username);
+    config.password(&conn.password);
+
+    if let Some(connect_timeout_ms) = conn.connect_timeout_ms {
+        config.connect_timeout(Duration::from_millis(connect_timeout_ms));
+    }
+
+    config
+}
+
+fn build_tls_connector(conn: &PostgresConnectionOptions) -> Result<Option<MakeTlsConnector>> {
+    if !conn.tls_enabled {
+        return Ok(None);
+    }
+
+    let mut builder = TlsConnector::builder();
+
+    if let Some(ca_path) = conn
+        .tls_ca_path
+        .as_deref()
+        .filter(|path| !path.trim().is_empty())
+    {
+        let pem = fs::read(ca_path)
+            .map_err(|e| anyhow!("failed to read PostgreSQL TLS CA file {}: {}", ca_path, e))?;
+        let cert = Certificate::from_pem(&pem)
+            .map_err(|e| anyhow!("failed to parse PostgreSQL TLS CA file {}: {}", ca_path, e))?;
+        builder.add_root_certificate(cert);
+    }
+
+    let connector = builder
+        .build()
+        .map_err(|e| anyhow!("failed to build PostgreSQL TLS connector: {}", e))?;
+    Ok(Some(MakeTlsConnector::new(connector)))
+}
+
+async fn connect_client(
+    conn: &PostgresConnectionOptions,
+) -> Result<(tokio_postgres::Client, tokio::task::JoinHandle<()>)> {
+    let config = build_config(conn);
+
+    if let Some(tls) = build_tls_connector(conn)? {
+        let (client, connection) = config.connect(tls).await?;
+        let connection_task = tokio::spawn(async move {
+            if let Err(e) = connection.await {
+                warn!("PostgreSQL connection task failed: {}", e);
+            }
+        });
+
+        if let Some(statement_timeout_ms) = conn.statement_timeout_ms {
+            client
+                .batch_execute(&format!("SET statement_timeout = {}", statement_timeout_ms))
+                .await?;
+        }
+
+        Ok((client, connection_task))
+    } else {
+        let (client, connection) = config.connect(NoTls).await?;
+        let connection_task = tokio::spawn(async move {
+            if let Err(e) = connection.await {
+                warn!("PostgreSQL connection task failed: {}", e);
+            }
+        });
+
+        if let Some(statement_timeout_ms) = conn.statement_timeout_ms {
+            client
+                .batch_execute(&format!("SET statement_timeout = {}", statement_timeout_ms))
+                .await?;
+        }
+
+        Ok((client, connection_task))
     }
 }
 

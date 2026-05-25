@@ -15,11 +15,25 @@ pub struct PublisherDto {
     pub qos: u8,
     pub retain: bool,
     pub topic: String,
-    #[serde(default)]
+    #[serde(default, alias = "password_key")]
+    pub password_key: Option<String>,
+    #[serde(default, alias = "tls_enabled")]
+    pub tls_enabled: bool,
+    #[serde(default, alias = "tls_ca_path")]
+    pub tls_ca_path: Option<String>,
+    #[serde(default, alias = "tls_client_cert_path")]
+    pub tls_client_cert_path: Option<String>,
+    #[serde(default, alias = "tls_client_key_path")]
+    pub tls_client_key_path: Option<String>,
+    #[serde(default, alias = "reconnect_backoff_ms")]
+    pub reconnect_backoff_ms: Option<u64>,
+    #[serde(default, alias = "max_reconnect_backoff_ms")]
+    pub max_reconnect_backoff_ms: Option<u64>,
+    #[serde(default, alias = "publish_mode_default")]
     pub publish_mode_default: String,
-    #[serde(default)]
+    #[serde(default, alias = "publish_mode_by_driver")]
     pub publish_mode_by_driver: std::collections::HashMap<String, String>,
-    #[serde(default)]
+    #[serde(default, alias = "publish_mode_by_scan_group")]
     pub publish_mode_by_scan_group: std::collections::HashMap<String, String>,
 }
 
@@ -34,16 +48,30 @@ pub struct SavePublisherRequest {
     pub port: u16,
     pub username: String,
     pub password: String,
+    #[serde(default, alias = "password_key")]
+    pub password_key: Option<String>,
     #[serde(rename = "client_id")]
     pub client_id: String,
     pub qos: u8,
     pub retain: bool,
     pub topic: String,
-    #[serde(default)]
+    #[serde(default, alias = "tls_enabled")]
+    pub tls_enabled: bool,
+    #[serde(default, alias = "tls_ca_path")]
+    pub tls_ca_path: Option<String>,
+    #[serde(default, alias = "tls_client_cert_path")]
+    pub tls_client_cert_path: Option<String>,
+    #[serde(default, alias = "tls_client_key_path")]
+    pub tls_client_key_path: Option<String>,
+    #[serde(default, alias = "reconnect_backoff_ms")]
+    pub reconnect_backoff_ms: Option<u64>,
+    #[serde(default, alias = "max_reconnect_backoff_ms")]
+    pub max_reconnect_backoff_ms: Option<u64>,
+    #[serde(default, alias = "publish_mode_default")]
     pub publish_mode_default: Option<String>,
-    #[serde(default)]
+    #[serde(default, alias = "publish_mode_by_driver")]
     pub publish_mode_by_driver: Option<std::collections::HashMap<String, String>>,
-    #[serde(default)]
+    #[serde(default, alias = "publish_mode_by_scan_group")]
     pub publish_mode_by_scan_group: Option<std::collections::HashMap<String, String>>,
 }
 

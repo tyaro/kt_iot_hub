@@ -119,7 +119,10 @@ impl JoyWatcherUiBridgeClient {
             .ok_or_else(|| format!("items not found in bridge response: {response}"))
     }
 
-    pub(super) fn resolve_tags(&mut self, tag_paths: &[String]) -> Result<Vec<(String, i32)>, String> {
+    pub(super) fn resolve_tags(
+        &mut self,
+        tag_paths: &[String],
+    ) -> Result<Vec<(String, i32)>, String> {
         let joined = tag_paths
             .iter()
             .map(|tag_path| format!("\"{}\"", escape_json(tag_path)))

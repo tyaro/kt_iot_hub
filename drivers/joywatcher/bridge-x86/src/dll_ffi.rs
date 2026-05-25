@@ -161,7 +161,10 @@ pub(crate) fn ensure_jwread_success(result: i32) -> Result<()> {
 }
 
 pub(crate) fn parse_tagsel2_buffer(buffer: &[u8]) -> Result<Vec<String>> {
-    let end = buffer.iter().position(|byte| *byte == 0).unwrap_or(buffer.len());
+    let end = buffer
+        .iter()
+        .position(|byte| *byte == 0)
+        .unwrap_or(buffer.len());
     let text = decode_shift_jis_lossy(&buffer[..end]);
 
     Ok(text
@@ -358,14 +361,19 @@ mod tests {
 
         assert_eq!(
             items,
-            vec!["Line1/Tank/Level".to_string(), "Line1/Tank/Temp".to_string()]
+            vec![
+                "Line1/Tank/Level".to_string(),
+                "Line1/Tank/Temp".to_string()
+            ]
         );
     }
 
     #[cfg(windows)]
     #[test]
     fn parse_tagsel2_buffer_decodes_shift_jis_japanese() {
-        let buffer = [0x93, 0xFA, 0x96, 0x7B, 0x8C, 0xEA, b'/', b'T', b'a', b'g', 0x00];
+        let buffer = [
+            0x93, 0xFA, 0x96, 0x7B, 0x8C, 0xEA, b'/', b'T', b'a', b'g', 0x00,
+        ];
         let items = parse_tagsel2_buffer(&buffer).unwrap();
 
         assert_eq!(items, vec!["日本語/Tag".to_string()]);
@@ -373,12 +381,13 @@ mod tests {
 
     #[test]
     fn com_data_layout_matches_vendor_x86_definition() {
-        use std::mem::{MaybeUninit, size_of};
+        use std::mem::{size_of, MaybeUninit};
 
         let value = MaybeUninit::<JoyWatcherComData1>::uninit();
         let base = value.as_ptr();
         let col_id_offset = unsafe { std::ptr::addr_of!((*base).col_id) as usize - base as usize };
-        let raw_value_offset = unsafe { std::ptr::addr_of!((*base).raw_value) as usize - base as usize };
+        let raw_value_offset =
+            unsafe { std::ptr::addr_of!((*base).raw_value) as usize - base as usize };
         let dtype_offset = unsafe { std::ptr::addr_of!((*base).dtype) as usize - base as usize };
 
         assert_eq!(col_id_offset, 0);

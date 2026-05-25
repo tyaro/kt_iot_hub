@@ -23,7 +23,8 @@ pub(crate) fn load_symbols(explicit_path: Option<PathBuf>) -> Result<LoadedJoyWa
 
     let connect_net_addr = unsafe { library.load_raw_symbol("ConnectNet")? };
     let disconnect_net_addr = unsafe { library.load_raw_symbol("DisconnectNet")? };
-    let disconnect_net_force_fn = unsafe { library.load_symbol::<DisconnectNetForceFn>("DisconnectNetForce")? };
+    let disconnect_net_force_fn =
+        unsafe { library.load_symbol::<DisconnectNetForceFn>("DisconnectNetForce")? };
     let jw_get_tag_ids2_fn = unsafe { library.load_symbol::<JwGetTagIds2Fn>("JWGetTagIDS2")? };
     let tag_sel2_fn = unsafe { library.load_symbol::<TagSel2Fn>("TagSel2")? };
     let jw_read_fn = unsafe { library.load_symbol::<JwReadFn>("JWRead")? };
@@ -132,14 +133,20 @@ pub(crate) struct LibraryHandle;
 #[cfg(not(windows))]
 impl LibraryHandle {
     unsafe fn load(_path: &Path) -> Result<Self> {
-        Err(anyhow!("JoyWatcher DLL loading is only supported on Windows"))
+        Err(anyhow!(
+            "JoyWatcher DLL loading is only supported on Windows"
+        ))
     }
 
     unsafe fn load_symbol<T: Copy>(&self, _symbol_name: &str) -> Result<T> {
-        Err(anyhow!("JoyWatcher DLL loading is only supported on Windows"))
+        Err(anyhow!(
+            "JoyWatcher DLL loading is only supported on Windows"
+        ))
     }
 
     unsafe fn load_raw_symbol(&self, _symbol_name: &str) -> Result<*mut c_void> {
-        Err(anyhow!("JoyWatcher DLL loading is only supported on Windows"))
+        Err(anyhow!(
+            "JoyWatcher DLL loading is only supported on Windows"
+        ))
     }
 }

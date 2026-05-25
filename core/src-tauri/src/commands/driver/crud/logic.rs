@@ -5,33 +5,91 @@ use crate::core::Tag;
 pub(super) fn build_driver_config(
     req: &SaveDriverRequest,
     driver_id: String,
-    existing: Option<&DriverConfig>,
+    _existing: Option<&DriverConfig>,
+    password_key: Option<String>,
 ) -> DriverConfig {
-    let password = if req.password.trim().is_empty() {
-        existing
-            .and_then(|cfg| cfg.settings.get("password"))
-            .cloned()
-            .unwrap_or_else(|| serde_json::Value::String(String::new()))
-    } else {
-        serde_json::Value::String(req.password.clone())
-    };
+    let mut settings = serde_json::Map::new();
+    settings.insert(
+        "host".to_string(),
+        serde_json::Value::String(req.host.clone()),
+    );
+    settings.insert("port".to_string(), serde_json::Value::from(req.port));
+    settings.insert(
+        "database".to_string(),
+        serde_json::Value::String(req.database.clone()),
+    );
+    settings.insert(
+        "username".to_string(),
+        serde_json::Value::String(req.username.clone()),
+    );
 
-    let settings = serde_json::Map::from_iter([
-        (
-            "host".to_string(),
-            serde_json::Value::String(req.host.clone()),
-        ),
-        ("port".to_string(), serde_json::Value::from(req.port)),
-        (
-            "database".to_string(),
-            serde_json::Value::String(req.database.clone()),
-        ),
-        (
-            "username".to_string(),
-            serde_json::Value::String(req.username.clone()),
-        ),
-        ("password".to_string(), password),
-    ]);
+    if let Some(password_key) = password_key {
+        settings.insert(
+            "password_key".to_string(),
+            serde_json::Value::String(password_key),
+        );
+    }
+
+    settings.insert(
+        "tls_enabled".to_string(),
+        serde_json::Value::Bool(req.tls_enabled),
+    );
+
+    if let Some(value) = req
+        .tls_ca_path
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    {
+        settings.insert(
+            "tls_ca_path".to_string(),
+            serde_json::Value::String(value.to_string()),
+        );
+    }
+    if let Some(value) = req
+        .tls_client_cert_path
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    {
+        settings.insert(
+            "tls_client_cert_path".to_string(),
+            serde_json::Value::String(value.to_string()),
+        );
+    }
+    if let Some(value) = req
+        .tls_client_key_path
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    {
+        settings.insert(
+            "tls_client_key_path".to_string(),
+            serde_json::Value::String(value.to_string()),
+        );
+    }
+    if let Some(connect_timeout_ms) = req.connect_timeout_ms {
+        settings.insert(
+            "connect_timeout_ms".to_string(),
+            serde_json::Value::from(connect_timeout_ms),
+        );
+    }
+    if let Some(statement_timeout_ms) = req.statement_timeout_ms {
+        settings.insert(
+            "statement_timeout_ms".to_string(),
+            serde_json::Value::from(statement_timeout_ms),
+        );
+    }
+    settings.insert(
+        "auto_restart".to_string(),
+        serde_json::Value::Bool(req.auto_restart),
+    );
+    if let Some(max_restart_per_minute) = req.max_restart_per_minute {
+        settings.insert(
+            "max_restart_per_minute".to_string(),
+            serde_json::Value::from(max_restart_per_minute),
+        );
+    }
 
     DriverConfig {
         id: driver_id,

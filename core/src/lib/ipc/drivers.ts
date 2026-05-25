@@ -8,6 +8,15 @@ interface DriverCoreFields {
   port: number;
   database: string;
   username: string;
+  password_key?: string | null;
+  tls_enabled: boolean;
+  tls_ca_path?: string | null;
+  tls_client_cert_path?: string | null;
+  tls_client_key_path?: string | null;
+  connect_timeout_ms?: number | null;
+  statement_timeout_ms?: number | null;
+  auto_restart: boolean;
+  max_restart_per_minute?: number | null;
 }
 
 export interface DriverDto extends DriverCoreFields {

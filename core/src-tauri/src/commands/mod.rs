@@ -8,6 +8,7 @@ pub mod logs;
 pub mod metrics;
 pub mod publisher;
 pub mod runtime;
+pub(crate) mod secret_store;
 pub mod subscriber;
 pub mod tag;
 

@@ -108,7 +108,10 @@ impl JoyWatcherComData1 {
             Self::TYPE_STRING | Self::TYPE_LSTRING => {
                 Ok(JoyWatcherReadValue::String(self.string_value()))
             }
-            Self::TYPE_ERROR => Err(anyhow!("JoyWatcher returned error dtype for col_id={}.", self.col_id)),
+            Self::TYPE_ERROR => Err(anyhow!(
+                "JoyWatcher returned error dtype for col_id={}.",
+                self.col_id
+            )),
             _ => Ok(JoyWatcherReadValue::Number(self.double_value())),
         }
     }
@@ -137,7 +140,10 @@ mod tests {
             dtype: 0,
         };
 
-        assert_eq!(data.decode_value().unwrap(), JoyWatcherReadValue::Number(42.5));
+        assert_eq!(
+            data.decode_value().unwrap(),
+            JoyWatcherReadValue::Number(42.5)
+        );
     }
 
     #[test]
@@ -151,7 +157,10 @@ mod tests {
             dtype: JoyWatcherComData1::TYPE_BIT,
         };
 
-        assert_eq!(data.decode_value().unwrap(), JoyWatcherReadValue::Bool(true));
+        assert_eq!(
+            data.decode_value().unwrap(),
+            JoyWatcherReadValue::Bool(true)
+        );
     }
 
     #[test]

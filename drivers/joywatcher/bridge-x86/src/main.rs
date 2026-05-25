@@ -16,7 +16,7 @@ mod service;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use dll_api::{JoyWatcherConnectConvention, JoyWatcherDllApi};
 use mock_api::MockJoyWatcherApi;
@@ -52,7 +52,7 @@ fn main() {
 /// tracing-subscriber を stderr + ファイルへ分岐。
 /// 親が windows-subsystem だと stderr は破棄されるため、診断にはファイルが必須。
 fn init_tracing() {
-    use tracing_subscriber::{EnvFilter, fmt::writer::MakeWriterExt};
+    use tracing_subscriber::{fmt::writer::MakeWriterExt, EnvFilter};
 
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
@@ -188,8 +188,11 @@ fn start_parent_exit_watcher(parent_pid: Option<u32>) {
 
         #[link(name = "kernel32")]
         extern "system" {
-            fn OpenProcess(desired_access: u32, inherit_handle: i32, process_id: u32)
-                -> *mut core::ffi::c_void;
+            fn OpenProcess(
+                desired_access: u32,
+                inherit_handle: i32,
+                process_id: u32,
+            ) -> *mut core::ffi::c_void;
             fn WaitForSingleObject(handle: *mut core::ffi::c_void, milliseconds: u32) -> u32;
             fn CloseHandle(handle: *mut core::ffi::c_void) -> i32;
         }

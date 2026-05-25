@@ -107,7 +107,10 @@ mod tests {
         let artifacts = JoyWatcherArtifacts::inspect_with_roots(&roots);
 
         assert!(artifacts.dll_path.is_none());
-        assert!(artifacts.missing_dll_warning().unwrap().contains("JoyWaApi.dll not found"));
+        assert!(artifacts
+            .missing_dll_warning()
+            .unwrap()
+            .contains("JoyWaApi.dll not found"));
     }
 
     #[test]

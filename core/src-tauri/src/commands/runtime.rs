@@ -113,20 +113,41 @@ async fn start_drivers(
     state: &AppState,
     driver_ui_base_dir: Option<&str>,
 ) -> Result<(), ErrorResponse> {
-    let drivers: Vec<(String, String)> = state
+    let drivers: Vec<(String, String, bool, Option<u32>)> = state
         .driver_configs
         .read()
         .await
         .iter()
         .filter(|cfg| cfg.enabled.unwrap_or(true))
-        .map(|cfg| (cfg.id.clone(), cfg.driver_type.clone()))
+        .map(|cfg| {
+            (
+                cfg.id.clone(),
+                cfg.driver_type.clone(),
+                cfg.settings
+                    .get("auto_restart")
+                    .and_then(|value| value.as_bool())
+                    .unwrap_or(true),
+                cfg.settings
+                    .get("max_restart_per_minute")
+                    .and_then(|value| value.as_u64())
+                    .map(|value| value as u32),
+            )
+        })
         .collect();
 
     let has_drivers = !drivers.is_empty();
     let mut manager = state.drivers.write().await;
-    for (driver_id, driver_type) in drivers {
+    for (driver_id, driver_type, auto_restart, max_restart_per_minute) in drivers {
         manager
-            .start_driver(&driver_id, &driver_type, driver_ui_base_dir)
+            .start_driver(
+                state.drivers.clone(),
+                state.runtime_status.clone(),
+                &driver_id,
+                &driver_type,
+                driver_ui_base_dir,
+                auto_restart,
+                max_restart_per_minute,
+            )
             .await
             .map_err(ErrorResponse::from)?;
     }

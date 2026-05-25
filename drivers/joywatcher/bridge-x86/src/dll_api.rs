@@ -6,13 +6,13 @@ use tracing::info;
 
 use crate::connection::{JoyWatcherBridgeApi, JoyWatcherConnectionOptions};
 use crate::dll_ffi::{
-    ConnectNetCdeclFn, ConnectNetStdcallFn, DEFAULT_READ_USER_ID, DisconnectNetCdeclFn,
-    DisconnectNetForceFn, DisconnectNetStdcallFn, JoyWatcherComData1, JwGetTagIds2Fn, JwReadFn,
-    TAGSEL2_BUFFER_SIZE, TAG_NAME_SLOT_SIZE, TagSel2Fn, build_tag_name_buffer,
-    ensure_bool_like_success, ensure_jwread_success, ensure_pointer_like_success,
-    parse_tagsel2_buffer,
+    build_tag_name_buffer, ensure_bool_like_success, ensure_jwread_success,
+    ensure_pointer_like_success, parse_tagsel2_buffer, ConnectNetCdeclFn, ConnectNetStdcallFn,
+    DisconnectNetCdeclFn, DisconnectNetForceFn, DisconnectNetStdcallFn, JoyWatcherComData1,
+    JwGetTagIds2Fn, JwReadFn, TagSel2Fn, DEFAULT_READ_USER_ID, TAGSEL2_BUFFER_SIZE,
+    TAG_NAME_SLOT_SIZE,
 };
-use crate::dll_symbols::{LibraryHandle, load_symbols};
+use crate::dll_symbols::{load_symbols, LibraryHandle};
 use crate::protocol::{ReadValuePayload, ResolvedTag};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,7 +86,8 @@ impl JoyWatcherDllApi {
                     func()
                 }
                 JoyWatcherConnectConvention::Stdcall => {
-                    let func: ConnectNetStdcallFn = std::mem::transmute_copy(&self.connect_net_addr);
+                    let func: ConnectNetStdcallFn =
+                        std::mem::transmute_copy(&self.connect_net_addr);
                     func()
                 }
             }

@@ -63,10 +63,7 @@ async fn run() -> Result<()> {
     );
 
     let connection_plan = JoyWatcherConnectionPlan::default();
-    info!(
-        "JoyWatcher connection plan: {}",
-        connection_plan.summary()
-    );
+    info!("JoyWatcher connection plan: {}", connection_plan.summary());
     info!(
         "JoyWatcher planned FFI symbols: {}",
         connection_plan.required_symbols().join(", ")
@@ -221,7 +218,9 @@ fn restart_bridge(artifacts: &JoyWatcherArtifacts) -> Option<JoyWatcherBridgePro
             }
 
             if matches!(bridge.mode(), BridgeMode::Dll) {
-                info!("JoyWatcher bridge connect will be deferred until driver settings are loaded");
+                info!(
+                    "JoyWatcher bridge connect will be deferred until driver settings are loaded"
+                );
             }
 
             Some(bridge)

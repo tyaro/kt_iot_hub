@@ -15,7 +15,16 @@
     port: 5432,
     database: '',
     username: '',
-    password: ''
+    password: '',
+    password_key: null,
+    tls_enabled: false,
+    tls_ca_path: null,
+    tls_client_cert_path: null,
+    tls_client_key_path: null,
+    connect_timeout_ms: null,
+    statement_timeout_ms: null,
+    auto_restart: true,
+    max_restart_per_minute: null,
   });
 
   async function reload() {
@@ -55,7 +64,16 @@
       port: driver.port,
       database: driver.database,
       username: driver.username,
-      password: ''
+      password: '',
+      password_key: driver.password_key ?? null,
+      tls_enabled: driver.tls_enabled ?? false,
+      tls_ca_path: driver.tls_ca_path ?? null,
+      tls_client_cert_path: driver.tls_client_cert_path ?? null,
+      tls_client_key_path: driver.tls_client_key_path ?? null,
+      connect_timeout_ms: driver.connect_timeout_ms ?? null,
+      statement_timeout_ms: driver.statement_timeout_ms ?? null,
+      auto_restart: driver.auto_restart ?? true,
+      max_restart_per_minute: driver.max_restart_per_minute ?? null,
     };
   }
 

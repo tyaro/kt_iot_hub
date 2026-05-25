@@ -28,7 +28,10 @@ impl JoyWatcherBridgeProcess {
     pub fn connect(&mut self, settings: &BridgeConnectionSettings) -> Result<String> {
         let mut request = String::from("{\"type\":\"connect\"");
         if let Some(endpoint) = settings.endpoint.as_deref() {
-            request.push_str(&format!(",\"endpoint\":\"{}\"", escape_json_string(endpoint)));
+            request.push_str(&format!(
+                ",\"endpoint\":\"{}\"",
+                escape_json_string(endpoint)
+            ));
         }
         request.push_str(&format!(",\"user_id\":{}", settings.user_id));
         request.push_str(&format!(
@@ -48,7 +51,10 @@ impl JoyWatcherBridgeProcess {
     pub fn disconnect(&mut self) -> Result<String> {
         let response = self.send_request(r#"{"type":"disconnect"}"#)?;
         if !response.contains(r#""type":"disconnected""#) {
-            return Err(anyhow!("unexpected bridge disconnect response: {}", response));
+            return Err(anyhow!(
+                "unexpected bridge disconnect response: {}",
+                response
+            ));
         }
         self.connected = false;
         self.connection = None;

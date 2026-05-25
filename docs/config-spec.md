@@ -206,17 +206,48 @@ host = "localhost"
 port = 5432
 database = "iot_hub"
 username = "iot_user"
-password = "iot_password"
+password_key = "driver/postgres-main/password"
 ssl_mode = "disable"
+tls_enabled = false
+tls_ca_path = "C:/certs/root-ca.pem"
+tls_client_cert_path = ""
+tls_client_key_path = ""
+connect_timeout_ms = 5000
+statement_timeout_ms = 10000
+auto_restart = true
+max_restart_per_minute = 3
+```
 
+### ドライバ設定（v0.6.0）
+
+- `password_key`: OS キーリングへ保存した秘密値の参照キー。
+- `ssl_mode`: 既存互換用（`disable` など）。段階移行中は読み取りを維持。
+- `tls_enabled`: TLS 利用の有効/無効（既定: `false`）。
+- `tls_ca_path`: CA 証明書のパス。自己署名証明書や社内 CA を想定。
+- `tls_client_cert_path` / `tls_client_key_path`: クライアント証明書認証を使う場合のみ指定。
+- `connect_timeout_ms`: 接続確立の上限時間（未指定ならドライバ既定値）。
+- `statement_timeout_ms`: クエリ実行の上限時間（未指定ならドライバ既定値）。
+- `auto_restart`: ドライバ子プロセスの自動再起動有無（既定: `true`）。
+- `max_restart_per_minute`: 短時間リトライの上限回数（未指定で上限なし）。
+
+### JoyWatcher 例
+
+```toml
 [[driver]]
 id = "joywatcher-1"
 driver_type = "joywatcher"
 enabled = true
 endpoint = "localhost"
 user_id = 0
-password = ""
+password_key = "driver/joywatcher-1/password"
+auto_restart = true
+max_restart_per_minute = 3
 ```
+
+### 後方互換について
+
+- 移行期間中は `password`（平文）も読めるが、保存時は `password_key` 利用を推奨する。
+- 既存運用との互換維持のため `ssl_mode` は残す。新規設定は `tls_enabled` を基準にする。
 
 ## `config/publishers.toml` 例
 
@@ -226,22 +257,37 @@ id = "mqtt-main"
 publisher_type = "mqtt"
 enabled = false
 broker = "localhost"
-port = 1883
+port = 8883
 username = ""
-password = ""
+password_key = "publisher/mqtt-main/password"
 client_id = "kt_iot_hub"
 qos = 1
 retain = false
 topic = "plant"
+tls_enabled = true
+tls_ca_path = "C:/certs/root-ca.pem"
+tls_client_cert_path = ""
+tls_client_key_path = ""
+reconnect_backoff_ms = 500
+max_reconnect_backoff_ms = 30000
 ```
 
-### MQTT パブリッシャ設定補足
+### MQTT パブリッシャ設定（v0.6.0）
 
 - `qos`: 0 / 1 / 2
 - `retain`: retain フラグ（省略時 `false`）
 - `topic`: MQTT トピックのベースパス（省略時は空文字）
+- `password_key`: OS キーリング参照キー
+- `tls_enabled`: TLS を使うかどうか（既定: `false`）
+- `tls_ca_path`: ブローカー証明書検証用 CA
+- `tls_client_cert_path` / `tls_client_key_path`: 必要時のみ指定
+- `reconnect_backoff_ms` / `max_reconnect_backoff_ms`: MQTT 再接続バックオフ制御
+- `publish_mode_default`: 既定配信モード（`scan_interval` / `on_change`）
+- `publish_mode_by_driver` / `publish_mode_by_scan_group`: 上書き配信モード
+
+### publish topic 仕様
+
 - 実際の publish topic は `<topic>/<driver_id>/<scan_group_id>/<tag_name>`
-- 旧形式は `<topic>/<driver_id>/tags/<scan_group_id>/<tag_name>` だったが、現在は `tags` セグメントを挟まない
 - 例: `plant/postgresql/bte1w/w0400`
 - `topic` が空文字の場合は `<driver_id>/<scan_group_id>/<tag_name>`
 - payload はタグ値そのもののスカラー値を publish する
@@ -250,13 +296,15 @@ topic = "plant"
 
 ## 設計ルール
 
-- 秘匿情報（パスワード・APIキー）は当面 TOML に平文で記載する。
-- 将来、外部ネットワーク接続時は暗号化または OS キーリングを検討する。
+- 秘匿情報（パスワード・APIキー）は v0.6.0 以降、OS キーリングへ分離する。TOML には参照キーのみを保持する。
+- 既存設定との互換性のため、移行期間は `password` の平文項目も読めるようにする。
+- TLS は既定では無効とし、必要時のみ `tls_enabled = true` と CA / 証明書パスを設定する。
 - スキーマは Rust 側で `serde` 定義 + JSON Schema を自動生成し、UI のバリデーションと AI エージェント生成のガイドに使う。
 - ドライバ固有の接続先情報は `driver_spec` に格納する。
 - 本体は `driver`（接続先ID）と `scan_group` の参照整合を検証し、`driver_spec` の詳細解釈は各ドライバへ委譲する。
 - PostgreSQL のように複数タグを同一テーブルから読む場合は、`scan_group` でテーブル単位の読出し周期を管理する。
 - 本体 UI から変更できる ScanGroup 項目は当面 `scan_rate_ms` のみとし、構造変更はドライバ UI 側で扱う。
+- ドライバ子プロセスには `auto_restart` / `max_restart_per_minute` を設定できるようにし、異常終了時の自動復旧を制御する。
 - 編集時はアトミックライト（一時ファイル → rename）で破損を防止する。
 - バージョンフィールド（`schema_version`）をファイル先頭に持たせ、将来のマイグレーションに備える。
 - 登録プロセス取込時は、全検証成功後に一括反映し、部分成功を許可しない。

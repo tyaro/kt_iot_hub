@@ -20,7 +20,10 @@ pub enum BridgeRequest {
     #[serde(rename = "browseTags")]
     BrowseTags,
     #[serde(rename = "read")]
-    Read { request_id: String, tag_ids: Vec<i32> },
+    Read {
+        request_id: String,
+        tag_ids: Vec<i32>,
+    },
 }
 
 #[derive(Debug, Serialize, PartialEq)]

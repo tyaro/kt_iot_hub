@@ -58,7 +58,7 @@
     errorMsg = '';
   }
 
-  function setFormField(key: keyof SavePublisherRequest, value: string | number | boolean) {
+  function setFormField(key: keyof SavePublisherRequest, value: string | number | boolean | null) {
     form = {
       ...form,
       [key]: value,
@@ -76,8 +76,14 @@
         id: form.id.trim(),
         broker: form.broker.trim(),
         username: form.username.trim(),
+        password_key: form.password_key?.trim() ? form.password_key.trim() : null,
         client_id: form.client_id.trim(),
         topic: form.topic.trim(),
+        tls_ca_path: form.tls_ca_path?.trim() ? form.tls_ca_path.trim() : null,
+        tls_client_cert_path: form.tls_client_cert_path?.trim()
+          ? form.tls_client_cert_path.trim()
+          : null,
+        tls_client_key_path: form.tls_client_key_path?.trim() ? form.tls_client_key_path.trim() : null,
       });
       await loadPublishers(form.id.trim());
       message = selectedPublisherId ? 'パブリッシャ設定を保存しました' : 'パブリッシャを作成しました';

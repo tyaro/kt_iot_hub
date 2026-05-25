@@ -37,9 +37,9 @@ impl JoyWatcherBridgeProcess {
             command.arg("--dll-path").arg(dll_path);
         }
 
-        let mut child = command
-            .spawn()
-            .with_context(|| format!("failed to spawn JoyWatcher bridge: {}", exe_path.display()))?;
+        let mut child = command.spawn().with_context(|| {
+            format!("failed to spawn JoyWatcher bridge: {}", exe_path.display())
+        })?;
 
         let stdin = child
             .stdin

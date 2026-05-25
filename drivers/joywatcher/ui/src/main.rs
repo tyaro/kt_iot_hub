@@ -1,4 +1,7 @@
-#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
 
 //! JoyWatcher レジストレーション用のドライバUI Tauri アプリ。
 //! x86 bridge 経由で TagSel2 / JWGetTagIDS2 / JWRead を利用し、
@@ -69,8 +72,14 @@ async fn probe_joywatcher_tag_types(
                 items
                     .into_iter()
                     .map(|item| {
-                        let dtype = item.dtype.map(|value| value.to_string()).unwrap_or_default();
-                        format!("{}|{}|{}|{}", item.tag_id, item.value_kind, item.quality, dtype)
+                        let dtype = item
+                            .dtype
+                            .map(|value| value.to_string())
+                            .unwrap_or_default();
+                        format!(
+                            "{}|{}|{}|{}",
+                            item.tag_id, item.value_kind, item.quality, dtype
+                        )
                     })
                     .collect()
             },

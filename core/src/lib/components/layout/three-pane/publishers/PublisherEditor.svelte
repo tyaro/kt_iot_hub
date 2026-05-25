@@ -13,9 +13,19 @@
     saving: boolean;
     message: string;
     errorMsg: string;
-    onFieldChange: (key: keyof SavePublisherRequest, value: string | number | boolean) => void;
+    onFieldChange: (key: keyof SavePublisherRequest, value: string | number | boolean | null) => void;
     onSave: () => void;
   } = $props();
+
+  function parseOptionalNumber(value: string): number | null {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
 </script>
 
 <section class="editor-panel">
@@ -77,6 +87,18 @@
     </label>
 
     <label>
+      Password Key（任意）
+      <input
+        value={form.password_key ?? ''}
+        placeholder="publisher.mqtt.main"
+        oninput={(event) => {
+          const value = (event.currentTarget as HTMLInputElement).value.trim();
+          onFieldChange('password_key', value ? value : null);
+        }}
+      />
+    </label>
+
+    <label>
       Client ID
       <input
         value={form.client_id}
@@ -95,6 +117,73 @@
         <option value={1}>1</option>
         <option value={2}>2</option>
       </select>
+    </label>
+
+    <label class="check-label">
+      <input
+        type="checkbox"
+        checked={form.tls_enabled}
+        onchange={(event) => onFieldChange('tls_enabled', (event.currentTarget as HTMLInputElement).checked)}
+      />
+      TLS を有効化
+    </label>
+
+    <label>
+      TLS CA 証明書パス（任意）
+      <input
+        value={form.tls_ca_path ?? ''}
+        placeholder="C:/certs/ca.pem"
+        oninput={(event) => {
+          const value = (event.currentTarget as HTMLInputElement).value.trim();
+          onFieldChange('tls_ca_path', value ? value : null);
+        }}
+      />
+    </label>
+
+    <label>
+      TLS クライアント証明書パス（任意）
+      <input
+        value={form.tls_client_cert_path ?? ''}
+        placeholder="C:/certs/client.crt"
+        oninput={(event) => {
+          const value = (event.currentTarget as HTMLInputElement).value.trim();
+          onFieldChange('tls_client_cert_path', value ? value : null);
+        }}
+      />
+    </label>
+
+    <label>
+      TLS クライアント鍵パス（任意）
+      <input
+        value={form.tls_client_key_path ?? ''}
+        placeholder="C:/certs/client.key"
+        oninput={(event) => {
+          const value = (event.currentTarget as HTMLInputElement).value.trim();
+          onFieldChange('tls_client_key_path', value ? value : null);
+        }}
+      />
+    </label>
+
+    <label>
+      再接続バックオフ初期値 ms（任意）
+      <input
+        type="number"
+        min="0"
+        value={form.reconnect_backoff_ms ?? ''}
+        placeholder="500"
+        oninput={(event) => onFieldChange('reconnect_backoff_ms', parseOptionalNumber((event.currentTarget as HTMLInputElement).value))}
+      />
+    </label>
+
+    <label>
+      再接続バックオフ上限 ms（任意）
+      <input
+        type="number"
+        min="0"
+        value={form.max_reconnect_backoff_ms ?? ''}
+        placeholder="30000"
+        oninput={(event) => onFieldChange('max_reconnect_backoff_ms', parseOptionalNumber((event.currentTarget as HTMLInputElement).value))}
+      />
     </label>
 
     <label>

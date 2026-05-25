@@ -30,6 +30,15 @@
       database: '',
       username: '',
       password: '',
+      password_key: null,
+      tls_enabled: false,
+      tls_ca_path: null,
+      tls_client_cert_path: null,
+      tls_client_key_path: null,
+      connect_timeout_ms: null,
+      statement_timeout_ms: null,
+      auto_restart: true,
+      max_restart_per_minute: null,
     };
   }
 
@@ -44,6 +53,15 @@
       database: target.database,
       username: target.username,
       password: '',
+      password_key: target.password_key ?? null,
+      tls_enabled: target.tls_enabled ?? false,
+      tls_ca_path: target.tls_ca_path ?? null,
+      tls_client_cert_path: target.tls_client_cert_path ?? null,
+      tls_client_key_path: target.tls_client_key_path ?? null,
+      connect_timeout_ms: target.connect_timeout_ms ?? null,
+      statement_timeout_ms: target.statement_timeout_ms ?? null,
+      auto_restart: target.auto_restart ?? true,
+      max_restart_per_minute: target.max_restart_per_minute ?? null,
     };
   }
 
@@ -104,6 +122,15 @@
         database: refreshedDriver?.database ?? form.database,
         username: refreshedDriver?.username ?? form.username,
         password: '',
+        password_key: refreshedDriver?.password_key ?? form.password_key,
+        tls_enabled: refreshedDriver?.tls_enabled ?? form.tls_enabled,
+        tls_ca_path: refreshedDriver?.tls_ca_path ?? form.tls_ca_path,
+        tls_client_cert_path: refreshedDriver?.tls_client_cert_path ?? form.tls_client_cert_path,
+        tls_client_key_path: refreshedDriver?.tls_client_key_path ?? form.tls_client_key_path,
+        connect_timeout_ms: refreshedDriver?.connect_timeout_ms ?? form.connect_timeout_ms,
+        statement_timeout_ms: refreshedDriver?.statement_timeout_ms ?? form.statement_timeout_ms,
+        auto_restart: refreshedDriver?.auto_restart ?? form.auto_restart,
+        max_restart_per_minute: refreshedDriver?.max_restart_per_minute ?? form.max_restart_per_minute,
       };
       editing = false;
       message = mode === 'new' ? 'ドライバを作成しました' : 'ドライバ設定を保存しました';

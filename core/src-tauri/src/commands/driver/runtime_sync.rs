@@ -27,9 +27,21 @@ pub(crate) async fn sync_driver_runtime(
     if should_keep_driver_running && config.enabled.unwrap_or(true) {
         manager
             .start_driver(
+                state.drivers.clone(),
+                state.runtime_status.clone(),
                 &config.id,
                 &config.driver_type,
                 driver_ui_base_dir.as_deref(),
+                config
+                    .settings
+                    .get("auto_restart")
+                    .and_then(|value| value.as_bool())
+                    .unwrap_or(true),
+                config
+                    .settings
+                    .get("max_restart_per_minute")
+                    .and_then(|value| value.as_u64())
+                    .map(|value| value as u32),
             )
             .await
             .map_err(ErrorResponse::from)?;

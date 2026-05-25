@@ -39,10 +39,12 @@ pub async fn get_driver_ui_launch_context() -> Result<DriverUiLaunchContextDto, 
             })?;
 
         request_id = Some(parsed.request_id);
-        context = Some(serde_json::to_value(&parsed.context).map_err(|e| ErrorResponse {
-            error: format!("Failed to serialize launch context: {}", e),
-            code: "SERIALIZE_ERROR".to_string(),
-        })?);
+        context = Some(
+            serde_json::to_value(&parsed.context).map_err(|e| ErrorResponse {
+                error: format!("Failed to serialize launch context: {}", e),
+                code: "SERIALIZE_ERROR".to_string(),
+            })?,
+        );
         editing_tag_id = parsed.session.editing_tag_id.clone();
         if output_json_path.is_none() {
             output_json_path = Some(parsed.session.output_json_path);

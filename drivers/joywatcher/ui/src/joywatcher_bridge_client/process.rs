@@ -15,8 +15,9 @@ impl JoyWatcherUiBridgeClient {
     pub(super) fn start() -> Result<Self, String> {
         let exe_path = resolve_bridge_exe_path()
             .ok_or_else(|| format!("JoyWatcher bridge executable not found: {BRIDGE_EXE_NAME}"))?;
-        let dll_path = resolve_dll_path()
-            .ok_or_else(|| format!("JoyWaApi.dll not found in known search roots: {DLL_FILE_NAME}"))?;
+        let dll_path = resolve_dll_path().ok_or_else(|| {
+            format!("JoyWaApi.dll not found in known search roots: {DLL_FILE_NAME}")
+        })?;
 
         let mut command = Command::new(&exe_path);
         command
@@ -28,9 +29,12 @@ impl JoyWatcherUiBridgeClient {
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());
 
-        let mut child = command
-            .spawn()
-            .map_err(|e| format!("failed to spawn JoyWatcher bridge '{}': {e}", exe_path.display()))?;
+        let mut child = command.spawn().map_err(|e| {
+            format!(
+                "failed to spawn JoyWatcher bridge '{}': {e}",
+                exe_path.display()
+            )
+        })?;
 
         let stdin = child
             .stdin

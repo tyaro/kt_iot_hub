@@ -18,13 +18,19 @@ pub fn bridge_exe_candidates() -> Vec<PathBuf> {
     }
 
     if let Ok(bridge_dir) = std::env::var("JOYWATCHER_BRIDGE_DIR") {
-        push_unique(&mut candidates, PathBuf::from(bridge_dir).join(BRIDGE_EXE_NAME));
+        push_unique(
+            &mut candidates,
+            PathBuf::from(bridge_dir).join(BRIDGE_EXE_NAME),
+        );
     }
 
     if let Some(repo_root) = find_repo_root() {
         push_unique(
             &mut candidates,
-            repo_root.join("driver-ui").join("joywatcher").join(BRIDGE_EXE_NAME),
+            repo_root
+                .join("driver-ui")
+                .join("joywatcher")
+                .join(BRIDGE_EXE_NAME),
         );
         push_unique(
             &mut candidates,
