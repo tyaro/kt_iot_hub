@@ -11,6 +11,14 @@ export interface RuntimeStatusDto {
   last_error?: string | null;
 }
 
+export interface RuntimeStartupConfigDto {
+  auto_start_runtime_services: boolean;
+}
+
+export interface SetRuntimeStartupConfigRequest {
+  auto_start_runtime_services: boolean;
+}
+
 export interface AppMetricsDto {
   process_cpu_percent?: number | null;
   process_memory_bytes?: number | null;
@@ -37,6 +45,10 @@ type RuntimeStatusDtoRaw = {
   publishersRunning: boolean;
   grpcRunning: boolean;
   lastError?: string | null;
+};
+
+type RuntimeStartupConfigDtoRaw = {
+  autoStartRuntimeServices: boolean;
 };
 
 type AppMetricsDtoRaw = {
@@ -66,6 +78,14 @@ function normalizeRuntimeStatus(raw: RuntimeStatusDtoRaw): RuntimeStatusDto {
     publishers_running: raw.publishersRunning,
     grpc_running: raw.grpcRunning,
     last_error: raw.lastError ?? null,
+  };
+}
+
+function normalizeRuntimeStartupConfig(
+  raw: RuntimeStartupConfigDtoRaw,
+): RuntimeStartupConfigDto {
+  return {
+    auto_start_runtime_services: raw.autoStartRuntimeServices,
   };
 }
 
@@ -124,6 +144,28 @@ export async function startRuntimeServices(
 export async function stopRuntimeServices(): Promise<RuntimeStatusDto> {
   const raw = await ipcInvoke<RuntimeStatusDtoRaw>('stop_runtime_services');
   return normalizeRuntimeStatus(raw);
+}
+
+/**
+ * 起動時のランタイム自動開始設定を取得する
+ */
+export async function getRuntimeStartupConfig(): Promise<RuntimeStartupConfigDto> {
+  const raw = await ipcInvoke<RuntimeStartupConfigDtoRaw>('get_runtime_startup_config');
+  return normalizeRuntimeStartupConfig(raw);
+}
+
+/**
+ * 起動時のランタイム自動開始設定を保存する
+ */
+export async function setRuntimeStartupConfig(
+  req: SetRuntimeStartupConfigRequest,
+): Promise<RuntimeStartupConfigDto> {
+  const raw = await ipcInvoke<RuntimeStartupConfigDtoRaw>('set_runtime_startup_config', {
+    req: {
+      autoStartRuntimeServices: req.auto_start_runtime_services,
+    },
+  });
+  return normalizeRuntimeStartupConfig(raw);
 }
 
 /**

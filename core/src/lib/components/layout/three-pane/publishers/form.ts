@@ -4,7 +4,6 @@ export function createDefaultForm(): SavePublisherRequest {
   return {
     id: 'mqtt-main',
     publisher_type: 'mqtt',
-    enabled: false,
     broker: '127.0.0.1',
     port: 1883,
     username: '',

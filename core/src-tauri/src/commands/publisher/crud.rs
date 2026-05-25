@@ -21,7 +21,6 @@ pub async fn list_publishers(
         .map(|cfg| PublisherDto {
             id: cfg.id.clone(),
             publisher_type: cfg.publisher_type.clone(),
-            enabled: cfg.enabled.unwrap_or(true),
             broker: cfg
                 .settings
                 .get("broker")
@@ -165,7 +164,7 @@ pub async fn save_publisher(
     let config = PublisherConfig {
         id: publisher_id.clone(),
         publisher_type: req.publisher_type,
-        enabled: Some(req.enabled),
+        enabled: None,
         settings: serde_json::Value::Object(settings),
     };
 

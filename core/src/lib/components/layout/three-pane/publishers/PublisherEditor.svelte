@@ -122,17 +122,8 @@
       例: <code>plant/postgresql/tags/bte1w/w0400</code><br />
       Topic が空欄なら <code>&lt;接続先ID&gt;/tags/&lt;groupId&gt;/&lt;tagName&gt;</code> を使い、payload はスカラー値を送ります。<br />
       接続先/ScanGroupごとの配信モードは「タグ管理」画面の右ペインから設定できます。<br />
-      下のチェックを入れると、アプリ起動時にドライバと MQTT 配信を自動開始します。未チェック時はダッシュボードの開始ボタンで起動します。
+      起動時のドライバ / MQTT 自動開始は「設定」画面のチェックボックスで一括制御します。
     </p>
-
-    <label class="check-label">
-      <input
-        type="checkbox"
-        checked={form.enabled}
-        onchange={(event) => onFieldChange('enabled', (event.currentTarget as HTMLInputElement).checked)}
-      />
-      起動時に MQTT 配信を開始
-    </label>
 
     <label class="check-label">
       <input

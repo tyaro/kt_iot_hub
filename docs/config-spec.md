@@ -237,7 +237,6 @@ topic = "plant"
 
 ### MQTT パブリッシャ設定補足
 
-- `enabled`: アプリ起動時にこの MQTT パブリッシャを自動開始するか。`true` の場合、起動時にドライバと MQTT 配信を開始する
 - `qos`: 0 / 1 / 2
 - `retain`: retain フラグ（省略時 `false`）
 - `topic`: MQTT トピックのベースパス（省略時は空文字）
@@ -246,7 +245,8 @@ topic = "plant"
 - 例: `plant/postgresql/bte1w/w0400`
 - `topic` が空文字の場合は `<driver_id>/<scan_group_id>/<tag_name>`
 - payload はタグ値そのもののスカラー値を publish する
-- ダッシュボードの開始ボタンでは `enabled` の状態に関わらず、設定済みのドライバ / パブリッシャを起動する
+- 起動時の自動開始は `runtime.toml` の `auto_start_runtime_services` で一括制御する
+- ダッシュボードの開始ボタンでは、設定済みのドライバ / パブリッシャを起動する
 
 ## 設計ルール
 

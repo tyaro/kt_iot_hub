@@ -38,6 +38,7 @@
     settingsMessage: string;
     discoveryAvailableCount: number;
     discoveryInvalidCount: number;
+    runtimeAutoStartEnabled: boolean;
     discoveryInvalidItems: Array<{
       manifestPath: string;
       statusCode: string;
@@ -63,6 +64,8 @@
     onPickDriverUiBaseDir: () => Promise<void>;
     onSaveDriverUiBaseDir: () => void;
     onClearDriverUiBaseDir: () => void;
+    onRuntimeAutoStartChange: (enabled: boolean) => void;
+    onSaveRuntimeAutoStart: () => Promise<void>;
   };
 
   let {
@@ -86,6 +89,7 @@
     settingsMessage,
     discoveryAvailableCount,
     discoveryInvalidCount,
+    runtimeAutoStartEnabled,
     discoveryInvalidItems,
     onNavigateTags,
     onOpenMqttMonitor,
@@ -106,6 +110,8 @@
     onPickDriverUiBaseDir,
     onSaveDriverUiBaseDir,
     onClearDriverUiBaseDir,
+    onRuntimeAutoStartChange,
+    onSaveRuntimeAutoStart,
   }: Props = $props();
 </script>
 
@@ -160,11 +166,14 @@
       {settingsMessage}
       {discoveryAvailableCount}
       {discoveryInvalidCount}
+      {runtimeAutoStartEnabled}
       {discoveryInvalidItems}
       onDriverUiBaseDirInput={onDriverUiBaseDirInput}
       onPickDriverUiBaseDir={onPickDriverUiBaseDir}
       onSaveDriverUiBaseDir={onSaveDriverUiBaseDir}
       onClearDriverUiBaseDir={onClearDriverUiBaseDir}
+      onRuntimeAutoStartChange={onRuntimeAutoStartChange}
+      onSaveRuntimeAutoStart={onSaveRuntimeAutoStart}
     />
   {/if}
 </div>

@@ -27,6 +27,8 @@ impl JoyWatcherBridgeProcess {
         command
             .arg("--mode")
             .arg(mode.as_arg())
+            .arg("--parent-pid")
+            .arg(std::process::id().to_string())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());

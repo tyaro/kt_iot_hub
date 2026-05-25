@@ -6,10 +6,13 @@
     discoveryAvailableCount,
     discoveryInvalidCount,
     discoveryInvalidItems,
+    runtimeAutoStartEnabled,
     onDriverUiBaseDirInput,
     onPickDriverUiBaseDir,
     onSaveDriverUiBaseDir,
     onClearDriverUiBaseDir,
+    onRuntimeAutoStartChange,
+    onSaveRuntimeAutoStart,
   }: {
     driverUiBaseDirInput: string;
     driverUiBaseDirSaved: string | null;
@@ -22,10 +25,13 @@
       statusMessage: string;
       driverTypeHint?: string | null;
     }>;
+    runtimeAutoStartEnabled: boolean;
     onDriverUiBaseDirInput: (value: string) => void;
     onPickDriverUiBaseDir: () => void | Promise<void>;
     onSaveDriverUiBaseDir: () => void;
     onClearDriverUiBaseDir: () => void;
+    onRuntimeAutoStartChange: (enabled: boolean) => void;
+    onSaveRuntimeAutoStart: () => void | Promise<void>;
   } = $props();
 </script>
 
@@ -79,6 +85,24 @@
           {/each}
         </ul>
       {/if}
+    </div>
+
+    <div class="startup-settings">
+      <h4>起動時自動開始</h4>
+      <p class="settings-help">
+        ON にするとアプリ起動時にドライバと MQTT パブリッシャを自動で開始します。OFF の場合はダッシュボードの開始ボタンで手動起動します。
+      </p>
+      <label class="check-label">
+        <input
+          type="checkbox"
+          checked={runtimeAutoStartEnabled}
+          onchange={(event) => onRuntimeAutoStartChange((event.currentTarget as HTMLInputElement).checked)}
+        />
+        起動時に MQTT / ドライバの起動を開始する
+      </label>
+      <div class="settings-actions">
+        <button class="btn-primary" onclick={onSaveRuntimeAutoStart}>保存</button>
+      </div>
     </div>
   </div>
 </div>
@@ -166,10 +190,31 @@
     border-top: 1px solid #e2e8f0;
   }
 
+  .startup-settings {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+  }
+
   .discovery-summary h4 {
     margin: 0 0 8px;
     font-size: 0.88rem;
     color: #1f2937;
+  }
+
+  .startup-settings h4 {
+    margin: 0 0 8px;
+    font-size: 0.88rem;
+    color: #1f2937;
+  }
+
+  .check-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.84rem;
+    color: #334155;
+    margin-bottom: 10px;
   }
 
   .invalid-list {

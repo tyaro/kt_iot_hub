@@ -61,6 +61,7 @@
     deleteTag,
     exportTagManagementSettings,
     getDefaultDriverUiBaseDir,
+    getRuntimeStartupConfig,
     getRuntimeStatus,
     getAppMetrics,
     getDriverMetrics,
@@ -68,6 +69,7 @@
     importTagManagementSettings,
     launchDriverUi,
     openMqttMonitorWindow,
+    setRuntimeStartupConfig,
     startRuntimeServices,
     stopRuntimeServices,
     type DriverDto,
@@ -222,27 +224,38 @@
   let runtimeBusy = $state(false);
   let dashboardMessage = $state('');
   let settingsMessage = $state('');
+  let runtimeAutoStartEnabled = $state(false);
 
   const loadedDriverUiBaseDir = loadDriverUiBaseDirFromStorage();
   let driverUiBaseDirInput = $state(loadedDriverUiBaseDir ?? '');
   let driverUiBaseDirSaved = $state<string | null>(loadedDriverUiBaseDir);
 
   onMount(() => {
-    if (loadedDriverUiBaseDir) {
-      return;
+    let disposed = false;
+
+    if (!loadedDriverUiBaseDir) {
+      void getDefaultDriverUiBaseDir()
+        .then((defaultBaseDir) => {
+          if (disposed || !defaultBaseDir) {
+            return;
+          }
+          driverUiBaseDirInput = defaultBaseDir;
+          driverUiBaseDirSaved = defaultBaseDir;
+        })
+        .catch(() => {
+          // 既定値取得に失敗しても手入力できるため黙って継続する
+        });
     }
 
-    let disposed = false;
-    void getDefaultDriverUiBaseDir()
-      .then((defaultBaseDir) => {
-        if (disposed || !defaultBaseDir) {
+    void getRuntimeStartupConfig()
+      .then((config) => {
+        if (disposed) {
           return;
         }
-        driverUiBaseDirInput = defaultBaseDir;
-        driverUiBaseDirSaved = defaultBaseDir;
+        runtimeAutoStartEnabled = config.auto_start_runtime_services;
       })
       .catch(() => {
-        // 既定値取得に失敗しても手入力できるため黙って継続する
+        // 取得失敗時は既定値(false)のまま継続
       });
 
     return () => {
@@ -480,6 +493,22 @@
     );
   }
 
+  async function handleSaveRuntimeAutoStart() {
+    try {
+      const result = await setRuntimeStartupConfig({
+        auto_start_runtime_services: runtimeAutoStartEnabled,
+      });
+      runtimeAutoStartEnabled = result.auto_start_runtime_services;
+      settingsMessage = result.auto_start_runtime_services
+        ? '起動時自動開始を有効化しました。次回起動時にドライバ / MQTT を自動開始します。'
+        : '起動時自動開始を無効化しました。次回起動時は手動開始になります。';
+    } catch (error) {
+      const message = extractErrorMessage(error, '起動時自動開始設定の保存に失敗しました');
+      settingsMessage = message;
+      notify(message);
+    }
+  }
+
   function handleConfirmDialogConfirm() {
     closeConfirmDialog(true);
   }
@@ -516,6 +545,7 @@
     settingsMessage,
     discoveryAvailableCount: discoveredDriverPackages.length,
     discoveryInvalidCount: invalidDriverPackages.length,
+    runtimeAutoStartEnabled,
     discoveryInvalidItems: invalidDriverPackages.map((item) => ({
       manifestPath: item.manifest_path,
       statusCode: item.status_code,
@@ -541,6 +571,10 @@
     onPickDriverUiBaseDir: driverUiSettingsController.pick,
     onSaveDriverUiBaseDir: driverUiSettingsController.save,
     onClearDriverUiBaseDir: driverUiSettingsController.clear,
+    onRuntimeAutoStartChange: (enabled: boolean) => {
+      runtimeAutoStartEnabled = enabled;
+    },
+    onSaveRuntimeAutoStart: handleSaveRuntimeAutoStart,
   }));
 
   const threePaneOverlayProps = $derived.by(() => ({

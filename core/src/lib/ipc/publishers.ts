@@ -3,7 +3,6 @@ import { ipcInvoke } from './_invoke';
 interface PublisherCoreFields {
   id: string;
   publisher_type: string;
-  enabled: boolean;
   broker: string;
   port: number;
   username: string;

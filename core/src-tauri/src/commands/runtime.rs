@@ -1,7 +1,12 @@
-use super::dto::{ErrorResponse, RuntimeStatusDto, StartRuntimeServicesRequest};
+use super::config_io::write_toml_atomic;
+use super::dto::{
+    ErrorResponse, RuntimeStartupConfigDto, RuntimeStatusDto, SetRuntimeStartupConfigRequest,
+    StartRuntimeServicesRequest,
+};
 use super::util::normalize_optional_string;
 use crate::app_state::AppState;
 use crate::grpc;
+use serde::Serialize;
 use tracing::info;
 
 const GRPC_ADDR: &str = grpc::tag_registration::DEFAULT_GRPC_ADDR;
@@ -11,6 +16,38 @@ pub async fn get_runtime_status(
     state: tauri::State<'_, AppState>,
 ) -> Result<RuntimeStatusDto, ErrorResponse> {
     Ok(read_runtime_status(state.inner()).await)
+}
+
+#[derive(Debug, Serialize)]
+struct RuntimeToml {
+    auto_start_runtime_services: bool,
+}
+
+#[tauri::command]
+pub async fn get_runtime_startup_config(
+    state: tauri::State<'_, AppState>,
+) -> Result<RuntimeStartupConfigDto, ErrorResponse> {
+    Ok(RuntimeStartupConfigDto {
+        auto_start_runtime_services: *state.runtime_auto_start.read().await,
+    })
+}
+
+#[tauri::command]
+pub async fn set_runtime_startup_config(
+    state: tauri::State<'_, AppState>,
+    req: SetRuntimeStartupConfigRequest,
+) -> Result<RuntimeStartupConfigDto, ErrorResponse> {
+    *state.runtime_auto_start.write().await = req.auto_start_runtime_services;
+    write_toml_atomic(
+        "runtime.toml",
+        &RuntimeToml {
+            auto_start_runtime_services: req.auto_start_runtime_services,
+        },
+    )?;
+
+    Ok(RuntimeStartupConfigDto {
+        auto_start_runtime_services: req.auto_start_runtime_services,
+    })
 }
 
 #[tauri::command]
@@ -27,7 +64,7 @@ pub async fn start_runtime_services(
     }
 
     start_drivers(state.inner(), driver_ui_base_dir.as_deref()).await?;
-    if let Err(e) = start_publishers(state.inner(), false).await {
+    if let Err(e) = start_publishers(state.inner()).await {
         let _ = stop_drivers(state.inner()).await;
         return Err(e);
     }
@@ -55,12 +92,7 @@ pub async fn stop_runtime_services(
 }
 
 pub async fn auto_start_runtime_services(state: &AppState) -> Result<(), ErrorResponse> {
-    let should_auto_start = state
-        .publisher_configs
-        .read()
-        .await
-        .iter()
-        .any(|cfg| cfg.enabled.unwrap_or(false));
+    let should_auto_start = *state.runtime_auto_start.read().await;
 
     if !should_auto_start {
         return Ok(());
@@ -69,7 +101,7 @@ pub async fn auto_start_runtime_services(state: &AppState) -> Result<(), ErrorRe
     clear_last_error(state).await;
 
     start_drivers(state, None).await?;
-    if let Err(e) = start_publishers(state, true).await {
+    if let Err(e) = start_publishers(state).await {
         let _ = stop_drivers(state).await;
         return Err(e);
     }
@@ -111,13 +143,12 @@ async fn stop_drivers(state: &AppState) -> Result<(), ErrorResponse> {
     Ok(())
 }
 
-async fn start_publishers(state: &AppState, startup_only: bool) -> Result<(), ErrorResponse> {
+async fn start_publishers(state: &AppState) -> Result<(), ErrorResponse> {
     let publisher_ids: Vec<String> = state
         .publisher_configs
         .read()
         .await
         .iter()
-        .filter(|cfg| !startup_only || cfg.enabled.unwrap_or(false))
         .map(|cfg| cfg.id.clone())
         .collect();
 

@@ -7,7 +7,6 @@ pub struct PublisherDto {
     pub id: String,
     #[serde(rename = "publisher_type")]
     pub publisher_type: String,
-    pub enabled: bool,
     pub broker: String,
     pub port: u16,
     pub username: String,
@@ -31,7 +30,6 @@ pub struct SavePublisherRequest {
     pub id: String,
     #[serde(rename = "publisher_type")]
     pub publisher_type: String,
-    pub enabled: bool,
     pub broker: String,
     pub port: u16,
     pub username: String,

@@ -1,5 +1,5 @@
 // TOML ベースの設定管理
-// tags.toml, drivers.toml, publishers.toml を読み込む
+// tags.toml, drivers.toml, publishers.toml, runtime.toml を読み込む
 
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
@@ -64,6 +64,13 @@ pub struct PublisherConfig {
     pub settings: serde_json::Value,
 }
 
+/// ランタイム設定の TOML スキーマ
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RuntimeConfig {
+    #[serde(default)]
+    pub auto_start_runtime_services: bool,
+}
+
 /// アプリ全体の設定
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -71,6 +78,7 @@ pub struct AppConfig {
     pub scan_groups: Vec<ScanGroupConfig>,
     pub drivers: Vec<DriverConfig>,
     pub publishers: Vec<PublisherConfig>,
+    pub runtime: RuntimeConfig,
 }
 
 impl AppConfig {
@@ -81,6 +89,7 @@ impl AppConfig {
         let tags_path = config_dir.join("tags.toml");
         let drivers_path = config_dir.join("drivers.toml");
         let publishers_path = config_dir.join("publishers.toml");
+        let runtime_path = config_dir.join("runtime.toml");
 
         // tags.toml から [[tag]] と [[scan_group]] を読み込む
         let (tags, scan_groups) = if tags_path.exists() {
@@ -165,12 +174,26 @@ impl AppConfig {
             vec![]
         };
 
+        let runtime = if runtime_path.exists() {
+            let content = std::fs::read_to_string(&runtime_path)?;
+            toml::from_str::<RuntimeConfig>(&content)
+                .map_err(|e| anyhow!("Failed to deserialize RuntimeConfig: {}", e))?
+        } else {
+            // 互換維持: runtime.toml が未導入の既存環境では publishers.toml の enabled を継承する。
+            RuntimeConfig {
+                auto_start_runtime_services: publishers
+                    .iter()
+                    .any(|cfg| cfg.enabled.unwrap_or(false)),
+            }
+        };
+
         info!(
-            "Loaded {} tags, {} scan_groups, {} drivers, {} publishers",
+            "Loaded {} tags, {} scan_groups, {} drivers, {} publishers (runtime.auto_start_runtime_services={})",
             tags.len(),
             scan_groups.len(),
             drivers.len(),
-            publishers.len()
+            publishers.len(),
+            runtime.auto_start_runtime_services
         );
 
         Ok(Self {
@@ -178,6 +201,7 @@ impl AppConfig {
             scan_groups,
             drivers,
             publishers,
+            runtime,
         })
     }
 }

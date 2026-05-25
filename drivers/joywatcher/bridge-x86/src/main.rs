@@ -35,6 +35,9 @@ struct Args {
 
     #[arg(long, default_value = "cdecl")]
     connect_convention: String,
+
+    #[arg(long)]
+    parent_pid: Option<u32>,
 }
 
 fn main() {
@@ -124,6 +127,7 @@ fn run() -> Result<()> {
     ensure_hidden_console();
 
     let args = Args::parse();
+    start_parent_exit_watcher(args.parent_pid);
     let connect_convention = parse_connect_convention(&args.connect_convention)?;
     let api: Box<dyn connection::JoyWatcherBridgeApi> = match args.mode.as_str() {
         "mock" => {
@@ -170,6 +174,53 @@ fn run() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(windows)]
+fn start_parent_exit_watcher(parent_pid: Option<u32>) {
+    let Some(parent_pid) = parent_pid else {
+        return;
+    };
+
+    std::thread::spawn(move || {
+        const PROCESS_SYNCHRONIZE: u32 = 0x0010_0000;
+        const INFINITE: u32 = 0xFFFF_FFFF;
+        const WAIT_OBJECT_0: u32 = 0;
+
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn OpenProcess(desired_access: u32, inherit_handle: i32, process_id: u32)
+                -> *mut core::ffi::c_void;
+            fn WaitForSingleObject(handle: *mut core::ffi::c_void, milliseconds: u32) -> u32;
+            fn CloseHandle(handle: *mut core::ffi::c_void) -> i32;
+        }
+
+        // SAFETY: Win32 API 呼び出しは null チェック済みハンドルに限定する。
+        unsafe {
+            let handle = OpenProcess(PROCESS_SYNCHRONIZE, 0, parent_pid);
+            if handle.is_null() {
+                warn!(
+                    parent_pid,
+                    "failed to open parent process handle; parent watcher disabled"
+                );
+                return;
+            }
+
+            let wait_result = WaitForSingleObject(handle, INFINITE);
+            let _ = CloseHandle(handle);
+
+            if wait_result == WAIT_OBJECT_0 {
+                warn!(
+                    parent_pid,
+                    "parent process exited; terminating bridge process"
+                );
+                std::process::exit(0);
+            }
+        }
+    });
+}
+
+#[cfg(not(windows))]
+fn start_parent_exit_watcher(_parent_pid: Option<u32>) {}
 
 fn parse_connect_convention(raw: &str) -> Result<JoyWatcherConnectConvention> {
     match raw.trim().to_ascii_lowercase().as_str() {

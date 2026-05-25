@@ -82,6 +82,8 @@ fn main() {
             kt_driver_ui_host::postgres::postgres_list_tables,
             kt_driver_ui_host::postgres::postgres_list_columns,
             commands::runtime::get_runtime_status,
+            commands::runtime::get_runtime_startup_config,
+            commands::runtime::set_runtime_startup_config,
             commands::runtime::start_runtime_services,
             commands::runtime::stop_runtime_services,
             commands::metrics::get_app_metrics,
@@ -144,6 +146,7 @@ fn main() {
                 config.drivers,
                 config.publishers,
                 config.scan_groups,
+                config.runtime.auto_start_runtime_services,
             );
 
             app.manage(app_state.clone());

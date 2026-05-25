@@ -23,6 +23,9 @@
     "joywatcher-ui:launch": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/launch-dev-joywatcher-ui.ps1",
     "tauri-build:bundle-drivers": "npm run driver-suite:release && npm run tauri-build",
     "release:all": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/build-release-all-and-clean.ps1",
+    "release:all:patch": "npm run release:all -- --bump patch",
+    "release:all:minor": "npm run release:all -- --bump minor",
+    "release:all:major": "npm run release:all -- --bump major",
     "cleanup:debug": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/cleanup-debug-workspace.ps1"
   },
   "devDependencies": {

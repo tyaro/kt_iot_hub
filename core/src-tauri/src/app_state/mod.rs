@@ -46,6 +46,7 @@ pub struct AppState {
     pub driver_ui_base_dir: Shared<Option<String>>,
     pub grpc_shutdown_tx: Shared<Option<tokio::sync::oneshot::Sender<()>>>,
     pub runtime_status: Shared<RuntimeStatusState>,
+    pub runtime_auto_start: Shared<bool>,
     pub mqtt_monitor: std::sync::Arc<tokio::sync::Mutex<MqttMonitor>>,
     pub mqtt_monitor_status: Shared<MqttMonitorStatusState>,
     pub mqtt_monitor_messages: Shared<VecDeque<MqttMonitorMessageState>>,
@@ -63,6 +64,7 @@ impl AppState {
         driver_configs: Vec<DriverConfig>,
         publisher_configs: Vec<PublisherConfig>,
         scan_groups: Vec<ScanGroupConfig>,
+        runtime_auto_start: bool,
     ) -> Self {
         Self {
             registry,
@@ -77,6 +79,7 @@ impl AppState {
             driver_ui_base_dir: shared(None),
             grpc_shutdown_tx: shared(None),
             runtime_status: shared(RuntimeStatusState::default()),
+            runtime_auto_start: shared(runtime_auto_start),
             mqtt_monitor: std::sync::Arc::new(tokio::sync::Mutex::new(MqttMonitor::new())),
             mqtt_monitor_status: shared(MqttMonitorStatusState::default()),
             mqtt_monitor_messages: shared(VecDeque::new()),
