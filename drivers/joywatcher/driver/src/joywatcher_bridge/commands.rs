@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use tracing::warn;
 
 use super::protocol::{escape_json_string, parse_read_result};
 use super::{BridgeConnectionSettings, BridgeReadValue, JoyWatcherBridgeProcess};
@@ -59,6 +60,44 @@ impl JoyWatcherBridgeProcess {
         self.connected = false;
         self.connection = None;
         Ok(response)
+    }
+
+    pub fn force_disconnect(&mut self) -> Result<String> {
+        let response = self.send_request(r#"{"type":"forceDisconnect"}"#)?;
+        if !response.contains(r#""type":"disconnected""#) {
+            return Err(anyhow!(
+                "unexpected bridge forceDisconnect response: {}",
+                response
+            ));
+        }
+
+        self.connected = false;
+        self.connection = None;
+        Ok(response)
+    }
+
+    pub fn disconnect_best_effort(&mut self, reason: &str) {
+        if !self.connected {
+            return;
+        }
+
+        if let Err(error) = self.disconnect() {
+            warn!(
+                "JoyWatcher bridge disconnect failed (reason={}): {}",
+                reason, error
+            );
+
+            if let Err(force_error) = self.force_disconnect() {
+                warn!(
+                    "JoyWatcher bridge forceDisconnect failed (reason={}): {}",
+                    reason, force_error
+                );
+            }
+        }
+
+        // 次回ループで再接続できるよう、通信断時はローカル状態を必ず解放する。
+        self.connected = false;
+        self.connection = None;
     }
 
     pub fn read_tags(&mut self, tag_ids: &[i32]) -> Result<Vec<BridgeReadValue>> {

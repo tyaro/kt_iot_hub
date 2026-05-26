@@ -13,6 +13,7 @@ use crate::dll_ffi::{
     TAG_NAME_SLOT_SIZE,
 };
 use crate::dll_symbols::{load_symbols, LibraryHandle};
+use crate::process_snapshot::log_jw_process_snapshot;
 use crate::protocol::{ReadValuePayload, ResolvedTag};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,7 +129,9 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
             password_len = password.len(),
             "Calling JoyWatcher ConnectNet"
         );
+        log_jw_process_snapshot("before_connectnet");
         let result = self.call_connect_net();
+        log_jw_process_snapshot("after_connectnet");
         info!(
             connect_convention = self.connect_convention.as_str(),
             raw_result = result,
@@ -142,7 +145,9 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
     }
 
     fn disconnect_net(&mut self) -> Result<()> {
+        log_jw_process_snapshot("before_disconnectnet");
         let result = self.call_disconnect_net();
+        log_jw_process_snapshot("after_disconnectnet");
         info!(
             connect_convention = self.connect_convention.as_str(),
             raw_result = result,
@@ -226,6 +231,7 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
             .map(|tag_id| JoyWatcherComData1::new(*tag_id))
             .collect::<Vec<_>>();
 
+        log_jw_process_snapshot("before_jwread");
         let result = unsafe {
             (self.jw_read_fn)(
                 self.read_user_id,
@@ -234,6 +240,7 @@ impl JoyWatcherBridgeApi for JoyWatcherDllApi {
                 rows.as_mut_ptr(),
             )
         };
+        log_jw_process_snapshot("after_jwread");
         info!(
             raw_result = result,
             raw_result_hex = format!("0x{result:08X}"),

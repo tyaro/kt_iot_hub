@@ -12,7 +12,7 @@ use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration as StdDuration, Instant};
-use tokio::process::Child;
+use tokio::process::{Child, Command as TokioCommand};
 use tokio::time::{sleep, timeout, Duration};
 use tracing::{error, info, warn};
 
@@ -142,15 +142,14 @@ impl DriverProcessManager {
                     }
                     Ok(Err(e)) => {
                         warn!("Failed while waiting driver process {}: {}", driver_id, e);
+                        force_kill_driver_process(&mut child, driver_id).await;
                     }
                     Err(_) => {
                         warn!(
                             "Timed out waiting driver process {} to stop; forcing kill",
                             driver_id
                         );
-                        if let Err(e) = child.kill().await {
-                            warn!("Forced kill failed for driver process {}: {}", driver_id, e);
-                        }
+                        force_kill_driver_process(&mut child, driver_id).await;
                     }
                 }
             }
@@ -214,6 +213,8 @@ impl DriverProcessManager {
             .arg(driver_type)
             .arg("--grpc-addr")
             .arg(grpc_addr)
+            .arg("--parent-pid")
+            .arg(std::process::id().to_string())
             .kill_on_drop(true);
         #[cfg(windows)]
         {
@@ -297,6 +298,96 @@ impl DriverProcessManager {
         }
 
         Ok(Some(PathBuf::from(exe_name)))
+    }
+}
+
+async fn force_kill_driver_process(child: &mut Child, driver_id: &str) {
+    let pid = child.id();
+
+    if let Err(e) = child.kill().await {
+        warn!("Forced kill failed for driver process {}: {}", driver_id, e);
+    }
+
+    match timeout(Duration::from_secs(2), child.wait()).await {
+        Ok(Ok(status)) => {
+            info!(
+                "Driver process force-stopped: {} (status={})",
+                driver_id, status
+            );
+            return;
+        }
+        Ok(Err(e)) => {
+            warn!(
+                "Failed while waiting force-killed driver process {}: {}",
+                driver_id, e
+            );
+        }
+        Err(_) => {
+            warn!(
+                "Timed out waiting force-killed driver process {} to exit",
+                driver_id
+            );
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        if let Some(pid) = pid {
+            match TokioCommand::new("taskkill")
+                .args([
+                    "/PID",
+                    &pid.to_string(),
+                    "/T",
+                    "/F",
+                ])
+                .output()
+                .await
+            {
+                Ok(output) => {
+                    if output.status.success() {
+                        info!(
+                            "taskkill fallback succeeded for driver process {} (pid={})",
+                            driver_id, pid
+                        );
+                    } else {
+                        warn!(
+                            "taskkill fallback failed for driver process {} (pid={} status={}): {}",
+                            driver_id,
+                            pid,
+                            output.status,
+                            String::from_utf8_lossy(&output.stderr)
+                        );
+                    }
+                }
+                Err(e) => {
+                    warn!(
+                        "taskkill fallback command failed for driver process {} (pid={}): {}",
+                        driver_id, pid, e
+                    );
+                }
+            }
+
+            match timeout(Duration::from_secs(2), child.wait()).await {
+                Ok(Ok(status)) => {
+                    info!(
+                        "Driver process exited after taskkill fallback: {} (status={})",
+                        driver_id, status
+                    );
+                }
+                Ok(Err(e)) => {
+                    warn!(
+                        "Failed while waiting driver process {} after taskkill fallback: {}",
+                        driver_id, e
+                    );
+                }
+                Err(_) => {
+                    warn!(
+                        "Driver process {} still running after taskkill fallback timeout",
+                        driver_id
+                    );
+                }
+            }
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "kt_iot_hub",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "tauri": "tauri --config ./core/src-tauri/tauri.conf.json",
     "tauri-dev": "tauri dev --config ./core/src-tauri/tauri.conf.json",
+    "tauri:dev": "tauri dev --config ./core/src-tauri/tauri.conf.json",
     "tauri-build": "tauri build --config ./core/src-tauri/tauri.conf.json",
     "driver-runtime:install": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/install-driver-runtime.ps1",
     "driver-runtime:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/build-dev-driver-runtime.ps1",
@@ -20,6 +21,7 @@
     "driver-suite:release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/build-release-driver-suite.ps1",
     "joywatcher-ui:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/build-dev-joywatcher-ui.ps1",
     "joywatcher-suite:dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/build-dev-joywatcher-suite.ps1",
+    "dev:all:build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/build-dev-all-and-stage.ps1",
     "joywatcher-ui:launch": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/launch-dev-joywatcher-ui.ps1",
     "tauri-build:bundle-drivers": "npm run driver-suite:release && npm run tauri-build",
     "release:all": "powershell -NoProfile -ExecutionPolicy Bypass -File ./ops/scripts/build-release-all-and-clean.ps1",

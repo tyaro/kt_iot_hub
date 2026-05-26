@@ -9,6 +9,7 @@
 - 設計判断: [`decisions.md`](./decisions.md)
 - リファクタ計画: [`refactor-plan.md`](./refactor-plan.md)
 - 設定仕様: [`config-spec.md`](./config-spec.md)
+- タグ設定 import/export 仕様: [`tag-management-settings-import-export-spec.md`](./tag-management-settings-import-export-spec.md)
 - UI 登録仕様: [`ui-registration.md`](./ui-registration.md)
 - ドライバ manifest 設計: [`driver-manifest-discovery-design.md`](./driver-manifest-discovery-design.md)
 - ドライバ拡張性設計: [`driver-property-extensibility-design.md`](./driver-property-extensibility-design.md)
@@ -30,6 +31,7 @@
   - 調査: [`../drivers/joywatcher/docs/investigation.md`](../drivers/joywatcher/docs/investigation.md)
   - 引き継ぎ: [`../drivers/joywatcher/docs/session-handoff.md`](../drivers/joywatcher/docs/session-handoff.md)
   - x86 ブリッジ設計: [`../drivers/joywatcher/docs/bridge-x86-design.md`](../drivers/joywatcher/docs/bridge-x86-design.md)
+  - サーバ起動制御設計: [`../drivers/joywatcher/docs/server-startup-control-design.md`](../drivers/joywatcher/docs/server-startup-control-design.md)
 
 ## 運用ルール（要約）
 

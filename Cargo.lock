@@ -1085,7 +1085,7 @@ dependencies = [
 
 [[package]]
 name = "driver-joywatcher"
-version = "0.3.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1101,7 +1101,7 @@ dependencies = [
 
 [[package]]
 name = "driver-postgres"
-version = "0.3.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1124,7 +1124,7 @@ dependencies = [
 
 [[package]]
 name = "driver_ui_joywatcher"
-version = "0.3.0"
+version = "0.7.0"
 dependencies = [
  "kt_driver_ui_host",
  "tauri",
@@ -1133,7 +1133,7 @@ dependencies = [
 
 [[package]]
 name = "driver_ui_postgres"
-version = "0.3.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2309,7 +2309,7 @@ dependencies = [
 
 [[package]]
 name = "joywatcher-bridge-x86"
-version = "0.3.1"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2376,7 +2376,7 @@ dependencies = [
 
 [[package]]
 name = "kt_driver_ui_host"
-version = "0.2.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "kt_driver_ui_protocol",
@@ -2391,7 +2391,7 @@ dependencies = [
 
 [[package]]
 name = "kt_driver_ui_protocol"
-version = "0.2.0"
+version = "0.7.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -2399,7 +2399,7 @@ dependencies = [
 
 [[package]]
 name = "kt_iot_hub"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "async-trait",

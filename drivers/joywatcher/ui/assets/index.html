@@ -102,6 +102,28 @@
                   <label>周期(ms)<input id="groupRate" type="number" min="100" value="1000" /></label>
                 </div>
 
+                <details class="advanced-settings">
+                  <summary>JoyWatcher プロセス監視設定（ドライバ側）</summary>
+                  <div class="group-config-grid compact-grid">
+                    <label>
+                      <span>サーバ監視プロセス名</span>
+                      <input id="primaryServerProcessName" type="text" value="JoyWSrv2.exe" />
+                    </label>
+                    <label>
+                      <span>補助プロセス名</span>
+                      <input id="joywnet2ProcessName" type="text" value="JoyWNet2.exe" />
+                    </label>
+                    <label>
+                      <span>補助プロセス待機タイムアウト(ms)</span>
+                      <input id="joywnet2WaitTimeoutMs" type="number" min="100" step="100" value="5000" />
+                    </label>
+                  </div>
+                  <label class="checkbox-line" for="waitForJoyWNet2">
+                    <input id="waitForJoyWNet2" type="checkbox" />
+                    <span>JoyWNet2 起動完了を待ってから接続する</span>
+                  </label>
+                </details>
+
                 <div class="box inner-box">
                   <div class="field-head">
                     <strong>選択グループのタグ一覧</strong>

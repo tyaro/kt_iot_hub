@@ -7,6 +7,7 @@ mod dll_api;
 mod dll_ffi;
 mod dll_symbols;
 mod mock_api;
+mod process_snapshot;
 #[allow(dead_code)]
 #[path = "../../common/path_utils.rs"]
 mod path_utils;
@@ -127,6 +128,24 @@ fn run() -> Result<()> {
     ensure_hidden_console();
 
     let args = Args::parse();
+    let parent_token = args
+        .parent_pid
+        .map(|pid| pid.to_string())
+        .unwrap_or_else(|| "standalone".to_string());
+    let instance_name = format!(
+        "Global\\kt_iot_hub.joywatcher_bridge_x86.{}.{}",
+        sanitize_instance_token(&parent_token),
+        sanitize_instance_token(&args.mode)
+    );
+    let _instance_guard = acquire_single_instance(&instance_name).map_err(|error| {
+        anyhow!(
+            "joywatcher-bridge-x86 single-instance guard rejected startup (parent_pid={:?}, mode={}): {}",
+            args.parent_pid,
+            args.mode,
+            error
+        )
+    })?;
+
     start_parent_exit_watcher(args.parent_pid);
     let connect_convention = parse_connect_convention(&args.connect_convention)?;
     let api: Box<dyn connection::JoyWatcherBridgeApi> = match args.mode.as_str() {
@@ -274,5 +293,86 @@ fn ensure_hidden_console() {
                 warn!("AllocConsole failed; TagSel2 dialog may not appear under GUI parent");
             }
         }
+    }
+}
+
+#[cfg(windows)]
+struct SingleInstanceGuard {
+    handle: *mut core::ffi::c_void,
+}
+
+#[cfg(windows)]
+impl Drop for SingleInstanceGuard {
+    fn drop(&mut self) {
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn CloseHandle(handle: *mut core::ffi::c_void) -> i32;
+        }
+
+        // SAFETY: CreateMutexW で取得した有効ハンドルのみを保持する。
+        unsafe {
+            let _ = CloseHandle(self.handle);
+        }
+    }
+}
+
+#[cfg(windows)]
+fn acquire_single_instance(name: &str) -> Result<SingleInstanceGuard> {
+    const ERROR_ALREADY_EXISTS: u32 = 183;
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn CreateMutexW(
+            mutex_attributes: *mut core::ffi::c_void,
+            initial_owner: i32,
+            name: *const u16,
+        ) -> *mut core::ffi::c_void;
+        fn GetLastError() -> u32;
+        fn CloseHandle(handle: *mut core::ffi::c_void) -> i32;
+    }
+
+    let mut wide_name = name.encode_utf16().collect::<Vec<u16>>();
+    wide_name.push(0);
+
+    // SAFETY: Null終端 UTF-16 名称を渡し、戻りハンドルは null 判定して扱う。
+    unsafe {
+        let handle = CreateMutexW(std::ptr::null_mut(), 0, wide_name.as_ptr());
+        if handle.is_null() {
+            return Err(anyhow!("CreateMutexW returned null"));
+        }
+
+        if GetLastError() == ERROR_ALREADY_EXISTS {
+            let _ = CloseHandle(handle);
+            return Err(anyhow!("mutex already exists: {}", name));
+        }
+
+        Ok(SingleInstanceGuard { handle })
+    }
+}
+
+#[cfg(not(windows))]
+struct SingleInstanceGuard;
+
+#[cfg(not(windows))]
+fn acquire_single_instance(_name: &str) -> Result<SingleInstanceGuard> {
+    Ok(SingleInstanceGuard)
+}
+
+fn sanitize_instance_token(value: &str) -> String {
+    let sanitized = value
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' || ch == '.' {
+                ch.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>();
+
+    if sanitized.is_empty() {
+        "default".to_string()
+    } else {
+        sanitized
     }
 }
